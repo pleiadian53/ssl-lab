@@ -19,6 +19,10 @@ data adapter later).
 JEPA encoder ──freeze──▶ flow-matching prior p(z) ──sample──▶ decoder z→x ──▶ generated sample
 ```
 
+This *generative* slice is one of **two complementary extensions of JEPA** the lab
+pursues. The second turns JEPA from a passive predictor into an *active* world-model
+— see [Research directions](#research-directions) below.
+
 ## Why ssl-lab exists
 
 ssl-lab is a spin-off of its sibling project
@@ -28,6 +32,34 @@ self-supervised learning — JEPA and new ideas built around it — kept deliber
 **modality-agnostic** (MNIST is only a fast proof-of-concept). The aim is to mature
 these methods here and bring them back to genai-lab to develop more meaningful
 **genomic generative models**.
+
+## Research directions
+
+JEPA is a *representation learner* — it learns by predicting the embeddings of masked
+regions from context. ssl-lab pushes it past that in two complementary ways:
+
+**1. Generative JEPA — make the representation *sampleable*.** *(built)*
+Add a prior over the latent and a decoder back to data space — the vertical slice
+above. Trained end to end on MNIST: a rich, non-collapsed latent (≈95% linear-probe
+accuracy with no labels in pretraining) and samples that are recognizable, varied, and
+*genuinely novel* rather than memorized.
+
+**2. Action operators on JEPA — make prediction *active*.** *(emerging research line)*
+Go from passively in-filling hidden regions to *exploring*. JEPA's fixed "predict
+region $p$" mask is really a **frozen action**; promote it to a **learned operator the
+model chooses** — *sensing* ("where should I look?") and *perturbing* ("what happens if
+I edit this?") — so the system can form and test hypotheses, not just reconstruct what's
+masked. This reframes JEPA's predictor as the special case of an **action-operator
+world-model**, and builds on the action-operator formalism from the sibling project
+[GRL](https://github.com/pleiadian53/GRL).
+
+> 📄 Write-up: **[docs/action_operator/](docs/action_operator/01-jepa-action-operators.md)**
+> — *JEPA as an Action-Operator World Model* (with a standalone
+> [notation reference](docs/action_operator/notation.md)).
+
+For a concrete motivation: given an RNA sequence, *sense* to localize candidate splice
+sites, then *perturb* (in-silico edits) to learn what they mean — the kind of active,
+hypothesis-driven understanding passive prediction alone can't reach.
 
 ## Layout
 
