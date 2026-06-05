@@ -5,9 +5,8 @@ We never call the RunPod API directly — we emit provider-neutral SkyPilot conf
 and let SkyPilot translate. ``sky`` is imported lazily inside :func:`launch` so
 that compute-check and dry-run work without SkyPilot installed.
 
-Adapted (lean) from agentic-spliceai's ``foundation_models/gpu_runner.py``; the
-per-model pip registry is dropped — ssl-lab's remote setup is a plain editable
-install.
+Intentionally lean: no per-model pip registry — ssl-lab's remote setup is a plain
+install of the SSL library.
 """
 
 from __future__ import annotations

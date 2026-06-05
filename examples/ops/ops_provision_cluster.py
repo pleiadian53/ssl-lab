@@ -4,8 +4,8 @@ Unlike ops_run_pipeline.py (one job, fetch, tear down), this brings up a pod and
 leaves it running so you can SSH in and launch many jobs against the same cluster
 without re-provisioning.
 
-Default behavior PROVISIONS FOR REAL (A40 from gpu_config.yaml) — consistent with
-agentic-spliceai. Use --dry-run to preview the plan without touching the cloud.
+Default behavior PROVISIONS FOR REAL (A40 from gpu_config.yaml). Use --dry-run to
+preview the plan without touching the cloud.
 
 Usage
 -----
