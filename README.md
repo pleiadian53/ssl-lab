@@ -1,0 +1,96 @@
+# ssl-lab
+
+A self-supervised learning lab. Primary goal: **study JEPA and extend it into a
+sampleable generative model.**
+
+JEPA learns a representation by predicting the *embeddings* of masked/target
+regions from context embeddings — no pixel reconstruction, no likelihood. It is
+a representation learner, not a generative model. To *sample* data you bolt on
+two pieces: a **prior** over the latent and a **decoder** back to data space.
+ssl-lab builds that full vertical slice as a walking skeleton on MNIST (a POC;
+the core is modality-agnostic so a practically meaningful modality drops in as a
+data adapter later).
+
+```
+JEPA encoder ──freeze──▶ flow-matching prior p(z) ──sample──▶ decoder z→x ──▶ generated sample
+```
+
+## Layout
+
+This project follows the use-case-driven R&D convention (see
+`genai-lab/dev/system_design/`): reusable primitives in `src/`, thin driver
+scripts in `examples/`, intuition in `notebooks/`.
+
+```
+src/ssllab/
+  data/        MNIST adapter -> modality-agnostic token tensors (B, N, token_dim)
+  models/      TinyViT backbone, JEPA encoder/predictor, latent decoder
+  jepa/        block masking, EMA target, the assembled JEPA module
+  objectives/  prediction loss + VICReg collapse regularizer
+  generative/  flow-matching prior over the latent (rectified flow)
+  eval/        collapse diagnostics, linear probe, image-grid viz
+  utils/       seeding, device selection
+examples/
+  jepa_basics/      01 train JEPA · 02 linear probe
+  generative_jepa/  03 train decoder · 04 train flow prior · 05 sample & decode
+```
+
+## Setup
+
+```bash
+mamba env create -f environment.yml    # or: conda env create -f environment.yml
+conda activate ssllab
+pip install -e .
+```
+
+## Run the vertical slice
+
+```bash
+# 1. learn the representation (prints collapse diagnostics each epoch)
+python examples/jepa_basics/01_train_jepa_mnist.py --epochs 5
+
+# 2. confirm the frozen latent is semantically useful
+python examples/jepa_basics/02_linear_probe.py
+
+# 3. learn to decode the frozen latent back to pixels
+python examples/generative_jepa/03_train_decoder.py --epochs 5
+
+# 4. learn a sampleable prior over the frozen latent
+python examples/generative_jepa/04_train_flow_prior.py --epochs 20
+
+# 5. sample z ~ prior, decode -> output/jepa_mnist/samples/samples.png
+python examples/generative_jepa/05_sample_and_decode.py
+```
+
+Artifacts are organized per experiment under `output/<experiment>/`:
+
+```
+output/jepa_mnist/
+  checkpoints/  encoder.pt  decoder.pt  prior.pt
+  samples/      samples.png  recon.png
+  reports/      jepa_train.json  probe.json
+  logs/         train.log
+```
+
+On a GPU pod this same tree is written under the network volume
+(`/runpod-volume/ssl-lab/output/<experiment>/`) and rsynced back to the local
+`output/` — same structure, env-dependent prefix swapped.
+
+All scripts share an `--experiment` name (default `jepa_mnist`); pass a new name
+to keep separate runs side by side. On a GPU pod, the whole chain runs via
+`examples/generative_jepa/run_pod_pipeline.sh`.
+
+## Remote training
+
+Models that don't fit on a local M1/16GB train on remote GPU pods. That infra
+lives in a separate, decoupled package [`ops/`](ops/) (SkyPilot + RunPod) — the
+SSL library never imports it. Quick path:
+
+```bash
+pip install -e ops/                          # compute-check + dry-run
+python examples/ops/ops_compute_check.py     # local vs pod?
+python examples/ops/ops_run_pipeline.py --gpu a40 -- \
+    python examples/jepa_basics/01_train_jepa_mnist.py --epochs 50   # dry-run
+```
+
+See [ops/README.md](ops/README.md) for the full provision → run → fetch workflow.

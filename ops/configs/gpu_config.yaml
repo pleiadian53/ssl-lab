@@ -1,0 +1,54 @@
+# Default remote-training infrastructure for ssl-lab.
+#
+# SkyPilot orchestrates; RunPod is the provider (a config value, not hard-coded).
+# Override any field from the driver CLIs (e.g. --gpu a100, --use-volume).
+gpu: a40                                       # see ops.gpu_runner.GPU_SPECS for choices
+cloud: runpod
+docker_image: nvcr.io/nvidia/pytorch:25.02-py3
+
+# RunPod network volume: persistent storage across pod lifecycles. Reuses the
+# shared "AI lab extension" volume (CA-MTL-1). The pod is auto-placed in the
+# volume's datacenter — no region field needed. Project outputs/pip-cache are
+# namespaced under /runpod-volume/ssl-lab/ to avoid collisions with sibling
+# projects that share this volume.
+use_volume: true
+volume_name: "AI lab extension"
+volume_mount: /runpod-volume
+
+# Project working directory uploaded to the pod (the ssl-lab repo root).
+workdir: .
+
+# Local input/dataset directory (relative to the project root). Scripts read
+# datasets from here; staging (deferred) will upload from here.
+#
+# Storage dedup: ssl-lab's own small data (MNIST, SSL-specific) lives here as
+# real files. For LARGE datasets shared across projects, do NOT duplicate or
+# point this whole dir at another project — instead set the env var
+#   SSLLAB_DATA_ROOT=/path/to/shared/data-lake
+# and symlink only the datasets you actually reuse into data/ via
+#   python examples/ops/ops_provision_cluster.py  (or ops.datasets.link_dataset)
+# This keeps the shared lake project-neutral and the dependency explicit.
+data_path: data
+
+# Setup commands run once on the pod before the job.
+#
+# NGC PyTorch images ship an optimized torch+torchvision; we must NOT let
+# `pip install .` resolve torch>=2.1 / torchvision>=0.16 and pull PyPI builds
+# over the CUDA ones. So install ssllab with --no-deps and add only the small
+# non-torch runtime deps. (`--no-build-isolation` is unneeded — no C-ext deps.)
+#
+# Use a NON-editable install (`.`, not `-e .`): the NGC image's setuptools
+# produces a broken src-layout *editable* finder that fails to expose
+# subpackages (ssllab.data etc.). A regular install copies the full tree.
+# NGC images can also pin pip via PIP_CONSTRAINT; unset it so our installs pass.
+setup_cmd: |
+  unset PIP_CONSTRAINT 2>/dev/null || true
+  export PIP_CACHE_DIR=/runpod-volume/ssl-lab/pip-cache
+  mkdir -p "$PIP_CACHE_DIR"
+  pip install --no-deps .
+  pip install numpy scikit-learn matplotlib pyyaml
+
+# Where the job writes results on the pod, and where they are rsynced back to.
+# Namespaced under the shared volume so checkpoints persist across pods.
+output_remote: /runpod-volume/ssl-lab/output
+output_local: output

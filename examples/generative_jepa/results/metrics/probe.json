@@ -1,0 +1,7 @@
+{
+  "experiment": "jepa_mnist",
+  "test_acc": 0.953,
+  "test_limit": 5000,
+  "train_acc": 0.9799,
+  "train_limit": 10000
+}

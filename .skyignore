@@ -1,0 +1,19 @@
+# Keep the SkyPilot workdir upload lean — exclude local artifacts and caches.
+#
+# IMPORTANT: the data/output/runs patterns are ANCHORED to the repo root with a
+# leading slash. A bare `data` is gitignore-style and matches at ANY depth — it
+# would (and did) exclude the `src/ssllab/data` subpackage from the upload,
+# breaking `import ssllab.data` on the pod. Leading-slash keeps them top-level.
+/data
+/output
+/runs
+/ops/configs/skypilot/generated
+
+# These are safe to exclude everywhere (no source collisions):
+.git
+__pycache__
+*.pyc
+.pytest_cache
+.DS_Store
+*.egg-info
+.ipynb_checkpoints

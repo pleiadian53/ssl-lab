@@ -1,0 +1,10 @@
+{
+  "effective_rank": 103.72901153564453,
+  "embed_dim": 128,
+  "epochs": 100,
+  "experiment": "jepa_mnist",
+  "feature_std": 0.7496874928474426,
+  "final_loss": 0.04879083069694093,
+  "n_target": 4,
+  "reg_coef": 0.04
+}

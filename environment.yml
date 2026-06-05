@@ -1,0 +1,22 @@
+# Conda/mamba environment for ssl-lab.
+#
+#   mamba env create -f environment.yml     # (or: conda env create -f environment.yml)
+#   conda activate ssllab
+#   pip install -e .
+#
+# CPU is the local default for development and small POCs; provision a GPU
+# (CUDA/MPS) only for larger training runs.
+name: ssllab
+channels:
+  - conda-forge
+  - pytorch
+dependencies:
+  - python>=3.10,<3.13
+  - pytorch>=2.1
+  - torchvision>=0.16
+  - numpy
+  - scikit-learn
+  - matplotlib
+  - pip
+  - pip:
+      - -e .

@@ -1,0 +1,32 @@
+{
+  "classifier": {
+    "classes_covered": 10,
+    "confidence": 0.9211634993553162,
+    "coverage_entropy": 0.9957298059609306,
+    "n_classes": 10
+  },
+  "density_coverage": {
+    "coverage": 0.8032,
+    "density": 0.95724
+  },
+  "experiment": "jepa_mnist",
+  "fid": 10.4271751989801,
+  "kid": 0.4097532458577593,
+  "n_samples": 5000,
+  "novelty_baseline_test_vs_train": {
+    "nn_mean": 2.5680564552009106,
+    "nn_median": 2.5339735746383667,
+    "nn_min": 0.4921055734157562,
+    "nn_p05": 1.112394654750824
+  },
+  "novelty_gen_vs_train": {
+    "nn_mean": 2.8414420174717905,
+    "nn_median": 2.728434443473816,
+    "nn_min": 0.4653450846672058,
+    "nn_p05": 1.2124776601791383
+  },
+  "precision_recall": {
+    "precision": 0.6452,
+    "recall": 0.4116
+  }
+}

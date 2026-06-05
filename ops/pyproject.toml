@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ssllab-ops"
+version = "0.1.0"
+description = "Remote-training infrastructure for ssl-lab: provision GPU pods (SkyPilot + RunPod), run jobs, fetch results. Decoupled from the SSL library."
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+# SkyPilot is only needed to actually launch/teardown pods. Compute-check and
+# dry-run (SkyPilot YAML generation + cost estimate) work without it.
+remote = ["skypilot[runpod]>=0.7"]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+include = ["ops*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
