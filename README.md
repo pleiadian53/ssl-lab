@@ -8,8 +8,17 @@ A research lab for **self-supervised learning (SSL)**. The aim is to track the s
 
 **Current focus — JEPA.** The first research line studies JEPA (joint-embedding predictive architectures) and extends it into a *sampleable generative model*. JEPA learns a representation by predicting the *embeddings* of masked/target regions from context embeddings — no pixel reconstruction, no likelihood. It is a representation learner, not a generative model. To *sample* data you bolt on two pieces: a **prior** over the latent and a **decoder** back to data space. ssl-lab builds that full vertical slice as a walking skeleton on MNIST (a POC; the core is modality-agnostic so a practically meaningful modality drops in as a data adapter later).
 
-```
-JEPA encoder ──freeze──▶ flow-matching prior p(z) ──sample──▶ decoder z→x ──▶ generated sample
+```mermaid
+flowchart LR
+    NOISE(["noise ε"]) --> PRIOR["flow-matching<br/>prior p(z)"]
+    PRIOR -- "sample z ~ p(z)" --> DEC["decoder<br/>z → x"]
+    DEC --> GEN(["generated sample"])
+    ENC["JEPA encoder<br/>(frozen)"] -. "defines the latent z<br/>the prior is fit to" .-> PRIOR
+
+    classDef accent fill:#eef2ff,stroke:#6366f1,color:#1e1b4b;
+    classDef io fill:#f8fafc,stroke:#94a3b8,color:#0f172a;
+    class ENC,PRIOR,DEC accent;
+    class NOISE,GEN io;
 ```
 
 This *generative* slice is one of **two complementary extensions of JEPA** the lab pursues. The second turns JEPA from a passive predictor into an *active* world-model — see [Research directions](#research-directions) below.

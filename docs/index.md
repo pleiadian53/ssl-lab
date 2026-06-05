@@ -8,6 +8,19 @@ This site is built from the `docs/` folder of [pleiadian53/ssl-lab](https://gith
 
 **1. Generative JEPA — make the representation *sampleable*.** Add a prior over the latent and a decoder back to data space, turning a representation learner into a generative model. Built as a walking skeleton on MNIST (modality-agnostic core).
 
+```mermaid
+flowchart LR
+    NOISE(["noise ε"]) --> PRIOR["flow-matching<br/>prior p(z)"]
+    PRIOR -- "sample z ~ p(z)" --> DEC["decoder<br/>z → x"]
+    DEC --> GEN(["generated sample"])
+    ENC["JEPA encoder<br/>(frozen)"] -. "defines the latent z<br/>the prior is fit to" .-> PRIOR
+
+    classDef accent fill:#eef2ff,stroke:#6366f1,color:#1e1b4b;
+    classDef io fill:#f8fafc,stroke:#94a3b8,color:#0f172a;
+    class ENC,PRIOR,DEC accent;
+    class NOISE,GEN io;
+```
+
 **2. Action operators on JEPA — make prediction *active*.** Promote JEPA's fixed "predict region $p$" mask to a **learned operator the model chooses** — *sensing* (where to look) and *perturbing* (what an edit means) — so the system can form and test hypotheses rather than only in-fill what's masked. This builds on the action-operator formalism from the sibling project [GRL](https://github.com/pleiadian53/GRL).
 
 ## Read next
