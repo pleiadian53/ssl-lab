@@ -1,8 +1,12 @@
 # ssl-lab
 
-A self-supervised learning lab. Primary goal: **study JEPA and extend it into a
-sampleable generative model.**
+A research lab for **self-supervised learning (SSL)**. The aim is to track the
+state of the art across the SSL families and selectively go deep on the methods
+most worth mastering — staying at or ahead of the frontier rather than covering
+everything shallowly.
 
+**Current focus — JEPA.** The first research line studies JEPA (joint-embedding
+predictive architectures) and extends it into a *sampleable generative model*.
 JEPA learns a representation by predicting the *embeddings* of masked/target
 regions from context embeddings — no pixel reconstruction, no likelihood. It is
 a representation learner, not a generative model. To *sample* data you bolt on
