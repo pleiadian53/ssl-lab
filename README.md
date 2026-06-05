@@ -15,6 +15,16 @@ data adapter later).
 JEPA encoder ──freeze──▶ flow-matching prior p(z) ──sample──▶ decoder z→x ──▶ generated sample
 ```
 
+## Why ssl-lab exists
+
+ssl-lab is a spin-off of its sibling project
+[genai-lab](https://github.com/pleiadian53/genai-lab) (generative AI for
+computational biology). It's a focused R&D sandbox for state-of-the-art
+self-supervised learning — JEPA and new ideas built around it — kept deliberately
+**modality-agnostic** (MNIST is only a fast proof-of-concept). The aim is to mature
+these methods here and bring them back to genai-lab to develop more meaningful
+**genomic generative models**.
+
 ## Layout
 
 This project follows the use-case-driven R&D convention (see
@@ -82,9 +92,9 @@ to keep separate runs side by side. On a GPU pod, the whole chain runs via
 
 ## Remote training
 
-Models that don't fit on a local M1/16GB train on remote GPU pods. That infra
-lives in a separate, decoupled package [`ops/`](ops/) (SkyPilot + RunPod) — the
-SSL library never imports it. Quick path:
+Models that don't fit in your local environment train on remote GPU pods. That
+infra lives in a separate, decoupled package [`ops/`](ops/) (SkyPilot + RunPod) —
+the SSL library never imports it. Quick path:
 
 ```bash
 pip install -e ops/                          # compute-check + dry-run

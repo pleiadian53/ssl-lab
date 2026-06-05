@@ -1,6 +1,6 @@
 # ssllab-ops — remote-training infrastructure
 
-Cloud infra for training ssl-lab models that don't fit on a local M1/16GB. It is
+Cloud infra for training ssl-lab models that don't fit in your local environment. It is
 **deliberately decoupled** from the SSL library (`ssllab`): nothing here imports
 JEPA, and `ssllab` never imports this. Cloud provisioning is necessary
 scaffolding for practically useful models, not part of self-supervised learning
