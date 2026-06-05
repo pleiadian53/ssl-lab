@@ -44,8 +44,7 @@ python examples/ops/ops_run_pipeline.py --execute --teardown --gpu a40 -- <last 
 > Defaults: `ops_run_pipeline.py` is **dry-run** until `--execute`, and **keeps
 > the pod alive** after a run (pass `--teardown` to release it) so you can run
 > multiple training sessions on one pod. `ops_provision_cluster.py` is the
-> opposite — it **provisions for real** by default (use `--dry-run` to preview),
-> matching agentic-spliceai.
+> opposite — it **provisions for real** by default (use `--dry-run` to preview).
 
 ## Datasets & storage dedup
 

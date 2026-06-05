@@ -15,7 +15,7 @@ pip install -e 'ops/[remote]'  # add SkyPilot to launch real pods
 
 Note the asymmetric defaults: `ops_run_pipeline.py` is **dry-run by default**
 (`--execute` to launch); `ops_provision_cluster.py` **provisions for real by
-default** (`--dry-run` to preview), matching agentic-spliceai.
+default** (`--dry-run` to preview).
 
 Everything after `--` in `ops_run_pipeline.py` is the command run on the pod:
 

@@ -27,9 +27,8 @@ these methods here and bring them back to genai-lab to develop more meaningful
 
 ## Layout
 
-This project follows the use-case-driven R&D convention (see
-`genai-lab/dev/system_design/`): reusable primitives in `src/`, thin driver
-scripts in `examples/`, intuition in `notebooks/`.
+This project follows a use-case-driven R&D convention: reusable primitives in
+`src/`, thin driver scripts in `examples/`, intuition in `notebooks/`.
 
 ```
 src/ssllab/

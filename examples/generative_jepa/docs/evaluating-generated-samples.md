@@ -112,9 +112,8 @@ matches the *real distribution* of those properties.
 - **DNA/RNA:** $k$-mer frequency spectra (χ²/KL between generated and real $k$-mer
   distributions), GC content distribution, presence/position of motifs (splice-site
   consensus, TF binding sites), ORF integrity. For designed regulatory elements,
-  score them through a **predictive oracle** (e.g. a splice-site predictor — your
-  agentic-spliceai — or an expression model) and check the predicted-activity
-  distribution.
+  score them through a **predictive oracle** (e.g. a splice-site predictor or an
+  expression model) and check the predicted-activity distribution.
 - **Proteins:** amino-acid composition, secondary-structure propensity,
   **foldability** (does ESMFold/AlphaFold give high pLDDT?), absence of steric
   clashes, and **novelty** as sequence identity to the nearest natural protein.
