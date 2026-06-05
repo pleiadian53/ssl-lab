@@ -32,3 +32,6 @@ __pycache__/
 .venv/
 build/
 dist/
+
+# mkdocs build output (regeneratable; the site is published via GitHub Actions)
+/site/

@@ -42,9 +42,9 @@ This is closer to the *action principle* in physics than to a game controller. A
 Here is the connection. Line up the two training objectives:
 
 $$
-\underbrace{\big\lVert\,\varphi_\psi(\hat{O}_\theta(s)) \;-\; f_\theta(\varphi_\psi(s))\,\big\rVert^2}_{\textbf{(A) operator equivariance loss (GRL)}}
+\underbrace{\big\lVert \varphi_\psi(\hat{O}_\theta(s)) - f_\theta(\varphi_\psi(s)) \big\rVert^2}_{\textbf{(A) operator equivariance loss (GRL)}}
 \qquad\Longleftrightarrow\qquad
-\underbrace{\big\lVert\,\varphi_{\bar\psi}(\text{target}) \;-\; \mathrm{Pred}\big(\varphi_\psi(\text{context}),\,p\big)\,\big\rVert^2}_{\textbf{(B) latent prediction loss (JEPA)}}
+\underbrace{\big\lVert \varphi_{\bar\psi}(\text{target}) - \mathrm{Pred}\big(\varphi_\psi(\text{context}), p\big) \big\rVert^2}_{\textbf{(B) latent prediction loss (JEPA)}}
 $$
 
 They are the **same equation** under a simple dictionary:

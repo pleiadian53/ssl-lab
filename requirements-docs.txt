@@ -1,0 +1,5 @@
+# Documentation site build dependencies (mkdocs + GitHub Pages).
+# Kept separate from the SSL library so CI builds the docs WITHOUT installing
+# torch and the rest of the package. Install: pip install -r requirements-docs.txt
+mkdocs-material>=9.5,<10
+pymdown-extensions>=10.7

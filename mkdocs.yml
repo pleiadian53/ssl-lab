@@ -1,0 +1,69 @@
+site_name: ssl-lab
+site_description: >-
+  A research lab for self-supervised learning — JEPA, its generative extension,
+  and the action-operator world-model direction.
+site_url: https://pleiadian53.github.io/ssl-lab/
+repo_url: https://github.com/pleiadian53/ssl-lab
+repo_name: pleiadian53/ssl-lab
+edit_uri: edit/main/docs/
+
+# Source for the rendered site. dev/ is intentionally NOT here (private notes).
+docs_dir: docs
+
+theme:
+  name: material
+  features:
+    - navigation.instant      # SPA-style nav (needs the MathJax re-typeset hook below)
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - toc.follow
+    - content.code.copy
+    - content.action.edit
+    - search.suggest
+    - search.highlight
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+markdown_extensions:
+  # Math: arithmatex in generic mode emits \( \) / \[ \] for MathJax, which
+  # sidesteps GitHub's backslash-escaping quirk and renders full LaTeX (incl.
+  # \, \; spacing) correctly. See docs/javascripts/mathjax.js.
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - footnotes
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+nav:
+  - Home: index.md
+  - Action Operators:
+      - JEPA as an Action-Operator World Model: action_operator/01-jepa-action-operators.md
+      - Notation reference: action_operator/notation.md
