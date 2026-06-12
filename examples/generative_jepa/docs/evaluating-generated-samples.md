@@ -44,7 +44,7 @@ measure the distance between the two embedding distributions.
 
 - **FID (Fréchet Inception Distance):** fit a Gaussian to each set of embeddings
   and take the Fréchet (2-Wasserstein) distance:
-  $$\text{FID} = \lVert \mu_r - \mu_g\rVert^2 + \operatorname{Tr}\!\big(\Sigma_r + \Sigma_g - 2(\Sigma_r\Sigma_g)^{1/2}\big).$$
+  $$\text{FID} = \lVert \mu_r - \mu_g\rVert^2 + \mathrm{Tr}\big(\Sigma_r + \Sigma_g - 2(\Sigma_r\Sigma_g)^{1/2}\big).$$
 - **KID (Kernel Inception Distance):** the squared **MMD** between embedding sets
   with a polynomial kernel — unbiased and more reliable at small sample sizes.
 

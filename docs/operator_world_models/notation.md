@@ -19,7 +19,7 @@ This series writes the encoder as $E$ (to match the temporal world-model formula
 | $E_{\bar\xi}$ | "E-xi-bar" | the **target encoder**: a slow exponential-moving-average (EMA) copy of $E_\xi$, used to produce prediction targets. Stop-gradient — no backprop flows into it |
 | $\bar\xi \leftarrow \tau\bar\xi + (1-\tau)\xi$ | — | the **EMA update** of the target weights; $\tau$ close to 1 makes the target drift slowly |
 | $\tau$ | *tau* | the **EMA rate** (e.g. $0.999$): the fraction of the old target weights kept each update |
-| $\operatorname{sg}$ | "stop-grad" | **stop-gradient**: treat the argument as a constant during backprop |
+| $\mathrm{sg}$ | "stop-grad" | **stop-gradient**: treat the argument as a constant during backprop |
 
 ---
 
@@ -66,7 +66,7 @@ This series writes the encoder as $E$ (to match the temporal world-model formula
 |---|---|---|
 | $E(\hat O)\ge 0$ | "energy of O-hat" | the **energy functional**: how *large* a transformation the operator is. Here $E(\hat O)=\lVert M_\theta\rVert_F^2$ — a least-action / parsimony penalty that keeps the operator near identity unless the data demands otherwise. (Distinct from the encoder $E$; context disambiguates) |
 | $\lambda$ | *lambda* | the weight on the energy penalty |
-| $\operatorname{Re}(\lambda_i)$ | — | the **real part of an eigenvalue** of the generator $M_\theta$. A positive real part in any mode flags locally *growing* (destabilizing) dynamics |
+| $\mathrm{Re}(\lambda_i)$ | — | the **real part of an eigenvalue** of the generator $M_\theta$. A positive real part in any mode flags locally *growing* (destabilizing) dynamics |
 | $\mathcal{L}$ | "script L" | the training **loss** — latent-space squared error between the predicted and target latents |
 | $\lVert v\rVert^2$ | — | squared **Euclidean ($\ell_2$) norm** |
 | $\lVert M\rVert_F^2$ | — | squared **Frobenius norm** — the sum of squared matrix entries |

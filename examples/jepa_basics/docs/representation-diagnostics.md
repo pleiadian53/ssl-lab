@@ -37,7 +37,7 @@ the mean std off the floor), so we report both.
 For a batch of embeddings $Z \in \mathbb{R}^{N\times D}$ ($N$ samples, $D$ dims):
 
 $$
-\text{feature\_std}(Z) \;=\; \frac{1}{D}\sum_{d=1}^{D}\operatorname{std}_n\!\big(Z_{n,d}\big)
+\text{feature\_std}(Z) = \frac{1}{D}\sum_{d=1}^{D}\mathrm{std}_n\big(Z_{n,d}\big)
 $$
 
 i.e. compute each dimension's standard deviation across the batch, then average
