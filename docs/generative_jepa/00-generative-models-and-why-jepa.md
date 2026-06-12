@@ -41,7 +41,7 @@ It helps to place the pieces against the broader landscape. Generative models di
 | **GAN** | a generator competes against a discriminator that tries to spot fakes | sharp images; tricky to train |
 | **Diffusion / flow** | gradually transform noise into data along a learned path | state-of-the-art image/audio quality |
 
-This series uses the latent-variable recipe with a **flow** model for the prior (Part 2) and a small **decoder** (Part 3). The novel choice — the reason this is a *research* lab and not a recipe to copy — is what defines the latent space in step 1.
+This series uses the latent-variable recipe with a **flow** model for the prior (Part 2) and a small **decoder** (Part 3). Those two choices are standard. The non-standard, still-open choice — the part we are actually researching — is **step 1: what defines the latent space**. That is where JEPA comes in.
 
 ## Why JEPA as the substrate
 
