@@ -40,6 +40,7 @@ This is the recipe that, in vision, underlies "encode with a strong representati
 
 | Part | Stage | What you get |
 |---|---|---|
+| **[0 — Generative models, and why JEPA](00-generative-models-and-why-jepa.md)** | background | what a generative model *is*, the latent-variable recipe, and why JEPA is a good substrate — no prior familiarity assumed |
 | **[1 — The JEPA encoder](01-the-jepa-encoder.md)** | encode | predict embeddings not pixels; masking, the EMA target, and why collapse is the thing to watch |
 | **[2 — The latent prior](02-the-latent-prior.md)** | sample latents | rectified flow over frozen $z$: the interpolant, the conditional flow-matching loss, ODE sampling |
 | **[3 — The decoder](03-the-decoder.md)** | latents to data | $D_\omega: z \to x$ on frozen latents, and the decodability caveat this route makes honest |
@@ -53,4 +54,4 @@ Each chapter points at the runnable code in [`examples/generative_jepa/`](https:
 
 ---
 
-*Start with [Part 1 — The JEPA encoder](01-the-jepa-encoder.md).*
+*New to generative modeling or JEPA? Start with [Part 0 — Generative models, and why JEPA](00-generative-models-and-why-jepa.md). Already comfortable with latent-variable generative models? Jump to [Part 1 — The JEPA encoder](01-the-jepa-encoder.md).*

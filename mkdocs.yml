@@ -71,6 +71,7 @@ nav:
   - Home: index.md
   - Generative JEPA:
       - Overview: generative_jepa/index.md
+      - 0 · Generative models, and why JEPA: generative_jepa/00-generative-models-and-why-jepa.md
       - 1 · The JEPA encoder: generative_jepa/01-the-jepa-encoder.md
       - 2 · The latent prior: generative_jepa/02-the-latent-prior.md
       - 3 · The decoder: generative_jepa/03-the-decoder.md

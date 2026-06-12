@@ -2,7 +2,7 @@
 
 *Stage 1 of the [pipeline](index.md): learn a representation by predicting embeddings, then freeze it.*
 
-Everything downstream — the prior, the decoder, the samples — depends on one object: a frozen encoder $f_\theta$ that maps an observation to a latent where *meaning* is organized. This chapter is how JEPA learns that encoder without labels and without ever reconstructing a pixel, and how we check that it learned something real.
+If generative modeling or JEPA is new to you, [Part 0](00-generative-models-and-why-jepa.md) sets the stage — what a generative model is, the latent-variable recipe, and why JEPA is the substrate. Everything downstream — the prior, the decoder, the samples — depends on one object: a frozen encoder $f_\theta$ that maps an observation to a latent where *meaning* is organized. This chapter is how JEPA learns that encoder without labels and without ever reconstructing a pixel, and how we check that it learned something real.
 
 ## Predict the representation, not the input
 
