@@ -2,7 +2,7 @@
 
 A standalone glossary for the **Operator World Models** series. Every symbol used across the series, grouped by role, with a "read as" column. Keep it open in a second tab while reading.
 
-This series writes the encoder as $E$ (to match the temporal world-model formulation, where an online encoder and its slow target copy are both in play). The companion [Action Operators](../action_operator/01-jepa-action-operators.md) bridge writes the same encoder as $\varphi_\psi$. They are **the same object**: $E \leftrightarrow \varphi_\psi$. Each series stays internally consistent; this note is the bridge between the two conventions.
+This series writes the encoder as $E$, matching the [Action Operators](../action_operator/00-from-actions-to-operators.md) foundation. The same encoder is written $\varphi_\psi$ in the GRL literature — the same object, $E \leftrightarrow \varphi_\psi$.
 
 ---
 
@@ -12,7 +12,7 @@ This series writes the encoder as $E$ (to match the temporal world-model formula
 |---|---|---|
 | $x$ | "x" | a raw observation — an image, a window of behavioral sensor signal, a protein structure |
 | $s$ | "s" | the underlying **system state** in observation/state space $\mathcal{S}$ — the *physically real* thing an action transforms (a person's full physiological state, a protein's atomic coordinates) |
-| $E$ | "E" | the **encoder**: a neural network mapping an observation to a latent. Same object as $\varphi_\psi$ in the bridge docs |
+| $E$ | "E" | the **encoder**: a neural network mapping an observation to a latent. Same object as $\varphi_\psi$ in the GRL literature |
 | $z = E(x)$ | "z equals E of x" | the **latent embedding** — a vector capturing *meaning*, not surface form. Lives in latent space $\mathcal{Z}$ |
 | $z_t$ | "z at t" | the latent at time $t$, $z_t = E_\xi(x_{\le t})$ — the encoded history up to $t$ |
 | $E_\xi$ | "E-xi" | the **online encoder**, trainable weights $\xi$ (Greek *xi*) |
@@ -30,7 +30,7 @@ This series writes the encoder as $E$ (to match the temporal world-model formula
 | $\hat O$ | "O-hat" | an **action operator**: a function $\hat O:\mathcal{S}\to\mathcal{S}$ that turns a state into its successor. The hat marks "operator (a function), not a number" |
 | $\hat O_\theta$ | "O-hat-theta" | the specific **state operator** chosen by parameters $\theta$ — the *physically meaningful* transformation acting on the real state $s$. Often inaccessible: you only observe $s$ and $s'$, never the operator itself |
 | $f_\theta$ | "f-theta" | the **latent operator**: how $\hat O_\theta$ acts on the latent $z=E(s)$ instead of on $s$. This is the object you actually *compute with* |
-| $\theta$ | *theta* | **operator parameters** — the knobs that select *which* operator |
+| $\theta$ | *theta* | **operator parameters** — the knobs that *configure* the operator: a complete description of how it transforms the state (for a continuous $\theta$ the operator is synthesized from $\theta$, not looked up from a menu) |
 | $\Theta$ | *capital Theta* | the **space** of all operator parameters |
 
 ---
@@ -79,4 +79,4 @@ The symbol $E$ does double duty: the **encoder** $E$ (and its variants $E_\xi$, 
 
 ---
 
-*Series home: [Operator World Models](index.md). The conceptual bridge: [JEPA as an Action-Operator World Model](../action_operator/01-jepa-action-operators.md).*
+*Series home: [Operator World Models](index.md). The foundation: [Augmenting JEPA with Action Operators](../action_operator/01-jepa-action-operators.md).*

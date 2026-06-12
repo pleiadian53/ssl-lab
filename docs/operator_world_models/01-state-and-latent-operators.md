@@ -2,13 +2,13 @@
 
 *One transformation, two spaces — and the bridge that ties them together.*
 
-> **Prerequisite.** [Part 0 — From actions to operators](00-from-actions-to-operators.md), which introduces the action operator $\hat O_\theta$: an action read as a *function that transforms the state*, $s' = \hat O_\theta(s)$, selected by a parameter $\theta$. This note picks up exactly where Part 0's closing question left off. New to the symbols ($\hat O_\theta$, $f_\theta$, $E$, $\Theta$)? Keep the [notation reference](notation.md) open alongside this page.
+> **Prerequisite.** The [Action Operators](../action_operator/00-from-actions-to-operators.md) foundation, which introduces the action operator $\hat O_\theta$ (an action read as a *function that transforms the state*, $s' = \hat O_\theta(s)$, configured by a parameter $\theta$) and why JEPA benefits from one. This note picks up exactly where the foundation's closing question left off. New to the symbols ($\hat O_\theta$, $f_\theta$, $E$, $\Theta$)? Keep the [notation reference](notation.md) open alongside this page.
 
-[Part 0](00-from-actions-to-operators.md) ended on a question. An action operator $\hat O_\theta$ is defined on the *raw* state $s$ — but machine-learning models work on compact **latent** encodings $z$, not raw states. Can the *same* transformation be described on the latent instead of the raw state, and made simpler in the bargain?
+The foundation's primer, [From actions to operators](../action_operator/00-from-actions-to-operators.md), ended on a question. An action operator $\hat O_\theta$ is defined on the *raw* state $s$ — but machine-learning models work on compact **latent** encodings $z$, not raw states. Can the *same* transformation be described on the latent instead of the raw state, and made simpler in the bargain?
 
-The answer is yes, and it splits the single idea "the action operator" into **two distinct objects** that are easy to conflate but must be kept apart. Pulling them apart is the keystone the rest of the series rests on: temporal prediction, conditioning on interventions, and the runnable operator code all hang off this one distinction. This note introduces the two objects, the single bridge that connects them, and why a world model built on JEPA needs to carry both.
+The answer is yes, and it splits the single idea "the action operator" into **two distinct objects** that are easy to conflate but must be kept apart. Pulling them apart is the keystone the rest of this series rests on: temporal prediction, conditioning on interventions, and the runnable operator code all hang off this one distinction. This note introduces the two objects, the single bridge that connects them, and why a world model built on JEPA needs to carry both.
 
-The running thread uses the two application domains from Part 0 — a person's day-to-day behavioral state, and a protein's 3D structure — which turn out to be the *same* construction with one dial turned to opposite extremes.
+The running thread uses the two application domains from the foundation — a person's day-to-day behavioral state, and a protein's 3D structure — which turn out to be the *same* construction with one dial turned to opposite extremes.
 
 ---
 
@@ -88,7 +88,7 @@ This reframes the encoder's job entirely:
 
 > **The encoder's job is not to compress.** It is to *find coordinates in which the physical operator becomes a clean linear latent operator.* Compression is incidental; linearization is the point.
 
-It also legitimizes the default parameterization $f_\theta(z) = \exp(M_\theta) z + b_\theta$, where $M_\theta$ is a **flow generator** (a matrix in a flat vector space) and $A_\theta = \exp(M_\theta)$ is the operator obtained by matrix exponential. Choosing $\exp(M_\theta)$ is not merely convenient — it is *justified exactly when* an encoder exists under which the dynamics linearize, and Koopman theory guarantees that broad classes of systems admit such an encoder. The generator $M_\theta$ is where the structure of the transformation lives; the exponential lifts it into an operator you can apply and compose. (The series builds $M_\theta = \sum_i \alpha_i B_i$ from a *generator basis* $\{B_i\}$ in a [later part](notation.md); for now, read $\exp(M_\theta)$ as "a tractable linear operator the encoder was chosen to make valid.")
+It also legitimizes the default parameterization $f_\theta(z) = \exp(M_\theta) z + b_\theta$, where $M_\theta$ is a **flow generator** (a matrix in a flat vector space) and $A_\theta = \exp(M_\theta)$ is the operator obtained by matrix exponential. Choosing $\exp(M_\theta)$ is not merely convenient — it is *justified exactly when* an encoder exists under which the dynamics linearize, and Koopman theory guarantees that broad classes of systems admit such an encoder. The generator $M_\theta$ is where the structure of the transformation lives; the exponential lifts it into an operator you can apply and compose. (The series builds $M_\theta = \sum_i \alpha_i B_i$ from a *generator basis* $\{B_i\}$ in a later part; the [operator gallery](../action_operator/02-operator-gallery.md) shows concrete $M$'s and exactly what each does to a state. For now, read $\exp(M_\theta)$ as "a tractable linear operator the encoder was chosen to make valid.")
 
 ---
 

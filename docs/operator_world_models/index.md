@@ -4,7 +4,7 @@
 
 A JEPA encoder learns what data *means* by predicting it in latent space. That gives you a **map** of the data — but only a map. This series is about adding a **way to move on that map**: latent dynamics you can run forward, condition on real-world interventions, and use to ask "what would happen if…". The unifying object is the **action operator** — a transformation of state — and the claim is that turning JEPA into a world model that carries such operators is a natural extension, not a rebuild.
 
-> **Where this sits.** The companion [Action Operators](../action_operator/01-jepa-action-operators.md) note is the conceptual *bridge*: it argues that JEPA's fixed "mask" is a frozen action operator, and JEPA's predictor is that operator's latent image. This series takes that bridge and builds the *world-model* machinery on top — the temporal formulation, the conditioning, and the runnable code.
+> **Read the foundation first.** This series assumes the [Action Operators](../action_operator/00-from-actions-to-operators.md) foundation — what an action operator is, *why* JEPA benefits from integrating one (the [bridge note](../action_operator/01-jepa-action-operators.md)), and a [gallery](../action_operator/02-operator-gallery.md) of concrete operators. Read it in full before continuing here: this series builds directly on it, and the ideas land far better with the foundation established than by jumping in.
 
 ---
 
@@ -38,16 +38,17 @@ This domain is the regime self-supervised learning was built for: an ocean of un
 
 ## Reading order
 
+**Prerequisite — the [Action Operators](../action_operator/00-from-actions-to-operators.md) foundation** (read first): *From actions to operators* → *Augmenting JEPA with Action Operators* → *A gallery of operators*. This series then continues:
+
 | Part | Topic | What you get |
 |---|---|---|
-| **[0 — From actions to operators](00-from-actions-to-operators.md)** | what an action operator *is*; energy and composition | the gentle, self-contained starting point — no background assumed |
 | **[1 — State and latent operators](01-state-and-latent-operators.md)** | $\hat O_\theta$ vs $f_\theta$, the commuting square, Koopman | the keystone: why an action lives in two spaces and how the encoder bridges them |
 | **2 — JEPA as a temporal world model** *(coming next)* | the temporal forward pass; predictor as a query operator | how masked-region prediction becomes latent dynamics |
 | **3 — Conditioning JEPA on actions** *(coming next)* | $f_{\theta(c_t)}$; counterfactual rollout; the surprise signal | the single edit that makes the world model actionable |
 | **4 — Generator bases and the operator in code** *(coming next)* | the basis $\{B_i\}$; the runnable module | the two poles, realized as one swappable piece of code |
 
-Start at Part 0 if "action operator" is new to you; jump to Part 1 if you already know the GRL formalism. New to the symbols? The [notation reference](notation.md) defines every one, and bridges this series' encoder $E$ to the $\varphi_\psi$ used in the bridge note.
+New to the symbols? The [notation reference](notation.md) defines every one.
 
 ---
 
-*Start with [Part 0 — From actions to operators](00-from-actions-to-operators.md).*
+*Read the [Action Operators foundation](../action_operator/00-from-actions-to-operators.md) first, then start here with [Part 1 — State and latent operators](01-state-and-latent-operators.md).*

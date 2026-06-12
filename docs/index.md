@@ -21,13 +21,13 @@ flowchart LR
     class NOISE,GEN io;
 ```
 
-**2. Action operators on JEPA — make prediction *active*.** Promote JEPA's fixed "predict region $p$" mask to a **learned operator the model chooses** — *sensing* (where to look) and *perturbing* (what an edit means) — so the system can form and test hypotheses rather than only in-fill what's masked. This builds on the action-operator formalism from the sibling project [GRL](https://github.com/pleiadian53/GRL).
+**2. Action operators on JEPA — make prediction *active*.** Promote JEPA's fixed "predict region $q$" mask to a **learned operator the model chooses** — *sensing* (where to look) and *perturbing* (what an action does) — so the system can form and test hypotheses rather than only in-fill what's masked. Start with the **[Action Operators foundation](action_operator/00-from-actions-to-operators.md)**, then the **[Operator World Models](operator_world_models/index.md)** series. Builds on the action-operator formalism from the sibling project [GRL](https://github.com/pleiadian53/GRL).
 
 ## Read next
 
 - **[Generative JEPA](generative_jepa/index.md)** — a four-part tutorial on extending a JEPA encoder into a sampleable generative model: the encoder, the flow-matching prior, the decoder, and sampling + evaluation.
-- [JEPA as an Action-Operator World Model](action_operator/01-jepa-action-operators.md) — the synthesis: how JEPA's predictor is a special case of an action-operator world-model.
-- [Notation reference](action_operator/notation.md) — every symbol used in the write-up.
+- **[Action Operators](action_operator/00-from-actions-to-operators.md)** — the foundation: *From actions to operators* → *[Augmenting JEPA with Action Operators](action_operator/01-jepa-action-operators.md)* → *[A gallery of operators](action_operator/02-operator-gallery.md)*.
+- **[Operator World Models](operator_world_models/index.md)** — the JEPA + operator world-model series, building on that foundation (state and latent operators, temporal prediction, conditioning on interventions).
 
 ## About
 

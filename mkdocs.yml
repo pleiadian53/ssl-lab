@@ -78,10 +78,11 @@ nav:
       - 4 · Sampling and evaluation: generative_jepa/04-sampling-and-evaluation.md
       - Notation reference: generative_jepa/notation.md
   - Action Operators:
-      - JEPA as an Action-Operator World Model: action_operator/01-jepa-action-operators.md
+      - From actions to operators: action_operator/00-from-actions-to-operators.md
+      - Augmenting JEPA with Action Operators: action_operator/01-jepa-action-operators.md
+      - A gallery of operators (what θ does): action_operator/02-operator-gallery.md
       - Notation reference: action_operator/notation.md
   - Operator World Models:
       - Overview: operator_world_models/index.md
-      - From actions to operators: operator_world_models/00-from-actions-to-operators.md
       - State and latent operators: operator_world_models/01-state-and-latent-operators.md
       - Notation reference: operator_world_models/notation.md
