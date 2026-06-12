@@ -17,7 +17,7 @@ This series uses the standard I-JEPA convention: the encoder is $f_\theta$ and t
 | $m$ | "m" | the **EMA momentum**, ramped on a cosine schedule from $0.996$ to $1$ over training |
 | $g_\phi$ | "g-phi" | the **predictor**, weights $\phi$: from context embeddings and the *positions* of masked tokens, predicts the target embeddings. Used only during pretraining, then discarded |
 | context / target | — | the visible patches the encoder sees vs. the held-out patches whose embeddings are predicted |
-| $\operatorname{sg}$ | "stop-grad" | **stop-gradient**: treat the argument as a constant during backprop |
+| $\mathrm{sg}$ | "stop-grad" | **stop-gradient**: treat the argument as a constant during backprop |
 | $z$ | "z" | the **pooled latent** for an observation: the mean of $f_\theta(x)$ over patches, a vector in $\mathbb{R}^{D}$ with $D = 128$. The object the prior and decoder act on |
 
 ---

@@ -14,10 +14,10 @@ Concretely, an image $x$ is cut into patch tokens. On the $28 \times 28$ MNIST P
 - the **predictor** $g_\phi$ takes those context embeddings plus the *positions* of the target tokens and predicts what the target embeddings should be;
 - the **target encoder** $f_{\bar\theta}$ embeds the full image and supplies the actual target embeddings.
 
-The loss lives entirely in embedding space. Writing $\operatorname{sg}$ for stop-gradient and using subscripts $\mathrm{ctx}$ and $\mathrm{tgt}$ for the context and target token sets,
+The loss lives entirely in embedding space. Writing $\mathrm{sg}$ for stop-gradient and using subscripts $\mathrm{ctx}$ and $\mathrm{tgt}$ for the context and target token sets,
 
 $$
-\mathcal{L}(\theta, \phi) = \mathbb{E}_{x, \mathrm{mask}} \operatorname{SmoothL1}\Big( g_\phi\big(f_\theta(x_{\mathrm{ctx}}), \mathrm{tgt}\big), \operatorname{sg}\big(f_{\bar\theta}(x)_{\mathrm{tgt}}\big)\Big).
+\mathcal{L}(\theta, \phi) = \mathbb{E}_{x, \mathrm{mask}} \mathrm{SmoothL1}\Big( g_\phi\big(f_\theta(x_{\mathrm{ctx}}), \mathrm{tgt}\big), \mathrm{sg}\big(f_{\bar\theta}(x)_{\mathrm{tgt}}\big)\Big).
 $$
 
 There is no decoder anywhere in this objective and no term that touches pixels. The prediction is an embedding; the target is an embedding; the distance is measured between embeddings.
@@ -48,7 +48,7 @@ The full definitions and how to read them live in the companion note [Representa
 The predictor $g_\phi$ has done its job once training ends; we keep only the encoder. For the generative head we need a single vector per observation, so we **mean-pool** the encoder's patch embeddings into
 
 $$
-z = \operatorname{pool}\big(f_\theta(x)\big) \in \mathbb{R}^{128}.
+z = \mathrm{pool}\big(f_\theta(x)\big) \in \mathbb{R}^{128}.
 $$
 
 This pooled $z$ is the currency of the rest of the pipeline: [Stage 2](02-the-latent-prior.md) learns a distribution over these vectors, and [Stage 3](03-the-decoder.md) learns to turn one back into an image. Pooling to a single vector is the choice that keeps the prior and decoder small and the story clear; it also throws away spatial layout, which is exactly the lever the [next steps](04-sampling-and-evaluation.md#next-steps) reach for when chasing sharper, more diverse samples.

@@ -6,10 +6,10 @@ The [prior](02-the-latent-prior.md) gives us new latents; it does not give us im
 
 ## Trained on frozen latents
 
-With the encoder frozen, every training image $x$ has a fixed pooled latent $z = \operatorname{pool}(f_\theta(x))$. The decoder learns to invert that map. For MNIST's pixel values in $[0, 1]$ we treat each pixel as a Bernoulli probability and minimize binary cross-entropy,
+With the encoder frozen, every training image $x$ has a fixed pooled latent $z = \mathrm{pool}(f_\theta(x))$. The decoder learns to invert that map. For MNIST's pixel values in $[0, 1]$ we treat each pixel as a Bernoulli probability and minimize binary cross-entropy,
 
 $$
-\mathcal{L}_{\mathrm{rec}}(\omega) = \mathbb{E}_{x}\operatorname{BCE}\big(D_\omega(\operatorname{sg}(z)), x\big), \qquad z = \operatorname{pool}\big(f_\theta(x)\big),
+\mathcal{L}_{\mathrm{rec}}(\omega) = \mathbb{E}_{x}\mathrm{BCE}\big(D_\omega(\mathrm{sg}(z)), x\big), \qquad z = \mathrm{pool}\big(f_\theta(x)\big),
 $$
 
 with stop-gradient on $z$ to make explicit that no signal reaches the encoder — $\theta$ is fixed, only $\omega$ moves. In code, $D_\omega$ is a small MLP that outputs $28 \times 28$ pixel logits.
