@@ -2,7 +2,7 @@
 
 *The gentle starting point. No prior familiarity with JEPA or generative modeling assumed.*
 
-This series builds a generative model on top of a JEPA encoder. Before any of that makes sense, two questions deserve plain answers: **what is a generative model**, and **why would you build one on JEPA** rather than on something more obviously suited to generation? This chapter answers both from the ground up. If you already think in terms of latent-variable generative models and JEPA representations, skip to [Part 1](01-the-jepa-encoder.md).
+This series builds a generative model on top of a JEPA encoder. Before any of that makes sense, two questions deserve plain answers: **what is a generative model**, and **why would you build one on JEPA** rather than on something more obviously suited to generation? This chapter answers both from the ground up. If you already think in terms of latent-variable generative models and JEPA representations, skip to [Part 1 — The JEPA encoder](01-the-jepa-encoder.md).
 
 ## What "generative" means
 
@@ -41,7 +41,7 @@ It helps to place the pieces against the broader landscape. Generative models di
 | **GAN** | a generator competes against a discriminator that tries to spot fakes | sharp images; tricky to train |
 | **Diffusion / flow** | gradually transform noise into data along a learned path | state-of-the-art image/audio quality |
 
-This series uses the latent-variable recipe with a **flow** model for the prior (Part 2) and a small **decoder** (Part 3). Those two choices are standard. The non-standard, still-open choice — the part we are actually researching — is **step 1: what defines the latent space**. That is where JEPA comes in.
+This series uses the latent-variable recipe with a **flow** model for the prior ([Part 2 — The latent prior](02-the-latent-prior.md)) and a small **decoder** ([Part 3 — The decoder](03-the-decoder.md)). Those two choices are standard. The non-standard, still-open choice — the part we are actually researching — is **step 1: what defines the latent space**. That is where JEPA comes in.
 
 ## Why JEPA as the substrate
 
@@ -52,7 +52,7 @@ So the question becomes: **what makes a good latent space to generate in, and wh
 - A **VAE encoder** is trained to *reconstruct*, so it is pulled toward preserving appearance — exactly the nuisance detail we would rather abstract away.
 - An **autoregressive** model has no reusable latent at all; generation and representation are the same forward pass.
 
-**JEPA** (Joint-Embedding Predictive Architecture) offers a different kind of latent. It is a *self-supervised representation learner*: it learns, from unlabeled data alone, by **predicting the embedding of a hidden region from the embeddings of the visible region** — predicting *meaning*, never pixels. Because it is never asked to reproduce surface detail, it is free to throw away the unpredictable nuisance and keep the structure. The result is a latent space that is semantically strong, label-free, and modality-agnostic — a promising substrate for a prior to model. (Part 1 unpacks exactly how it learns this.)
+**JEPA** (Joint-Embedding Predictive Architecture) offers a different kind of latent. It is a *self-supervised representation learner*: it learns, from unlabeled data alone, by **predicting the embedding of a hidden region from the embeddings of the visible region** — predicting *meaning*, never pixels. Because it is never asked to reproduce surface detail, it is free to throw away the unpredictable nuisance and keep the structure. The result is a latent space that is semantically strong, label-free, and modality-agnostic — a promising substrate for a prior to model. ([Part 1 — The JEPA encoder](01-the-jepa-encoder.md) unpacks exactly how it learns this.)
 
 That is the bet this series tests: **a strong predictive representation (JEPA) plus a lightweight generative head (a prior and a decoder) yields a generative model that inherits the representation's semantic strength.** JEPA's contribution is the *encoder*; everything that makes it sampleable is bolted on afterward.
 
