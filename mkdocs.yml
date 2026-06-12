@@ -69,6 +69,18 @@ extra_javascript:
 
 nav:
   - Home: index.md
+  - Generative JEPA:
+      - Overview: generative_jepa/index.md
+      - 1 · The JEPA encoder: generative_jepa/01-the-jepa-encoder.md
+      - 2 · The latent prior: generative_jepa/02-the-latent-prior.md
+      - 3 · The decoder: generative_jepa/03-the-decoder.md
+      - 4 · Sampling and evaluation: generative_jepa/04-sampling-and-evaluation.md
+      - Notation reference: generative_jepa/notation.md
   - Action Operators:
       - JEPA as an Action-Operator World Model: action_operator/01-jepa-action-operators.md
       - Notation reference: action_operator/notation.md
+  - Operator World Models:
+      - Overview: operator_world_models/index.md
+      - From actions to operators: operator_world_models/00-from-actions-to-operators.md
+      - State and latent operators: operator_world_models/01-state-and-latent-operators.md
+      - Notation reference: operator_world_models/notation.md

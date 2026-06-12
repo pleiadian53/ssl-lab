@@ -6,7 +6,7 @@ This site is built from the `docs/` folder of [pleiadian53/ssl-lab](https://gith
 
 ## Research directions
 
-**1. Generative JEPA — make the representation *sampleable*.** Add a prior over the latent and a decoder back to data space, turning a representation learner into a generative model. Built as a walking skeleton on MNIST (modality-agnostic core).
+**1. Generative JEPA — make the representation *sampleable*.** Add a prior over the latent and a decoder back to data space, turning a representation learner into a generative model. Built as a walking skeleton on MNIST (modality-agnostic core). → **[Full tutorial: Generative JEPA](generative_jepa/index.md)**.
 
 ```mermaid
 flowchart LR
@@ -25,6 +25,7 @@ flowchart LR
 
 ## Read next
 
+- **[Generative JEPA](generative_jepa/index.md)** — a four-part tutorial on extending a JEPA encoder into a sampleable generative model: the encoder, the flow-matching prior, the decoder, and sampling + evaluation.
 - [JEPA as an Action-Operator World Model](action_operator/01-jepa-action-operators.md) — the synthesis: how JEPA's predictor is a special case of an action-operator world-model.
 - [Notation reference](action_operator/notation.md) — every symbol used in the write-up.
 
