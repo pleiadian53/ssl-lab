@@ -77,6 +77,12 @@ nav:
       - 3 · The decoder: generative_jepa/03-the-decoder.md
       - 4 · Sampling and evaluation: generative_jepa/04-sampling-and-evaluation.md
       - Notation reference: generative_jepa/notation.md
+  - Time-Series JEPA:
+      - Overview: time_series_jepa/index.md
+      - From I-JEPA to Time-Series JEPA: time_series_jepa/01-from-ijepa-to-tjepa.md
+      - Multimodal temporal channels: time_series_jepa/02-multimodal-temporal-channels.md
+      - The limits of pure Time-Series JEPA: time_series_jepa/03-the-limits-of-pure-tjepa.md
+      - Notation reference: time_series_jepa/notation.md
   - Action Operators:
       - From actions to operators: action_operator/00-from-actions-to-operators.md
       - Augmenting JEPA with Action Operators: action_operator/01-jepa-action-operators.md
@@ -84,5 +90,10 @@ nav:
       - Notation reference: action_operator/notation.md
   - Operator World Models:
       - Overview: operator_world_models/index.md
+      - What is a world model?: operator_world_models/00-what-is-a-world-model.md
       - State and latent operators: operator_world_models/01-state-and-latent-operators.md
+      - JEPA as a temporal world model: operator_world_models/02-jepa-as-a-temporal-world-model.md
+      - Conditioning JEPA on actions: operator_world_models/03-conditioning-jepa-on-actions.md
+      - Generator bases and the operator in code: operator_world_models/04-generator-bases-and-the-operator-in-code.md
+      - "Worked example: a personal world model for diabetes": operator_world_models/05-worked-example-diabetes.md
       - Notation reference: operator_world_models/notation.md

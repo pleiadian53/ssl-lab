@@ -79,4 +79,6 @@ The symbol $E$ does double duty: the **encoder** $E$ (and its variants $E_\xi$, 
 
 ---
 
+> **See every symbol at work.** A table defines a symbol; it does not teach one. For all of this notation threaded through a single concrete story — CGM, insulin, carbs, exercise, and medical codes for one person managing diabetes — see the [worked example](05-worked-example-diabetes.md), where each symbol is earned by something real before it is named.
+
 *Series home: [Operator World Models](index.md). The foundation: [Augmenting JEPA with Action Operators](../action_operator/01-jepa-action-operators.md).*

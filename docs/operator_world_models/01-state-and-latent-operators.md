@@ -127,8 +127,10 @@ Read the two main rows as two poles of a single **expressiveness ↔ structure d
 
 With the two operators and their bridge in hand, the rest of the series builds outward:
 
-- **JEPA as a temporal world model** — reinterpret "predict the masked region" as "predict the next timestep," so $f_\theta$ becomes a *dynamics* operator on a latent trajectory.
+- **[JEPA as a temporal world model](02-jepa-as-a-temporal-world-model.md)** — reinterpret "predict the masked region" as "predict the next timestep," so $f_\theta$ becomes a *dynamics* operator on a latent trajectory.
 - **Conditioning JEPA on actions** — replace the bare "how far ahead" query with $f_{\theta(c_t)}$, an operator chosen by the *intervention* $c_t$, unlocking counterfactual rollout and a sharpened surprise signal.
 - **Generator bases and the operator in code** — the concrete $\{B_i\}$ that realize the two poles above, and the runnable module that turns this note into a forward pass.
+
+> **See it in a real scenario.** For $\hat O_\theta$, $f_\theta$, and the commuting square made concrete on one person's metabolic data, see the [worked example — a personal world model for diabetes](05-worked-example-diabetes.md).
 
 *Series home: [Operator World Models](index.md). Notation: [reference](notation.md).*

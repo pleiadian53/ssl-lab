@@ -4,7 +4,7 @@
 
 A JEPA encoder learns what data *means* by predicting it in latent space. That gives you a **map** of the data — but only a map. This series is about adding a **way to move on that map**: latent dynamics you can run forward, condition on real-world interventions, and use to ask "what would happen if…". The unifying object is the **action operator** — a transformation of state — and the claim is that turning JEPA into a world model that carries such operators is a natural extension, not a rebuild.
 
-> **Read the foundation first.** This series assumes the [Action Operators](../action_operator/00-from-actions-to-operators.md) foundation — what an action operator is, *why* JEPA benefits from integrating one (the [bridge note](../action_operator/01-jepa-action-operators.md)), and a [gallery](../action_operator/02-operator-gallery.md) of concrete operators. Read it in full before continuing here: this series builds directly on it, and the ideas land far better with the foundation established than by jumping in.
+> **Read the foundations first.** This series assumes two things. From the [Action Operators](../action_operator/00-from-actions-to-operators.md) foundation: what an action operator is, *why* JEPA benefits from integrating one (the [bridge note](../action_operator/01-jepa-action-operators.md)), and a [gallery](../action_operator/02-operator-gallery.md) of concrete operators. From the [Time-Series JEPA](../time_series_jepa/index.md) series: the temporal predictor this work conditions, and the precise blind spot it leaves open. Read both before continuing here — the ideas land far better with the foundations established than by jumping in.
 
 ---
 
@@ -38,17 +38,19 @@ This domain is the regime self-supervised learning was built for: an ocean of un
 
 ## Reading order
 
-**Prerequisite — the [Action Operators](../action_operator/00-from-actions-to-operators.md) foundation** (read first): *From actions to operators* → *Augmenting JEPA with Action Operators* → *A gallery of operators*. This series then continues:
+**Prerequisites — read first:** the [Time-Series JEPA](../time_series_jepa/index.md) series and the [Action Operators](../action_operator/00-from-actions-to-operators.md) foundation. This series then continues:
 
 | Part | Topic | What you get |
 |---|---|---|
+| **[0 — What is a world model?](00-what-is-a-world-model.md)** | map vs. world model; rollout + action-conditioning; "not only Time-Series JEPA" | the concept the series rests on — **start here** |
 | **[1 — State and latent operators](01-state-and-latent-operators.md)** | $\hat O_\theta$ vs $f_\theta$, the commuting square, Koopman | the keystone: why an action lives in two spaces and how the encoder bridges them |
-| **2 — JEPA as a temporal world model** *(coming next)* | the temporal forward pass; predictor as a query operator | how masked-region prediction becomes latent dynamics |
-| **3 — Conditioning JEPA on actions** *(coming next)* | $f_{\theta(c_t)}$; counterfactual rollout; the surprise signal | the single edit that makes the world model actionable |
-| **4 — Generator bases and the operator in code** *(coming next)* | the basis $\{B_i\}$; the runnable module | the two poles, realized as one swappable piece of code |
+| **[2 — JEPA as a temporal world model](02-jepa-as-a-temporal-world-model.md)** | the temporal forward pass; predictor as a query operator; rollout | how masked-region prediction becomes latent dynamics |
+| **[3 — Conditioning JEPA on actions](03-conditioning-jepa-on-actions.md)** | $f_{\theta(c_t)}$; counterfactual rollout; the surprise signal | the single edit that makes the world model actionable |
+| **[4 — Generator bases and the operator in code](04-generator-bases-and-the-operator-in-code.md)** | the basis $\{B_i\}$; the runnable module | the two poles, realized as one swappable piece of code |
+| **[Worked example — a personal world model for diabetes](05-worked-example-diabetes.md)** | the whole series threaded through one person's CGM, insulin, carbs, exercise, and medical-code data | every symbol earned by something real — read alongside the parts |
 
-New to the symbols? The [notation reference](notation.md) defines every one.
+New to the symbols? The [notation reference](notation.md) defines every one. To see them all at work in one story, read the [worked example](05-worked-example-diabetes.md).
 
 ---
 
-*Read the [Action Operators foundation](../action_operator/00-from-actions-to-operators.md) first, then start here with [Part 1 — State and latent operators](01-state-and-latent-operators.md).*
+*Read the [Time-Series JEPA](../time_series_jepa/index.md) and [Action Operators](../action_operator/00-from-actions-to-operators.md) foundations first, then start here with [Part 0 — What is a world model?](00-what-is-a-world-model.md).*
