@@ -33,11 +33,14 @@ JEPA is a *representation learner* — it learns by predicting the embeddings of
 
 **1. Generative JEPA — make the representation *sampleable*.** *(built)* Add a prior over the latent and a decoder back to data space — the vertical slice above. Trained end to end on MNIST: a rich, non-collapsed latent (≈95% linear-probe accuracy with no labels in pretraining) and samples that are recognizable, varied, and *genuinely novel* rather than memorized.
 
-**2. Action operators on JEPA — make prediction *active*.** *(emerging research line)* Go from passively in-filling hidden regions to *exploring*. JEPA's fixed "predict region $p$" mask is really a **frozen action**; promote it to a **learned operator the model chooses** — *sensing* ("where should I look?") and *perturbing* ("what happens if I edit this?") — so the system can form and test hypotheses, not just reconstruct what's masked. This reframes JEPA's predictor as the special case of an **action-operator world-model**, and builds on the action-operator formalism from the sibling project [GRL](https://github.com/pleiadian53/GRL).
+**2. Action operators on JEPA — make prediction *active*.** *(research line — full tutorial corpus written)* Go from passively in-filling hidden regions to *acting on* them. JEPA's predictor already *is* a latent operator — but its query is a **frozen, blind action**: it says only *where* or *when* to predict, never *what acted*. Promote that query to a **learned operator the model chooses and conditions on** — *sensing* ("where should I look?") and *perturbing* ("what happens under this intervention?") — and the passive predictor becomes a controllable **world model**: it can roll futures forward, run counterfactuals ("what if more sleep?"), and surface change that known interventions don't explain. This builds on the **action-operator** formalism from the sibling project [GRL](https://github.com/pleiadian53/GRL), and spans two application poles — continuous behavioral / mental-health monitoring (operator structure *learned*) and protein structure & dynamics (structure *given* by SE(3)).
 
-> 📄 Write-up: ***JEPA as an Action-Operator World Model*** — read it with full math on the [documentation site](https://pleiadian53.github.io/ssl-lab/action_operator/01-jepa-action-operators/), or as source under [docs/action_operator/](docs/action_operator/01-jepa-action-operators.md) (with a standalone [notation reference](docs/action_operator/notation.md)).
+> 📄 **Tutorial series** (full math on the [documentation site](https://pleiadian53.github.io/ssl-lab/)) — three parts, read in this order:
+> - **[Time-Series JEPA](docs/time_series_jepa/index.md)** — the substrate: JEPA pointed at time series, multimodal channels, and the one blind spot that motivates operators.
+> - **[Action Operators](docs/action_operator/00-from-actions-to-operators.md)** — the foundation: what an action operator is, why JEPA benefits from one, and a gallery of concrete operators.
+> - **[Operator World Models](docs/operator_world_models/index.md)** — the synthesis: condition the predictor on *what acted* for counterfactual rollout, composable interventions, and a sharpened change signal.
 
-For a concrete motivation: given an RNA sequence, *sense* to localize candidate splice sites, then *perturb* (in-silico edits) to learn what they mean — the kind of active, hypothesis-driven understanding passive prediction alone can't reach.
+A concrete motivation in genomics: given an RNA sequence, *sense* to localize candidate splice sites, then *perturb* (in-silico edits / mutations) to learn what they do to splicing — the kind of active, hypothesis-driven understanding passive prediction alone can't reach.
 
 ## Related projects
 
@@ -47,7 +50,9 @@ ssl-lab sits in a small constellation of related work:
 
 - **[NMDiff](https://github.com/pleiadian53/nmdiff)** — a **distinct branch of SSL** that sits outside the three classical families. Contrastive (SimCLR/CLIP), predictive (BERT/GPT/MAE), and self-distillation (BYOL/DINO) methods all share one structural property: the labeling function `T` is *fixed*, and only the encoder is learned. NMDiff promotes `T` itself to a domain-parameterized hypothesis `L(·; θ)` and jointly optimizes it with the downstream classifier via an outer-loop cross-view AUC criterion — the labeling function isn't a hyperparameter, it *is* the scientific hypothesis. Call it **hypothesis-driven SSL**: applied to transcript NMD efficiency (where ground-truth labels don't exist), but the pattern generalizes to any label-scarce setting where domain knowledge can parameterize a candidate labeling. Within the 2026 macro-trend of *learning the supervision signal itself* — alongside self-improving SSL, learned-augmentation SSL, and programmatic weak supervision — NMDiff is the interpretable, low-dimensional, domain-knowledge instance.
 
-- **[GRL](https://github.com/pleiadian53/GRL)** — origin of the action-operator formalism that grounds the JEPA-as-action-operator research direction above.
+- **[GRL](https://github.com/pleiadian53/GRL)** — origin of the action-operator formalism that grounds the action-operator research direction above.
+
+- **protein-ml-lab** *(sibling, not yet public)* — a first-principles depth study of the protein-ML stack (ESM, the AlphaFold lineage, RFdiffusion / ProteinMPNN / Chroma). It is the natural home for the action operator's **"given" pole**: here rotations and translations are honest **SE(3)** group elements, equivariance is *demanded* rather than learned, and frame-based structure prediction and generation are *operators on SE(3)* made literal (AlphaFold's residue frames, FrameDiff/RFdiffusion flows). Where ssl-lab's operators are **learned** from data, protein-ml-lab's are **given** by physics — the two poles of the same expressiveness↔structure dial, in two sibling repos.
 
 ## Layout
 
@@ -60,6 +65,7 @@ src/ssllab/
   jepa/        block masking, EMA target, the assembled JEPA module
   objectives/  prediction loss + VICReg collapse regularizer
   generative/  flow-matching prior over the latent (rectified flow)
+  action_operator/  context-conditioned latent operators — generator bases, exp(M)
   eval/        collapse diagnostics, linear probe, image-grid viz
   utils/       seeding, device selection
 examples/

@@ -21,11 +21,12 @@ flowchart LR
     class NOISE,GEN io;
 ```
 
-**2. Action operators on JEPA — make prediction *active*.** Promote JEPA's fixed "predict region $q$" mask to a **learned operator the model chooses** — *sensing* (where to look) and *perturbing* (what an action does) — so the system can form and test hypotheses rather than only in-fill what's masked. Start with the **[Action Operators foundation](action_operator/00-from-actions-to-operators.md)**, then the **[Operator World Models](operator_world_models/index.md)** series. Builds on the action-operator formalism from the sibling project [GRL](https://github.com/pleiadian53/GRL).
+**2. Action operators on JEPA — make prediction *active*.** Promote JEPA's fixed "predict region $q$" mask to a **learned operator the model chooses** — *sensing* (where to look) and *perturbing* (what an action does) — so the system can form and test hypotheses rather than only in-fill what's masked. The gentlest way in is the **[Time-Series JEPA](time_series_jepa/index.md)** series (JEPA pointed at time series — the natural first arena for action operators); then the **[Action Operators foundation](action_operator/00-from-actions-to-operators.md)** and the **[Operator World Models](operator_world_models/index.md)** synthesis. Builds on the action-operator formalism from the sibling project [GRL](https://github.com/pleiadian53/GRL).
 
 ## Read next
 
 - **[Generative JEPA](generative_jepa/index.md)** — a four-part tutorial on extending a JEPA encoder into a sampleable generative model: the encoder, the flow-matching prior, the decoder, and sampling + evaluation.
+- **[Time-Series JEPA](time_series_jepa/index.md)** — the accessible entry point for the operator track: JEPA pointed at time series, multimodal channels, and the one blind spot that motivates action operators.
 - **[Action Operators](action_operator/00-from-actions-to-operators.md)** — the foundation: *From actions to operators* → *[Augmenting JEPA with Action Operators](action_operator/01-jepa-action-operators.md)* → *[A gallery of operators](action_operator/02-operator-gallery.md)*.
 - **[Operator World Models](operator_world_models/index.md)** — the JEPA + operator world-model series, building on that foundation (state and latent operators, temporal prediction, conditioning on interventions).
 
