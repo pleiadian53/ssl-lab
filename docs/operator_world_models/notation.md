@@ -27,7 +27,7 @@ This series writes the encoder as $E$, matching the [Action Operators](../action
 
 | Symbol | Read as | Meaning |
 |---|---|---|
-| $\hat O$ | "O-hat" | an **action operator**: a function $\hat O:\mathcal{S}\to\mathcal{S}$ that turns a state into its successor. The hat marks "operator (a function), not a number" |
+| $\hat O$ | "O-hat" | an **action operator**: a function $\hat O:\mathcal{S}\to\mathcal{S}$ that turns a state into its successor. The hat marks "operator (a function), not a number" — the **physics** convention (as in $\hat H$), *not* the statistics "estimate" hat of $\hat\theta$ |
 | $\hat O_\theta$ | "O-hat-theta" | the specific **state operator** chosen by parameters $\theta$ — the *physically meaningful* transformation acting on the real state $s$. Often inaccessible: you only observe $s$ and $s'$, never the operator itself |
 | $f_\theta$ | "f-theta" | the **latent operator**: how $\hat O_\theta$ acts on the latent $z=E(s)$ instead of on $s$. This is the object you actually *compute with* |
 | $\theta$ | *theta* | **operator parameters** — the knobs that *configure* the operator: a complete description of how it transforms the state (for a continuous $\theta$ the operator is synthesized from $\theta$, not looked up from a menu) |

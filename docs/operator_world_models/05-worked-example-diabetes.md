@@ -30,7 +30,7 @@ The last row deserves a closer look, because it is the one most people would not
 
 ### The EHR stream as one modality
 
-The sibling [`ehr-sequencing`](https://github.com/pleiadian53/ehr-sequencing) project treats a patient's history the way a language model treats a document: each clinical event is a **timestamped medical code**, and the code vocabularies are the standard ones — SNOMED for diagnoses, RXNORM for drugs, LOINC for lab tests. A slice of Maya's coded record might read (this is the project's own example format, and — not coincidentally — its example is a diabetic trajectory):
+A companion project, [`ehr-sequencing`](https://github.com/pleiadian53/ehr-sequencing), treats a patient's history the way a language model treats a document: each clinical event is a **timestamped medical code**, and the code vocabularies are the standard ones — SNOMED for diagnoses, RXNORM for drugs, LOINC for lab tests. A slice of Maya's coded record might read (this is the project's own example format, and — not coincidentally — its example is a diabetic trajectory):
 
 ```
 2024-01-15:  [LOINC:4548-4, SNOMED:44054006, RXNORM:860975]
@@ -69,16 +69,16 @@ $$
 
 Here **$z_t$** is Maya's **latent metabolic state** at time $t$: a point in latent space $\mathcal{Z}$ that captures her *metabolic situation* — roughly how elevated and how stable her glucose system is right now — without committing to any single raw number. It is the encoded history, not a reading off the CGM.
 
-There is a second copy of the encoder, the **target encoder $E_{\bar\xi}$** (read "E-xi-bar"). It is a slow **exponential moving average** (EMA) of the online encoder, updated as $\bar\xi \leftarrow \tau\bar\xi + (1-\tau)\xi$ with **$\tau$** (tau) close to 1, say $0.999$ — so the target drifts slowly and provides a stable goalpost. When we train, we will compare predictions against $E_{\bar\xi}$'s reading of what actually came next, and we will apply **stop-gradient $\mathrm{sg}$** to it (treat it as a fixed constant, no backprop into the target). All of this is standard JEPA plumbing, recalled here only so the symbols have homes; the [Time-Series JEPA series](../time_series_jepa/index.md) is where it is built.
+There is a second copy of the encoder, the **target encoder $E_{\bar\xi}$** (read "E-xi-bar"). It is a slow **exponential moving average** (EMA) of the online encoder, updated as $\bar\xi \leftarrow \tau\bar\xi + (1-\tau)\xi$ with **$\tau$** (tau) close to 1, say $0.999$ — so the target drifts slowly and provides a stable goalpost. When we train, we will compare predictions against $E_{\bar\xi}$'s reading of what actually came next, and we will apply **stop-gradient $\mathrm{sg}$** to it (treat it as a fixed constant, no backprop into the target). All of this is standard JEPA plumbing, recalled here only so the symbols have homes; interested readers are encouraged to go through the [Time-Series JEPA series](../time_series_jepa/index.md), where it is built in full.
 
-To make the latent *visualizable*, we will, throughout this chapter, read off a didactic **two-dimensional slice** of $z_t$ — the real latent is high-dimensional, but two interpretable directions carry the story:
+To make the latent *visualizable*, we will, throughout this chapter, read off a didactic **two-dimensional slice** of $z_t$ — the real latent is high-dimensional, but two interpretable directions carry the story. We **scale each axis to roughly $[0, 1]$**, where $0$ is Maya's own healthy baseline and $1$ is the high end of her typical range:
 
-- **axis 1 — elevation:** how far Maya's glucose system sits *above her personal target* (higher = worse control).
-- **axis 2 — instability:** how *variable / reactive* her glucose is (higher = wilder swings).
+- **axis 1 — elevation:** how far Maya's glucose system sits *above her personal target* — $0$ = at target, $1$ = the top of her usual range.
+- **axis 2 — instability:** how *variable / reactive* her glucose is — $0$ = steady, $1$ = her wildest swings.
 
-So "$z_t = (0.8,\ 0.6)$" reads as "moderately elevated, fairly unstable." These two numbers are a teaching readout, not the whole latent — but everything below works the same way in full dimension.
+On that scale, "$z_t = (0.8,\ 0.6)$" reads as "**well above target and fairly unstable**" — $0.8$ is high on the elevation axis, $0.6$ is past the midpoint on instability. These two numbers are a teaching readout, not the whole latent — but everything below works the same way in full dimension.
 
-> **Map versus world model, in Maya's terms.** A plain encoder gives a *map*: "today looks like one of Maya's rough mid-week days." That is genuinely useful and entirely passive. A *world model* adds the missing half — *where the state goes next, and where it would go if she did something different.* The rest of this chapter is how that second sentence becomes a computation.
+> **Map versus world model, in Maya's terms.** A plain encoder gives a *map*: "today looks like one of Maya's rough mid-week days." That is genuinely useful and entirely passive. A *world model* adds the missing half — *where the state goes next, and — the counterfactual question — where it would go if she did something different.* The rest of this chapter is how that second sentence becomes a computation.
 
 ---
 
@@ -86,7 +86,7 @@ So "$z_t = (0.8,\ 0.6)$" reads as "moderately elevated, fairly unstable." These 
 
 Something happens to Maya overnight — she sleeps, her liver releases glucose, her last dose of medication wears off — and by morning her state has moved. Call that transformation an **action operator**. The keystone of [Part 1](01-state-and-latent-operators.md) is that this single idea splits into **two distinct objects**, and keeping them apart is what makes everything tractable.
 
-- The **state operator $\hat O_\theta$** (read "O-hat-theta") acts on Maya's *true physiological state* $s$ — her actual metabolism, every hormone and cell — and turns it into its successor, $s' = \hat O_\theta(s)$. This is the *physically real* transformation. It is also **completely inaccessible**: nobody can write down the function that maps Maya's full physiology through a night, and you never observe $s$ directly — only the sensor streams it throws off. The subscript **$\theta$** names *which* operator (which night, under which conditions); the hat marks it as a function, not a number.
+- The **state operator $\hat O_\theta$** (read "O-hat-theta") acts on Maya's *true physiological state* $s$ — her actual metabolism, every hormone and cell — and turns it into its successor, $s' = \hat O_\theta(s)$. This is the *physically real* transformation. It is also **completely inaccessible**: nobody can write down the function that maps Maya's full physiology through a night, and you never observe $s$ directly — only the sensor streams it throws off. The subscript **$\theta$** names *which* operator (which night, under which conditions); the hat marks it as an **operator** — a function acting on a space, not a number. Note that this is the physics convention, as in $\hat H$ for a Hamiltonian — *not* the statistics "estimate" hat of $\hat\theta$. $\hat O_\theta$ is the *true* transformation, intractable though it is; the approximate, *learned* stand-in we actually build carries no hat — it is the latent operator $f_\theta$, next.)
 - The **latent operator $f_\theta$** acts on the *latent* instead: $z' = f_\theta(z)$. This is the object you actually **compute with** — a concrete, simple map on the latent vector, the default form being
 
 $$
@@ -109,7 +109,7 @@ z & \xrightarrow{\ f_\theta\ } & z'
 E\big(\hat O_\theta(s)\big) = f_\theta\big(E(s)\big).
 $$
 
-In words: *let the night happen and then encode the morning* (left path) should land in the same place as *encode tonight and then apply the latent operator* (right path). When the square commutes, $f_\theta$ is the faithful **shadow** of the real overnight physiology — and we make it commute by training, penalizing the gap between the two paths. The reason we can get away with never naming the intractable $\hat O_\theta$ is the JEPA payoff from Part 1: there is no decoder, no $E^{-1}$, nothing but encoded quantities compared against encoded quantities. Maya's true metabolism stays implicit, present only through the data it produced.
+In words, there are two routes from tonight's real state $s$ (top-left) to tomorrow's latent $z'$ (bottom-right), and the square's content is that they must agree. The **live-it-then-read-it route** (across the top, then down the right): let the night actually happen, $s \to s'$, and only then encode the morning, $z' = E(s')$ — the true answer, available only *after* tomorrow arrives. The **read-it-then-predict route** (down the left, then across the bottom): encode tonight now, $z = E(s)$, then apply the latent operator, $\hat z' = f_\theta(z)$ — a matrix multiply you can do *tonight*, before the night happens. When the square commutes, those two land in the same place: the cheap latent prediction equals the true encoded outcome, so $f_\theta$ is a faithful **shadow** of the real overnight physiology — and we make it commute by training, penalizing the gap between the two routes (push $f_\theta(E(s))$ toward $E(s')$ on every observed night). The reason we can get away with never naming the intractable $\hat O_\theta$ is the JEPA payoff from Part 1: there is no decoder, no $E^{-1}$, nothing but encoded quantities compared against encoded quantities. Maya's true metabolism stays implicit, present only through the data it produced.
 
 This is also where diabetes sits on the **expressiveness ↔ structure dial** from Part 1. Maya is at the **learned pole**: nobody handed us the physics of "what a 35-minute walk does to a metabolic latent," so the data must teach us $f_\theta$. (The opposite pole — proteins, where SE(3) rigid-motion structure is *given* by physics — is the same machinery with the basis fixed instead of learned. Here, it is all learned.)
 
@@ -290,6 +290,6 @@ Every symbol in the [reference](notation.md) has now done a job in Maya's story.
 
 - **The concepts behind each move:** [Part 0 — What is a world model?](00-what-is-a-world-model.md) (map vs. world model), [Part 1 — State and latent operators](01-state-and-latent-operators.md) (the two operators and the commuting square), [Part 2 — JEPA as a temporal world model](02-jepa-as-a-temporal-world-model.md) (rollout, anchoring), [Part 3 — Conditioning JEPA on actions](03-conditioning-jepa-on-actions.md) (the single edit, counterfactuals, surprise), [Part 4 — Generator bases and the operator in code](04-generator-bases-and-the-operator-in-code.md) (the named basis, runnable module).
 - **Every symbol, as a table:** the [notation reference](notation.md).
-- **The EHR modality, in depth:** the sibling [`ehr-sequencing`](https://github.com/pleiadian53/ehr-sequencing) project — medical codes as a temporal language.
+- **The EHR modality, in depth:** the companion [`ehr-sequencing`](https://github.com/pleiadian53/ehr-sequencing) project — medical codes as a temporal language. It is a separate effort, not part of this repo, but its representation of coded patient histories is exactly the kind of temporal modality an operator world model can reuse as one input stream.
 
 *Series home: [Operator World Models](index.md).*
