@@ -4,7 +4,7 @@
 
 > **Recap — where this sits.** [Part 5](05-two-gaps-four-routes.md) mapped the design space: a generative JEPA must close **G1** (turn the predictor's single guess into a *distribution* over outcomes) and **G2** (add a *decoder* from latent back to data), and four routes pair those closures differently. This chapter takes **Route A**, the most direct of the four: JEPA already predicts a latent — so just decode it. Cheapest path from encoder to generator. Its very cheapness is also its trap, as we will see. New vocabulary (the count decoder, library size) is defined as it arrives; the [notation reference](notation.md) collects every symbol.
 
-We start with Route A precisely *because* it is the most obvious move, and obvious moves deserve scrutiny. JEPA hands you a predictor $g_\phi$ that maps a context to a latent $\hat z$. A decoder $D_\omega$ maps a latent to data. Compose them and you have a generator. One line of code, both gaps apparently closed. The whole chapter is about what that one line hides — first the mechanics it gets right, then the honest question it forces: *did JEPA actually buy you anything, or have you just rebuilt a VAE wearing a JEPA hat?*
+We start with Route A precisely *because* it is the most obvious move, and obvious moves deserve scrutiny. JEPA hands you a predictor $g_\phi$ that maps a context to a latent $\hat z$. A decoder $D_\omega$ maps a latent to data. Compose them and you have a generator — the *wiring* is a single line, $\tilde x = D_\omega(g_\phi(\dots))$, both gaps apparently closed (building the decoder you drop in is rather more than a line, as §2 shows — but the *move* really is that small). The whole chapter is about what that small move hides — first the mechanics it gets right, then the honest question it forces: *did JEPA actually buy you anything, or have you just rebuilt a VAE wearing a JEPA hat?*
 
 ---
 
@@ -43,9 +43,11 @@ But notice what this skeleton does *not* yet do. The predictor returns one $\hat
 
 ## 2. G2 — the decoder, and why "just MSE" is the wrong reflex
 
-The naive decoder is a network $D_\omega: z \to x$ trained to **reconstruct**: push the decoded output toward the real data with a squared-error (MSE) or, for binary pixels, a cross-entropy loss. That is exactly what the [Part 3](03-the-decoder.md) starter did for MNIST — a Bernoulli/BCE decoder over pixels — and for images it is fine.
+The naive decoder is a network $D_\omega: z \to x$ trained to **reconstruct**, and the loss you reach for quietly assumes a *likelihood* for the data: squared error (MSE) assumes a **Gaussian**, binary cross-entropy assumes a **Bernoulli**. The [Part 3](03-the-decoder.md) starter used the Bernoulli/BCE choice over pixels for MNIST — and for images that is the right fit.
 
-For single-cell gene expression it is *wrong*, and seeing why teaches a lesson that applies to every modality you will ever decode into.
+For single-cell gene expression, *neither* generic choice fits — and that is exactly the point. The **MSE/Gaussian** reflex (reaching for squared error because counts look like "just numbers") is wrong; so is the **Bernoulli/BCE** pixel loss — counts are neither real-valued nor binary. The data needs its *own* likelihood, a **count** distribution (NB/ZINB, built below). Seeing why the off-the-shelf losses fail teaches a lesson that applies to every modality you will ever decode into.
+
+> **New to single-cell data?** The rest of this section uses gene-count vocabulary (counts, dropout, library size). If that is unfamiliar, the [data-modalities primer](appendix-data-modalities.md) explains it from scratch in two minutes — or read on; the *lesson* (match the decoder to the data's likelihood) lands either way.
 
 Single-cell RNA-seq data are **gene counts** — for each cell, how many transcripts of each gene were captured. Three properties break a Gaussian/MSE decoder:
 
