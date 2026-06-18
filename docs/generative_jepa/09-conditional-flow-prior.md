@@ -10,7 +10,7 @@ The [Parts 0–4](index.md) starter presented an unconditional flow prior — a 
 
 ## 1. The starter's flow prior, recalled in one breath
 
-We will not rebuild Part 2; we will recall just enough to change one thing. (A reminder, since few carry it in their head:)
+We'll do just enough recap of the notion of a flow prior to change one thing; for the full construction — or if any step below feels unfamiliar — see [Part 2](02-the-latent-prior.md).
 
 The starter's prior is a **flow** that transports easy noise into data-like latents. Pick a noise point $z_0 \sim \mathcal{N}(0, I)$ (the standard Gaussian — mean zero, unit variance per dimension) and a real **data latent** $z_1$, and connect them with a straight line in time $t \in [0, 1]$:
 
@@ -18,13 +18,15 @@ $$
 z_t = (1 - t) z_0 + t z_1, \qquad u_t = \frac{d z_t}{dt} = z_1 - z_0.
 $$
 
-So at every point on that line we know both *where the particle is* ($z_t$) and *how fast it should move* ($u_t = z_1 - z_0$, constant along the line). A network $v_\eta(z_t, t)$ — the **velocity field**, weights $\eta$ — is trained to predict that velocity from position and time alone, by plain regression:
+So at every point on that line we know both *where the particle is* ($z_t$) and *how fast it should move* ($u_t = z_1 - z_0$, constant along the line). A network $v_\eta(z_t, t)$, representing the **velocity field** with weights $\eta$, is trained to predict that velocity from position and time alone, by plain regression:
 
 $$
 \mathcal{L}_{\mathrm{CFM}}(\eta) = \mathbb{E}\big\lVert v_\eta(z_t, t) - u_t \big\rVert^2.
 $$
 
-To *generate*, you start at noise and follow the learned arrows — integrate $dz/dt = v_\eta(z, t)$ from $z_0 \sim \mathcal{N}(0, I)$ up to $t = 1$, landing on a fresh latent. That is the whole starter prior: many crossing straight paths average, at the optimum, into one flow that carries the entire noise cloud onto the entire latent cloud $p(z)$. **Marginal. Unconditional.** No slot for a "given."
+To *generate*, you start at noise and follow the learned arrows — integrate $dz/dt = v_\eta(z, t)$ from $z_0 \sim \mathcal{N}(0, I)$ up to $t = 1$, landing on a fresh latent. That is the whole starter prior: many crossing straight paths average, at the optimum, into one flow that carries the entire noise cloud onto the entire latent cloud $p(z)$.
+
+It is worth being precise about what that distribution $p(z)$ is, because it is exactly the thing the next section changes. It is the **marginal** distribution of latents — every latent from every training example, pooled into one cloud, with no memory of which class or condition produced each one. And the velocity field reflects that: $v_\eta(z, t)$ takes only a position $z$ and a time $t$ as inputs, so there is simply nowhere to tell it *which kind* of latent you are after. That is what makes the prior **unconditional** — it will happily hand you *a* sample from the pooled cloud, but it cannot answer "a sample *given* this class" or "*given* this drug," because the class and the drug were never inputs in the first place. That one missing input is the whole of what we add next.
 
 ---
 
