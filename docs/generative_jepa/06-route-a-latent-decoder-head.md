@@ -63,7 +63,50 @@ $$
 \rho = \mathrm{softmax}(\text{decoder}(z)), \qquad \mu = \ell \cdot \rho, \qquad x \mid z, \ell \sim \mathrm{NB}(\mu, \kappa).
 $$
 
-ZINB adds, per gene, a dropout probability $\pi$ that mixes in extra zeros. The decoder's output is $(\rho, \kappa)$ (and $\pi$ for ZINB); the training signal is how probable the *real* counts are under the resulting distribution.
+Read that last piece aloud, since the notation is doing real work: $x \mid z, \ell \sim \mathrm{NB}(\mu, \kappa)$ says *the count vector $x$, **given** the latent $z$ and the library size $\ell$, is **distributed as** a negative binomial with mean $\mu$ and dispersion $\kappa$.* The bar $\mid$ is "given / conditional on"; the tilde $\sim$ is "is distributed as" (the same symbol as in $x \sim \mathcal{N}(\mu, \sigma^2)$ for a Gaussian). The shift this encodes is the whole point of the section: the decoder does **not** emit one predicted count vector — it emits the *parameters of a distribution over* count vectors, and the real $x$ is treated as a draw from it.
+
+So what the decoder actually emits are the distribution's parameters: the gene-rate profile $\rho$ and the dispersion $\kappa$. Note the **mean $\mu$ is not emitted directly** — it is assembled as $\mu = \ell \cdot \rho$, with the library size $\ell$ entering as a *given* covariate, not a prediction. (In the simpler Gaussian case the head outputs $\mu$ and $\sigma$ directly; the count case has this extra assembly step.) Training then maximizes the **likelihood** — how probable the *real* counts are under the distribution the decoder produced.
+
+That training principle is not new to this chapter, even if the word is. "Maximize the likelihood" just means *pick the parameters that make the observed data as probable as possible* — and it is exactly what the MSE and BCE losses at the top of this section were already doing under the hood. Squared error is the (negative log-)likelihood of a Gaussian; binary cross-entropy is the likelihood of a Bernoulli; minimizing either *is* maximizing a likelihood. The NB head simply swaps in the count likelihood — the training principle is identical, only the assumed distribution changes. (This is the same notion of likelihood the series will keep returning to, including the harder question of a tractable *data-space* likelihood flagged in [Part 5 §5](05-two-gaps-four-routes.md).)
+
+**ZINB** is one refinement on top, aimed squarely at the dropout problem from earlier. Real single-cell counts carry even *more* zeros than a negative binomial alone expects — those technical, "the gene was on but nothing was captured" zeros — so the **zero-inflated** NB adds, per gene, an explicit probability $\pi$ of a structural zero, mixed in alongside the NB. Mechanically it is just one more output head: the decoder emits $(\rho, \kappa, \pi)$ instead of $(\rho, \kappa)$, and nothing else about the setup changes. Whether you need it depends on how dropout-heavy your data are — plain NB is often enough.
+
+### The count likelihood, written out
+
+We have been saying "maximize the likelihood of the real counts." For research you want the *actual* objective, not a gesture at it — so here it is, built up factor by factor.
+
+Start with a single gene. The negative-binomial probability of observing a count $x$, given mean $\mu$ and dispersion $\kappa$, is
+
+$$
+p(x \mid \mu, \kappa) = \frac{\Gamma(x + \kappa)}{x! \cdot \Gamma(\kappa)} \left(\frac{\kappa}{\kappa + \mu}\right)^{\kappa} \left(\frac{\mu}{\kappa + \mu}\right)^{x}.
+$$
+
+Each factor earns its place — read them in turn:
+
+- $\Gamma$ is the **gamma function**, the factorial generalized to real numbers ($\Gamma(n) = (n-1)!$ for integer $n$). The leading fraction is the *combinatorial normalizer* — the job the binomial coefficient does for integer counts — and we need $\Gamma$ rather than plain factorials precisely because $\kappa$ is a *real-valued* dispersion knob the network learns, not an integer.
+- Write $q = \kappa/(\kappa + \mu)$. The last two factors are then $q^{\kappa}(1-q)^{x}$ — the familiar "successes and failures" shape of a negative binomial. This distribution has mean $\mu$ and **variance $\mu + \mu^2/\kappa$**: a small $\kappa$ means a large variance (heavily overdispersed), and $\kappa \to \infty$ collapses the variance back to $\mu$, recovering the Poisson. So $\kappa$ is exactly the overdispersion control the earlier "variance exceeds the mean" property called for.
+
+A whole cell is a product over its genes (counts taken conditionally independent given the latent), so its **log**-likelihood — turning that product into a numerically stable sum — is
+
+$$
+\log p(x \mid \mu, \kappa) = \sum_{g} \Big[ \log\Gamma(x_g + \kappa_g) - \log\Gamma(\kappa_g) - \log(x_g!) + \kappa_g \log\frac{\kappa_g}{\kappa_g + \mu_g} + x_g \log\frac{\mu_g}{\kappa_g + \mu_g} \Big],
+$$
+
+over genes $g$, with $\mu_g = \ell \cdot \rho_g$. The training loss is the **negative** log-likelihood, averaged over the $N$ cells in a batch:
+
+$$
+\mathcal{L}_{\mathrm{NB}} = -\frac{1}{N} \sum_{i=1}^{N} \log p\big(x^{(i)} \mid \mu^{(i)}, \kappa^{(i)}\big).
+$$
+
+Minimizing $\mathcal{L}_{\mathrm{NB}}$ *is* maximizing the likelihood; gradients flow back through $\mu = \ell\rho$ and $\kappa$ into the decoder. (The $\log(x_g!)$ term does not depend on any parameter, so it is a constant you can drop during optimization — a small practical note.)
+
+**ZINB** wraps one mixture step around this. With a per-gene dropout probability $\pi_g$, each gene's count is a *mixture* — a structural zero with probability $\pi_g$, otherwise an NB draw:
+
+$$
+p_{\mathrm{ZINB}}(x_g) = \pi_g \cdot \mathbf{1}[x_g = 0] + (1 - \pi_g)\cdot \mathrm{NB}(x_g \mid \mu_g, \kappa_g).
+$$
+
+Read the two cases off the formula: a **zero** can arise two ways — the dropout switch fired ($\pi_g$), *or* the NB itself produced a zero — while a **positive** count ($x_g > 0$, where the indicator $\mathbf{1}[x_g = 0]$ vanishes) can only come from the NB term, scaled by $(1 - \pi_g)$. The loss is again the negative log of this, summed over genes and averaged over cells. That negative-log-likelihood is the concrete $\mathcal{L}_{\mathrm{decode}}$ the routes plug in wherever they decode to gene counts — and the same template (write the data's distribution, take its negative log-likelihood) is what you instantiate for *any* modality, with a Gaussian, a Bernoulli, or whatever the measurement model demands.
 
 ```mermaid
 flowchart LR
@@ -105,7 +148,7 @@ Capturing outcome heterogeneity requires randomness in the **latent**, not just 
 
 ## 4. The honest risk — you may have just built a conditional VAE
 
-Here is the tension that makes Route A worth thinking about rather than just typing. Take it at its most natural: a stochastic Gaussian predictor (sub-choice a), a decoder, trained **jointly, end-to-end**, with the reconstruction loss flowing all the way back. Stand back and look at the shape: encoder → a latent *distribution* → decoder → reconstruction, regularized toward a prior. That is, structurally, a **conditional variational autoencoder (CVAE).** You have not obviously built "a generative JEPA"; you may have built a CVAE that happened to start from JEPA weights.
+Here is the tension that makes Route A worth thinking about further. Take it at its most natural: a stochastic Gaussian predictor (sub-choice a), a decoder, trained **jointly, end-to-end**, with the reconstruction loss flowing all the way back. Stand back and look at the shape: encoder → a latent *distribution* → decoder → reconstruction, regularized toward a prior. That is, structurally, a **conditional variational autoencoder (CVAE).** You have not obviously built "a generative JEPA"; you may have built a CVAE that happened to start from JEPA weights.
 
 And the JEPA-ness can actively *wash out*. JEPA's whole identity is to predict in latent space and **never reconstruct** — that is what lets its encoder discard unpredictable surface detail and keep meaning. The moment a reconstruction gradient flows back into the encoder, the encoder is pulled to *preserve decodable detail* — precisely the pressure JEPA was designed to avoid. Train long enough jointly and the encoder drifts toward a reconstruction encoder, with JEPA pretraining reduced to a fancy initialization.
 
@@ -128,9 +171,16 @@ flowchart LR
 
 ## 5. Where the Parts 0–4 starter sits in Route A
 
-It is worth placing your own working model precisely, because it sharpens what "conditional Route A" adds. The starter is: freeze the encoder, learn a **marginal** flow prior $p(z)$, decode with a **Bernoulli** head — **unconditional**. In Route A's terms, that is "G2 by a decoder, G1 by sub-choice (b) with a marginal prior, frozen, with the simplest decoder likelihood."
+It is worth placing your own working model precisely, because the contrast sharpens what *conditional* Route A actually adds. Let us walk through the starter piece by piece rather than compress it into a phrase.
 
-Conditional Route A — the biology-ready version — changes two things: it feeds a **condition** (a baseline cell plus a perturbation, say) into the predictor so generation is *given* an intervention, and it swaps the Bernoulli decoder for a **count-aware** NB/ZINB one so effect sizes are recovered. So the starter is the unconditional skeleton; this chapter is the conditional, calibrated flesh on the same bones.
+Recall what [Parts 0–4](index.md) built. It **froze** the JEPA encoder, learned a **flow-matching prior** $p(z)$ over the frozen latents, and **decoded** sampled latents with a **Bernoulli** (pixel) head. Now map each piece onto the two gaps from [Part 5](05-two-gaps-four-routes.md):
+
+- **G2 — the decoder.** Closed by the Bernoulli pixel head: the simplest possible likelihood, perfectly fine for MNIST.
+- **G1 — the stochasticity.** Closed *not* by a stochastic predictor but by **the prior you sample from** — this is sub-choice (b) of §3. You draw a fresh latent from the learned $p(z)$ and decode it; the randomness lives in that draw.
+
+So the starter is a genuine, complete two-gap closure. But notice the one word that sets it apart from everything else in this chapter: it is **unconditional**. The prior $p(z)$ is *marginal* — it models the distribution of *all* latents lumped together, with no input slot for a condition. So the starter can generate *a* plausible digit, but never *a digit given a class* (or, in biology, *a cell given a drug*). It answers "what does a plausible data point look like?" — never "…given this intervention?"
+
+That single missing capability is the entire gap between the starter and **conditional Route A**. Conditional Route A keeps the very same bones — encode, get a latent, decode — and adds exactly two things: it feeds a **condition** (a class label; or a baseline cell plus a perturbation) into the predictor so that generation is *given* an intervention, and it swaps the toy Bernoulli decoder for the **count-aware** NB/ZINB one of §2 so that effect sizes are recovered. In a phrase: the starter is the *unconditional skeleton*; conditional Route A is that skeleton with a condition slot and a real decoder. (Completing the flow prior *itself* into a conditional model — rather than only conditioning the decoder — is exactly what [Part 9](09-conditional-flow-prior.md) does, once the routes are all on the table.)
 
 ---
 

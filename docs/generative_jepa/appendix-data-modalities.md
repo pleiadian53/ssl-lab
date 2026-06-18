@@ -2,7 +2,7 @@
 
 *Optional background. The series uses bio and health data as worked examples; this page explains those modalities from scratch so the examples land. If you already know single-cell RNA-seq, EHR codes, or wearable streams, skip it — nothing here is needed for the machine-learning ideas, only for the examples that illustrate them.*
 
-The generative-JEPA design space is **modality-agnostic** — the routes care about latents, priors, and decoders, not about what the data *is*. But abstract routes are hard to learn from, so the chapters anchor each idea in a concrete domain: single-cell gene expression (Part 6's count decoder, Part 10's perturbation application) and continuous health monitoring (Part 11's diabetes world model). Those domains carry vocabulary an ML reader may not have met. This appendix supplies the minimum, in plain terms, with a pointer back to where each piece is used.
+The generative-JEPA design space is **modality-agnostic** — the routes care about latents, priors, and decoders, not about what the data *is*. But abstract routes are hard to learn from, so the chapters anchor each idea in a concrete domain: single-cell gene expression (Part 6's count decoder, Part 11's perturbation application) and continuous health monitoring (Part 12's diabetes world model). Those domains carry vocabulary an ML reader may not have met. This appendix supplies the minimum, in plain terms, with a pointer back to where each piece is used.
 
 ---
 
@@ -68,7 +68,7 @@ A slice of a diabetic patient's record (the format used in the [diabetes world-m
 
 **The one-sentence version.** Wearables and medical sensors produce dense, continuously-sampled physiological time series — the raw material of "digital phenotyping."
 
-Examples used in [Part 11](11-application-digital-phenotyping.md) and the [diabetes example](../operator_world_models/05-worked-example-diabetes.md): a **continuous glucose monitor (CGM)** reading blood sugar every five minutes; an insulin pen logging doses; a watch tracking steps, heart rate, and sleep; a scale logging weight. These streams are dense but **heterogeneous** (wildly different sampling rates), **irregular**, and **often missing** (people take the watch off). Handling that irregularity as the *native* input — rather than forcing everything onto a clean grid first — is itself part of the modeling challenge.
+Examples used in [Part 12](12-application-digital-phenotyping.md) and the [diabetes example](../operator_world_models/05-worked-example-diabetes.md): a **continuous glucose monitor (CGM)** reading blood sugar every five minutes; an insulin pen logging doses; a watch tracking steps, heart rate, and sleep; a scale logging weight. These streams are dense but **heterogeneous** (wildly different sampling rates), **irregular**, and **often missing** (people take the watch off). Handling that irregularity as the *native* input — rather than forcing everything onto a clean grid first — is itself part of the modeling challenge.
 
 > **A standing caveat for all health data.** Real CGM and EHR data are **protected health information (PHI)** — working with them means de-identification, consent or a waiver, an IRB, and secure handling. Every health example in this series uses **synthetic / illustrative** data and is **not** medical advice.
 
@@ -78,9 +78,9 @@ Examples used in [Part 11](11-application-digital-phenotyping.md) and the [diabe
 
 | Modality | Introduced here for… | Used in |
 |---|---|---|
-| **scRNA-seq counts** | the count decoder; effect size | [Part 6 §2](06-route-a-latent-decoder-head.md), [Part 5 §3](05-two-gaps-four-routes.md), [Part 10](10-application-computational-biology.md) |
-| **EHR codes** | the symbolic history modality | [Part 11](11-application-digital-phenotyping.md), [diabetes example](../operator_world_models/05-worked-example-diabetes.md) |
-| **Wearable / CGM streams** | dense physiological monitoring | [Part 11](11-application-digital-phenotyping.md), [diabetes example](../operator_world_models/05-worked-example-diabetes.md) |
+| **scRNA-seq counts** | the count decoder; effect size | [Part 6 §2](06-route-a-latent-decoder-head.md), [Part 5 §3](05-two-gaps-four-routes.md), [Part 11](11-application-computational-biology.md) |
+| **EHR codes** | the symbolic history modality | [Part 12](12-application-digital-phenotyping.md), [diabetes example](../operator_world_models/05-worked-example-diabetes.md) |
+| **Wearable / CGM streams** | dense physiological monitoring | [Part 12](12-application-digital-phenotyping.md), [diabetes example](../operator_world_models/05-worked-example-diabetes.md) |
 
 ---
 
