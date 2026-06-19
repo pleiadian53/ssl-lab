@@ -52,7 +52,7 @@ The starter closes the loop honestly; the roadmap is about lifting the ceiling a
 
 **Point it at a real modality.**
 
-- **A bio-modality adapter.** The core is modality-agnostic; only the patch/tokenizer adapter is image-specific. A gene-count or DNA-window adapter is the path back to genai-lab's **genomic generative models** — the reason this lab exists.
+- **A bio-modality adapter.** The core is modality-agnostic; only the patch/tokenizer adapter is image-specific. A gene-count or DNA-window adapter is the path to **genomic and single-cell generative models** — a central motivation for this work.
 
 **Mature the evaluation.**
 

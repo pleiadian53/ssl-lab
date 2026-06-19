@@ -30,9 +30,17 @@ Three properties of that count vector matter for *how you model it*, and they ar
 
 One more practical term: **library size**. Different cells yield different *total* counts — some cells are sequenced more deeply than others — purely as a technical matter. A cell's library size $\ell$ is its total captured counts. Because it is a technical nuisance, models separate "the *shape* of a cell's expression" (a profile over genes that sums to one) from "how deeply it was sequenced" ($\ell$), and reconstruct the count mean as profile $\times \ell$. That is exactly the softmax-rate-times-library-size construction in Part 6.
 
-### The perturbation setup (used in Parts 5, 10)
+### The perturbation setup (used across the routes)
 
-Much of the biology in this series is about **perturbations**: you take a **baseline** (control) cell, apply something — knock out a gene, add a drug — and ask what the cell becomes. Comparing the perturbed cell to the baseline, gene by gene, gives the **change** in expression, called **differential expression**; the magnitude-and-pattern of that change is the perturbation's **effect size**. [Part 5 §3](05-two-gaps-four-routes.md) explains why effect size — the *change*, not the *after-state* — is the hard and important target, and why a model can ace the latent yet miss it.
+Much of the biology in this series is about **perturbations**, so here is the whole setup from scratch — assume no prior exposure to it. You start with a **baseline** (control) cell — its gene-count vector — and you **apply something** to it: knock out a gene, add a drug, over-express a gene, or some combination. The cell responds, and you measure it again; call that the **perturbed** cell. Three facts make this a *generative* problem rather than a lookup:
+
+- **The task is prediction.** The goal the models in this series pursue is to **predict the perturbed cell from the baseline cell and the perturbation** — "given this control cell and *this* drug, what does the cell become?" — *without* having run the experiment. That is conditional generation: baseline + perturbation → perturbed-cell expression.
+- **The response is a population, not a point.** Apply the *same* perturbation to many genetically identical cells and they respond *differently* (biology is stochastic). So the honest target is a whole **distribution** of perturbed cells — the cell-to-cell heterogeneity — which is exactly why a model that emits one profile is not enough (the "G1" gap of [Part 5](05-two-gaps-four-routes.md)).
+- **What you score is the *change*.** Comparing the perturbed cell to the baseline, gene by gene, gives the **change** in expression, called **differential expression**; the magnitude-and-pattern of that change is the perturbation's **effect size**. [Part 5 §3](05-two-gaps-four-routes.md) explains why effect size — the *change*, not the *after-state* — is the hard and important target, and why a model can ace the latent yet miss it.
+
+One inverse use shows up in [Part 10](10-route-d-world-model-planning.md): instead of "what does this perturbation do?", ask "**which** perturbation pushes a *diseased* cell toward a *healthy* target state?" — screening framed as a search over perturbations.
+
+> **Want the fuller treatment?** This series keeps the perturbation example just deep enough to illustrate the generative machinery. For a standalone, end-to-end guide to perturbation modeling — datasets (Perturb-seq), the established baselines (scGen, CPA, GEARS, scPPDM), and the VAE → JEPA → diffusion progression — see the companion [genai-lab perturbation-prediction guide](https://github.com/pleiadian53/genai-lab/blob/main/docs/applications/perturbation_prediction.md). It is an optional reference, not a prerequisite.
 
 ### A tiny worked example
 

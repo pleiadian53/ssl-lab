@@ -44,7 +44,7 @@ $$
 \frac{dz}{dt} = v_\eta(z, t, c), \qquad z(0) \sim \mathcal{N}(0, I), \qquad z^{*} = z(1).
 $$
 
-Fix $c$, release a noise sample, follow the (now $c$-steered) arrows, and you arrive at a latent drawn from $p(z \mid c)$ instead of the lumped-together $p(z)$. That is the conditional flow prior, in full. The apology is gone: this model answers "what latent, *given* $c$?"
+Fix $c$, release a noise sample, follow the (now $c$-steered) arrows, and you arrive at a latent drawn from $p(z \mid c)$ instead of the lumped-together $p(z)$. That is the conditional flow prior, in full: integrated with the JEPA encoder, it gives us a **conditional generative JEPA** that answers not merely "what latent?" but "what latent, *given* $c$?" — generation steered by the condition we hand it.
 
 ```mermaid
 flowchart LR
@@ -64,7 +64,7 @@ flowchart LR
 
 The condition $c$ is the same conditioning vocabulary [Part 7](07-route-b-variational-and-beyond-gaussian.md) introduced: a **context** $z_b$ (the "before" — a baseline cell's latent, a person's current state) and an **intervention** $z_p$ (the drug, the action), so $c = (z_b, z_p)$.
 
-**Worked example.** Train on pairs: for each (control cell, drug) you have the *perturbed* cell, encode it to its latent $z_1$, and tag it with $c = (z_b, z_p) = $ (the control cell's latent, the drug's embedding). The flow learns to transport noise onto the distribution of *perturbed-cell latents given that baseline and drug*. At generation, fix $c = $ (this patient's cell, "drug X"), sample noise, integrate to a latent, and decode (an NB count head, [Part 6](06-route-a-latent-decoder-head.md)) to a gene-count profile. Re-sample the noise and you get a *different* plausible profile — a thousand draws simulate the responding-cell population. And because a flow can bend noise into (almost) any shape, that population can be genuinely **multimodal** — the two-fates response a single Gaussian could not represent ([Part 7 §3](07-route-b-variational-and-beyond-gaussian.md)) — with whatever correlations the data carry.
+**Worked example.** Train on pairs: for each (control cell, drug) you have the *perturbed* cell, encode it to its latent $z_1$, and tag it with $c = (z_b, z_p) = $ (the control cell's latent, the drug's embedding). The flow learns to transport noise onto the distribution of *perturbed-cell latents given that baseline and drug*. At generation, fix $c = $ (this patient's cell, "drug X"), sample noise, integrate to a latent, and decode (an NB count head, [Part 6](06-route-a-latent-decoder-head.md)) to a gene-count profile. Re-sample the noise and you get a *different* plausible profile — a thousand draws simulate the responding-cell population. And because a flow can bend noise into (almost) any shape, that population can be genuinely **multimodal** — the two-fates response, where divergent developmental paths land at outcome X or outcome Y, which a single Gaussian could not represent ([Part 7 §3](07-route-b-variational-and-beyond-gaussian.md)) — with whatever correlations the data carry.
 
 ---
 
@@ -111,6 +111,18 @@ For completeness, in the now-familiar terms:
 - **G2 (decoder to data)** — closed by a decoder on the sampled latent (NB/ZINB for counts), so the model emits data and **effect sizes are recoverable** ([Part 5 §3](05-two-gaps-four-routes.md)). The flow can equally run in data space directly; latent-space-plus-decoder is the cheaper default.
 
 And the honest notes, unchanged in spirit from the rest of the series: structurally this is *latent flow-matching generation with JEPA as encoder pretraining* — a strong, modern stack whose generative power is the flow's; JEPA contributes the representation the flow is conditioned on, and you must **show** that conditioning on a JEPA latent earns its keep over a cheaper representation. On the open likelihood question ([Part 5 §5](05-two-gaps-four-routes.md)), the flow is in the same place as Route C: an in-principle density via its ODE, broken in *data* space by any decoder that sits after the flow.
+
+### Does the encoder know about the condition?
+
+A natural question, and the answer sharpens what "integrated with the JEPA encoder" actually means. In the freeze-then-add design above, **the encoder does not know about the condition.** It was trained purely self-supervised on *states* (Parts 0–4), then frozen; it produces the context $z_b$ but never sees the intervention $z_p$. All the conditioning lives *downstream*, in the flow prior's velocity field $v_\eta(z, t, c)$. That is deliberate — it keeps the encoder a pure, reusable representation that no generative gradient can disturb (the modularity virtue of §5).
+
+But "aware of the condition" is a **dial**, not a yes/no, and it is worth knowing the settings, because they are the difference between this chapter and where the broader work is heading:
+
+- **Joint training.** Stop freezing, and let the conditional generative loss backpropagate into the encoder; the representation is then shaped by the conditional task. This is the freeze-vs-joint dial from [Route A §4](06-route-a-latent-decoder-head.md) and [Route B §6](07-route-b-variational-and-beyond-gaussian.md): awareness gained, at the cost of the encoder drifting from pure SSL (the collapse risk).
+- **Condition injection.** Feed $c$ into the encoder itself (via FiLM or cross-attention) so its output depends on the intervention — a "state-*under-condition*" encoder rather than a pure "state" encoder.
+- **Conditional pretraining — the deepest setting, and where this series is heading.** Make the *self-supervised task itself* conditional: pretrain the encoder with a predictor conditioned on an **action**, trained to predict the *next* latent $z'$ from the current latent $z$ and that action. The encoder then learns, from the start, a representation in which conditioning is *native* — it is aware because the pretraining required it. This is exactly the **operator world model**: there an action is read as an *operator* that triggers the transition $z \to z'$ in latent space, and the JEPA predictor *is* that conditioned transition. (See [Part 10 — Route D](10-route-d-world-model-planning.md), and the [Operator World Models](../operator_world_models/index.md) series — in particular [conditioning JEPA on actions](../operator_world_models/03-conditioning-jepa-on-actions.md), where the predictor becomes an action-configured operator $f_{\theta(c)}$ carrying the latent from $z$ to $z'$.)
+
+So the conditional flow prior of this chapter sits at the **decoupled** end of that dial — encoder condition-blind, conditioning bolted on downstream — while the operator world model sits at the **native** end, where conditioning *is* the substrate the encoder is built on. Both are legitimate; which you want depends on whether the conditioning structure is incidental to the representation or central to it. (This chapter generates *data given a condition*; the operator world model uses an aware encoder to predict *the next state under an action* — the seam to the final route.)
 
 ---
 

@@ -10,13 +10,13 @@ We start with Route A precisely *because* it is the most obvious move, and obvio
 
 ## 1. The mechanism — decode the predicted latent
 
-Recall the vanilla JEPA predictor. Given the encoded context $z_{\text{ctx}}$ and a condition (a class, a perturbation, an intervention — whatever you are generating *given*), it returns a single latent:
+Recall JEPA's predictor. In standard (non-generative) JEPA it takes the context and a **query** — a pointer to *what* or *where* to predict (the masked region to fill in, or how far ahead to look) — and returns the target latent. To *generate*, we put that query slot to a new use: instead of a position, we feed it the **condition** we want to generate *under* (a class, a perturbation, an intervention), so the predictor returns the latent that follows from that condition:
 
 $$
 \hat z = g_\phi(z_{\text{ctx}}, \text{condition}).
 $$
 
-Route A adds exactly one thing — a decoder on the end:
+(Conditioning the predictor's query on an external action like this — rather than on a masked position — is the generalization every route in this half of the series is built on; standard JEPA never sees the condition.) Route A then adds exactly one thing — a decoder on the end:
 
 $$
 \tilde x = D_\omega(\hat z).

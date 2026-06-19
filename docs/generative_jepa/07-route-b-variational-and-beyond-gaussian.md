@@ -1,19 +1,23 @@
 # Part 7 — Route B: variational JEPA, and the trouble with Gaussian
 
-*The predictor stops guessing one latent and starts emitting a whole distribution — becoming, in the bargain, its own conditional prior. The most principled route of the four, and the place the Gaussian assumption finally has to be confronted.*
+*The most principled route of the four — and the place the Gaussian assumption finally has to be confronted.*
 
 > **Recap — where this sits.** [Part 5](05-two-gaps-four-routes.md) mapped four routes; [Part 6](06-route-a-latent-decoder-head.md) built Route A (bolt a decoder on the predicted latent) and left two soft spots: its stochasticity was *unimodal* (a single Gaussian predictor), and its prior was *unprincipled* (stochasticity bolted on ad hoc). Route B repairs both by making the predictor **variational** — it emits a distribution, derived from a coherent objective. New vocabulary (posterior, prior, KL, the reparameterization trick) is defined as it arrives; the [notation reference](notation.md) collects every symbol. If "perturbation" or "differential expression" is unfamiliar, the [data-modalities primer](appendix-data-modalities.md) covers them.
 
-At the end of Route A we noticed that the cheapest way to make the predictor stochastic — have it emit a Gaussian and sample — was already standing on the doorstep of a more principled route. This chapter walks through that door. Route B takes the idea seriously: the predictor emits a **posterior** over the next latent, and that posterior, trained against a learnable **prior**, *is* the generative model — nothing bolted on afterward. It is the cleanest theory of the four. It is also where the Gaussian assumption, convenient everywhere so far, finally has to be examined — because in Route B the posterior's *shape* is the model's expressiveness, and a Gaussian's shape is exactly the thing that limits it.
+Let us pick up the thread. [Route A](06-route-a-latent-decoder-head.md) closed both gaps the cheapest way — decode the predicted latent, and make it stochastic — but the stochasticity was *improvised*: the simplest way to get it was to have the predictor emit a Gaussian and sample, with no principled account of *what distribution* the latent should actually follow. That works, and it was the right first step, but it is unsatisfying. A generative model ought to *state* its latent distribution and derive its randomness from a coherent objective, not approximate one by reflex — and, as Route A flagged, an improvised single Gaussian is both unimodal and bolted-on rather than derived. That dissatisfaction is exactly what the next route answers.
+
+Route B is where the predictor stops guessing a single latent and starts emitting a **whole distribution** — and, in the bargain, becomes its own **conditional prior**: the posterior it emits, trained against a learnable prior, *is* the generative model, with nothing bolted on afterward. That makes it the cleanest theory of the four. It is also where the Gaussian assumption, convenient everywhere so far, finally has to be confronted — because in Route B the posterior's *shape* is the model's expressiveness, and a Gaussian's shape is exactly the thing that limits it.
 
 ---
 
 ## 1. The single change — the predictor emits a distribution
 
-Recall the vanilla JEPA predictor: given the encoded context and a condition, it returns one latent, $\hat z = g_\phi(z_{\text{b}}, z_{\text{p}})$. Here we name the two inputs, because Route B is conditional by design:
+From [Part 5](05-two-gaps-four-routes.md) and [Route A](06-route-a-latent-decoder-head.md) we have the predictor's general shape: it takes a context and a condition and returns the next latent, $\hat z = g_\phi(z_{\text{ctx}}, \text{condition})$. So far "condition" has been left abstract. Route B commits fully to the *conditional* setting, so this is the moment to give those two inputs concrete names — the conditioning vocabulary [Part 5](05-two-gaps-four-routes.md) said would arrive here. The conditional setting is easy to picture: a state you start from, and an intervention applied to it.
 
-- $z_{\text{b}}$ — the **context** (the "before"): the encoded state you start from. In biology, the baseline (control) cell $z_b = f_\theta(x_b)$; in the diabetes example, the person's current metabolic latent. The subscript $b$ reads "baseline."
-- $z_{\text{p}}$ — the **condition** (the "what we did"): a learned embedding $z_p = e(p)$ of the intervention $p$ — a drug, a knocked-out gene, a logged action. ($e$ is a small learned embedding, the same trick word embeddings use for tokens.)
+- $z_b$ — the **context** (the "before"): the encoded state you start from — the same role Parts 5–6 called $z_{\text{ctx}}$, now written $z_b$. In biology, the baseline (control) cell, $z_b = f_\theta(x_b)$; in the diabetes example, the person's current metabolic latent. The subscript $b$ reads "baseline."
+- $z_p$ — the **condition / intervention** (the "what we did"): a learned embedding $z_p = e(p)$ of the intervention $p$ — a drug, a knocked-out gene, a logged action. ($e$ is a small learned embedding, the same trick word embeddings use for tokens.)
+
+With those names in hand, the conditioned predictor is $\hat z = g_\phi(z_b, z_p)$ — the *same* predictor, with the abstract "condition" now spelled out as the (baseline, intervention) pair.
 
 Route B changes one thing about the predictor's *output*. Instead of a single latent, it emits the **parameters of a distribution** over the next latent. In the simplest, Gaussian form, that is a mean and a (log-)variance:
 
@@ -84,7 +88,7 @@ This is the heart of the chapter. The Gaussian posterior is the textbook default
 
 > **The real defect.** A diagonal Gaussian is **unimodal per condition**. For one *fixed* context-and-condition $(z_b, z_p)$ it can place only a **single bump** of probability. When the truth has *two* plausible outcomes for that one condition, the Gaussian cannot represent both — it centers a single bump *between* them, predicting a state that is **neither**.
 
-**Worked example — the failure in one picture.** A drug drives some cells toward fate X and others toward fate Y — a genuinely **bimodal** response (this is common; cells at a decision point commit to different lineages). The true outcome distribution has two peaks. A single Gaussian, forced to cover both with one bump, sits in the valley *between* the peaks — assigning highest probability to a cell state that essentially never occurs.
+**Worked example — the failure in one picture.** Picture a drug that pushes a cell to a *decision point* — a fork from which two different developmental **trajectories** branch, one ending at fate X, the other at fate Y. Identical cells go one way or the other (this is common; cells at a lineage branch commit to one path or the other), so the distribution of *outcomes* has two distinct peaks: it is genuinely **bimodal**. A single Gaussian, forced to cover both peaks with one bump, sits in the valley *between* them — assigning its highest probability to a cell state that lies on neither path and essentially never occurs. (The two diverging *paths* are the underlying cause; what the predictor must represent here is the two-peaked distribution of where they *end up* — the trajectory itself is what the temporal world model would roll out, [§6 of Part 9](09-conditional-flow-prior.md).)
 
 ```mermaid
 flowchart LR
