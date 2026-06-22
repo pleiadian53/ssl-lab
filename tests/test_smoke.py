@@ -69,6 +69,45 @@ def test_flow_roundtrip():
     assert samples.shape == (10, dim) and torch.isfinite(samples).all()
 
 
+def test_conditional_flow():
+    dim, cond_dim, b = 16, 8, 32
+    v = VelocityMLP(data_dim=dim, hidden=64, n_layers=2, cond_dim=cond_dim)
+    z1 = torch.randn(b, dim)
+    c = torch.randn(b, cond_dim)
+
+    # Conditional CFM loss is finite and trains the condition path (cond_mlp + null token).
+    loss = cfm_loss(v, z1, c=c, p_drop=0.2)
+    assert torch.isfinite(loss)
+    loss.backward()
+    assert v.cond_mlp[0].weight.grad is not None and torch.isfinite(v.cond_mlp[0].weight.grad).all()
+    assert v.null_cond.grad is not None  # dropout exercised the null token
+
+    # Fixed-condition sampling returns the right shape, with and without guidance.
+    s = euler_sample(v, n=10, dim=dim, n_steps=8, c=torch.randn(10, cond_dim))
+    assert s.shape == (10, dim) and torch.isfinite(s).all()
+    s_cfg = euler_sample(v, n=10, dim=dim, n_steps=8, c=torch.randn(10, cond_dim), guidance=2.0)
+    assert s_cfg.shape == (10, dim) and torch.isfinite(s_cfg).all()
+
+    # The condition actually steers the field: different c -> different velocity.
+    z_t, t = torch.randn(4, dim), torch.rand(4)
+    c0, c1 = torch.zeros(4, cond_dim), torch.ones(4, cond_dim)
+    with torch.no_grad():
+        assert not torch.allclose(v(z_t, t, c0), v(z_t, t, c1))
+
+
+def test_conditional_flow_guards_mismatch():
+    # Unconditional field rejects a condition; conditional field requires one.
+    uncond = VelocityMLP(data_dim=8, hidden=32, n_layers=1)
+    cond = VelocityMLP(data_dim=8, hidden=32, n_layers=1, cond_dim=4)
+    z_t, t = torch.randn(2, 8), torch.rand(2)
+    import pytest
+
+    with pytest.raises(ValueError):
+        uncond(z_t, t, torch.randn(2, 4))
+    with pytest.raises(ValueError):
+        cond(z_t, t)
+
+
 def test_decoder_shape():
     dec = LatentDecoder(latent_dim=128)
     out = dec(torch.randn(8, 128))
