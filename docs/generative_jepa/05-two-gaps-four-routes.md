@@ -47,16 +47,18 @@ Four routes span the space. Read each as a mechanism — *how it closes G1, how 
 
 | Route | The idea in one line | Closes G1 by… | Closes G2 by… | Landmark |
 |---|---|---|---|---|
-| **A — Latent decoder head** | bolt a decoder onto the predicted latent; make the predictor or decoder stochastic | a stochastic predictor / decoder | a decoder $D_\omega$ (count-aware for biology) | the conditional-VAE / NB-decoder family |
+| **A — Latent decoder head** | bolt a decoder onto the predicted latent; make the **latent** stochastic | a stochastic *latent* — a stochastic predictor, or a sampled prior † | a decoder $D_\omega$ (count-aware for biology) | the conditional-VAE / NB-decoder family |
 | **B — Variational JEPA** | the predictor emits a *posterior* over latents and *becomes* the conditional prior | a learned posterior $q_\phi(z\mid \text{ctx}, c)$ + sampling | a decoder (in representation or data space) | **Var-JEPA** |
 | **C — Representation-conditioned diffusion** | keep JEPA as the encoder; train a *separate* diffusion model conditioned on its latent | diffusion noise | the diffusion model decodes to data | **D-JEPA** |
 | **D — World-model planning** | freeze the encoder, learn an *action-conditioned* predictor, and *plan* over actions | — (not directly) | — (not directly) | **V-JEPA 2-AC** |
+
+† A clarification worth flagging now, since Route A's G1 has a tempting wrong turn: you *can* leave the predicted latent fixed and make only the **decoder** stochastic — but that yields just *measurement noise* on a single cell state (the same state, re-rolled), not genuinely *different* outcomes. Honest G1 — a real population of distinct responses — needs the **latent** to vary. [Part 6 §3](06-route-a-latent-decoder-head.md) makes the distinction (observation noise vs. outcome heterogeneity) precise.
 
 Two things to notice immediately, because they shape how to read the deep-dives.
 
 **Routes A–C produce *data*; Route D produces *decisions*.** A, B, and C all end at a generated data point — an image, an expression profile, a future trajectory. Route D is generative in a different sense: it searches the space of *actions* (which drug, which intervention) to reach a goal state, and emits the **intervention**, not the data. It does not close G1 or G2 by itself — it sits *on top of* a route that does. So D is complementary, not a competitor; it is the planning layer the applications will want once a predictor exists.
 
-**The current series is a stripped-down hybrid of A and C.** A marginal flow prior + a decoder is "Route C's machinery (a flow/diffusion-style prior over the latent) used unconditionally, with Route A's plain decoder." Seeing that is the point of the map: the starter is not *outside* the design space, it is one humble corner of it, and the routes are what you reach by adding **conditioning** and **structure**.
+**The Parts 0–4 starter is a stripped-down hybrid of A and C.** A marginal flow prior + a decoder is "Route C's machinery (a flow/diffusion-style prior over the latent) used unconditionally, with Route A's plain decoder." Seeing that is the point of the map: the starter is not *outside* the design space, it is one humble corner of it, and the routes are what you reach by adding **conditioning** and **structure**.
 
 ```mermaid
 flowchart TD

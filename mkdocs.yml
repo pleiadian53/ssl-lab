@@ -76,6 +76,16 @@ nav:
       - 2 · The latent prior: generative_jepa/02-the-latent-prior.md
       - 3 · The decoder: generative_jepa/03-the-decoder.md
       - 4 · Sampling and evaluation: generative_jepa/04-sampling-and-evaluation.md
+      - 5 · Two gaps, four routes: generative_jepa/05-two-gaps-four-routes.md
+      - 6 · Route A — a decoder on the latent: generative_jepa/06-route-a-latent-decoder-head.md
+      - 7 · Route B — variational JEPA and the trouble with Gaussian: generative_jepa/07-route-b-variational-and-beyond-gaussian.md
+      - 8 · Route C — representation-conditioned diffusion: generative_jepa/08-route-c-conditioned-diffusion.md
+      - 9 · The conditional flow prior: generative_jepa/09-conditional-flow-prior.md
+      - 10 · Route D — world-model planning: generative_jepa/10-route-d-world-model-planning.md
+      - 11 · Application — computational biology: generative_jepa/11-application-computational-biology.md
+      - 12 · Application — digital phenotyping: generative_jepa/12-application-digital-phenotyping.md
+      - "13 · Discussion — choosing a route to build": generative_jepa/13-choosing-a-route.md
+      - "Appendix — data-modalities primer": generative_jepa/appendix-data-modalities.md
       - Notation reference: generative_jepa/notation.md
   - Time-Series JEPA:
       - Overview: time_series_jepa/index.md

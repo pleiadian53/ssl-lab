@@ -38,13 +38,32 @@ This is the recipe that, in vision, underlies "encode with a strong representati
 
 ## Reading order
 
+The series has **two halves**. **Parts 0–4** build one complete generative model end-to-end — the simplest thing that closes the loop (a flow prior + decoder on a frozen JEPA encoder), the *worked example* the rest opens from. **Parts 5–13** are the **design-space survey**: the full set of ways to make JEPA generative, the two applications they were built for, and a closing discussion of which route to build first.
+
+*The starter (build one, end-to-end):*
+
 | Part | Stage | What you get |
 |---|---|---|
 | **[0 — Generative models, and why JEPA](00-generative-models-and-why-jepa.md)** | background | what a generative model *is*, the latent-variable recipe, and why JEPA is a good substrate — no prior familiarity assumed |
 | **[1 — The JEPA encoder](01-the-jepa-encoder.md)** | encode | predict embeddings not pixels; masking, the EMA target, and why collapse is the thing to watch |
 | **[2 — The latent prior](02-the-latent-prior.md)** | sample latents | rectified flow over frozen $z$: the interpolant, the conditional flow-matching loss, ODE sampling |
 | **[3 — The decoder](03-the-decoder.md)** | latents to data | $D_\omega: z \to x$ on frozen latents, and the decodability caveat this route makes honest |
-| **[4 — Sampling and evaluation](04-sampling-and-evaluation.md)** | generate + judge | close the loop, then *measure* sample quality without eyeballing — and where to go next |
+| **[4 — Sampling and evaluation](04-sampling-and-evaluation.md)** | generate + judge | close the loop, then *measure* sample quality without eyeballing |
+
+*The design-space survey (the full set of routes, and what they are for):*
+
+| Part | Stage | What you get |
+|---|---|---|
+| **[5 — Two gaps, four routes](05-two-gaps-four-routes.md)** | the map | the two gaps (G1, G2) every generative JEPA must close, and the four routes that pair them — **start of the survey** |
+| **[6 — Route A: a decoder on the latent](06-route-a-latent-decoder-head.md)** | route | the lowest-friction closure; count-aware NB/ZINB decoders (likelihood written out), and the CVAE-collapse honesty |
+| **[7 — Route B: variational JEPA](07-route-b-variational-and-beyond-gaussian.md)** | route | the predictor becomes its own conditional prior; the Gaussian critique and the expressive-posterior ladder |
+| **[8 — Route C: conditioned diffusion](08-route-c-conditioned-diffusion.md)** | route | diffusion from scratch, conditioned on the JEPA latent; the most modular, most expressive route |
+| **[9 — The conditional flow prior](09-conditional-flow-prior.md)** | synthesis | the starter made conditional — one model that is Route B's flow posterior and Route C-with-flow at once |
+| **[10 — Route D: world-model planning](10-route-d-world-model-planning.md)** | route | generate *decisions*, not data: plan over actions toward a goal; the bridge to operator world models |
+| **[11 — Application: computational biology](11-application-computational-biology.md)** | application | the routes assembled for perturbation response, where **effect size** is the benchmark |
+| **[12 — Application: digital phenotyping](12-application-digital-phenotyping.md)** | application | a personalized, controllable diabetes world model — sampling future trajectories under an intervention |
+| **[13 — Discussion: choosing a route to build](13-choosing-a-route.md)** | discussion | which route to implement first, and why — a reasoned, *goal-contingent* recommendation, trade-offs kept live |
+| **[Appendix — data-modalities primer](appendix-data-modalities.md)** | background | scRNA-seq, EHR codes, wearable streams — from scratch, for readers without a bio background |
 
 New to the symbols? The [notation reference](notation.md) defines every one.
 
@@ -54,4 +73,4 @@ Each chapter points at the runnable code in [`examples/generative_jepa/`](https:
 
 ---
 
-*New to generative modeling or JEPA? Start with [Part 0 — Generative models, and why JEPA](00-generative-models-and-why-jepa.md). Already comfortable with latent-variable generative models? Jump to [Part 1 — The JEPA encoder](01-the-jepa-encoder.md).*
+*New to generative modeling or JEPA? Start with [Part 0 — Generative models, and why JEPA](00-generative-models-and-why-jepa.md). Already comfortable with latent-variable generative models? Jump to [Part 1 — The JEPA encoder](01-the-jepa-encoder.md). Already know the starter and want the full design space? Go straight to [Part 5 — Two gaps, four routes](05-two-gaps-four-routes.md).*

@@ -96,7 +96,7 @@ So Route D is not a rival to A/B/C; it is a **layer on top of them**. The data-r
 
 ## 5. The bridge to operator world models — and a notation reconciliation
 
-This is the moment the generative-JEPA series meets the [Operator World Models](../operator_world_models/index.md) series, because Route D's central object — an **action-conditioned predictor** that carries a latent state to its successor under an action — is *exactly* what that series calls an **action operator**.
+This is the moment the generative-JEPA series meets the [Operator World Models](../operator_world_models/index.md) series — an **active, still-developing companion line** in this project — because Route D's central object, an **action-conditioned predictor** that carries a latent state to its successor under an action, is *exactly* what that series calls an **action operator**.
 
 Look at the two descriptions side by side. Here we write the conditioned predictor $g_\phi(z, c)$ and read it "from state $z$ under action $c$, predict $z'$." The operator-world-models series writes the same transformation as $f_{\theta(c)}(z)$ — an operator *configured by* the action $c$ — and gives it explicit structure, $f_{\theta(c)}(z) = \exp(M_{\theta(c)}) z + b$, so that it is invertible, composable, and has an inspectable spectrum. The two are the same arrow $z \to z'$; the operator view simply adds algebraic structure to the predictor and a policy that *chooses* the action.
 
