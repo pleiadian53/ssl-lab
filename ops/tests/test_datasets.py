@@ -38,6 +38,38 @@ def test_link_dataset_creates_symlink(tmp_path, monkeypatch):
     assert link2.is_symlink()
 
 
+def test_link_dataset_nested_flat_alias(tmp_path, monkeypatch):
+    # A modality-nested lake path produces a flat local alias (the basename).
+    lake = tmp_path / "lake"
+    ds = lake / "scrna" / "perturb_seq" / "norman2019"
+    ds.mkdir(parents=True)
+    (ds / "manifest.json").write_text("{}")
+    local = tmp_path / "proj" / "data"
+    monkeypatch.setenv(DATA_ROOT_ENV, str(lake))
+
+    link = link_dataset("scrna/perturb_seq/norman2019", data_dir=local)
+    assert link == local / "norman2019"  # flat alias, not nested
+    assert link.is_symlink()
+    assert link.resolve() == ds.resolve()
+    assert (link / "manifest.json").read_text() == "{}"
+
+
+def test_link_dataset_nested_mirror_link_name(tmp_path, monkeypatch):
+    # link_name can mirror the nesting locally; intermediate dirs are created.
+    lake = tmp_path / "lake"
+    ds = lake / "scrna" / "perturb_seq" / "norman2019"
+    ds.mkdir(parents=True)
+    local = tmp_path / "data"
+    monkeypatch.setenv(DATA_ROOT_ENV, str(lake))
+
+    link = link_dataset(
+        "scrna/perturb_seq/norman2019", data_dir=local,
+        link_name="scrna/perturb_seq/norman2019",
+    )
+    assert link == local / "scrna" / "perturb_seq" / "norman2019"
+    assert link.is_symlink() and link.resolve() == ds.resolve()
+
+
 def test_link_dataset_missing_lake(tmp_path, monkeypatch):
     monkeypatch.delenv(DATA_ROOT_ENV, raising=False)
     with pytest.raises(RuntimeError):

@@ -6,11 +6,20 @@ project-neutral place — a "data lake" — and be referenced by symlink, not
 duplicated. The lake's location is the env var ``SSLLAB_DATA_ROOT`` so it never
 gets baked into config or coupled to another project's name.
 
+The lake follows a ``<modality>/<sub-topic>/<dataset>`` layout (e.g.
+``scrna/perturb_seq/norman2019``), so datasets stay organized as the lake grows.
+A dataset's lake path is its identity; the local symlink defaults to a *flat*
+alias (the basename) so project code refers to it by a short name.
+
 Typical use::
 
-    export SSLLAB_DATA_ROOT=~/work/_datalake     # or an existing shared store
+    export SSLLAB_DATA_ROOT=~/work/data          # or an existing shared store
+    # flat dataset:
     python -c "from ops.datasets import link_dataset; link_dataset('GRCh38')"
     # creates  data/GRCh38 -> $SSLLAB_DATA_ROOT/GRCh38
+    # nested (modality) dataset -> flat local alias:
+    python -c "from ops.datasets import link_dataset; link_dataset('scrna/perturb_seq/norman2019')"
+    # creates  data/norman2019 -> $SSLLAB_DATA_ROOT/scrna/perturb_seq/norman2019
 
 Local-only data (e.g. MNIST) needs none of this — it just lives in ``data/``.
 """
@@ -34,13 +43,21 @@ def link_dataset(
     data_dir: str | Path = "data",
     root: str | Path | None = None,
     overwrite: bool = True,
+    link_name: str | None = None,
 ) -> Path:
     """Symlink one shared dataset from the lake into the local data dir.
 
-    Creates ``<data_dir>/<name> -> <root>/<name>`` where ``root`` defaults to
-    ``$SSLLAB_DATA_ROOT``. Idempotent: re-linking refreshes the symlink. Only the
-    named dataset is linked — never the whole tree — so the dependency on the
-    shared lake stays explicit and minimal.
+    ``name`` is the dataset's path *within the lake* — flat (``"GRCh38"``) or
+    nested by modality (``"scrna/perturb_seq/norman2019"``). The local symlink is
+    created at ``<data_dir>/<link_name>``; ``link_name`` defaults to the basename
+    of ``name``, so a nested lake path produces a *flat* local alias
+    (``data/norman2019 -> <root>/scrna/perturb_seq/norman2019``). Pass
+    ``link_name`` to mirror the nesting locally (e.g. another project's
+    convention) — intermediate dirs are created.
+
+    ``root`` defaults to ``$SSLLAB_DATA_ROOT``. Idempotent: re-linking refreshes
+    the symlink. Only the named dataset is linked — never the whole tree — so the
+    dependency on the shared lake stays explicit and minimal.
 
     Returns the path of the created symlink.
     """
@@ -55,8 +72,8 @@ def link_dataset(
         raise FileNotFoundError(f"dataset {name!r} not found in lake: {src}")
 
     data_dir = Path(data_dir)
-    data_dir.mkdir(parents=True, exist_ok=True)
-    dst = data_dir / name
+    dst = data_dir / (link_name if link_name is not None else Path(name).name)
+    dst.parent.mkdir(parents=True, exist_ok=True)
 
     if dst.is_symlink() or dst.exists():
         if not overwrite:
