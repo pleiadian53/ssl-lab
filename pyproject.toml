@@ -12,12 +12,17 @@ dependencies = [
     "torch>=2.1",
     "torchvision>=0.16",
     "numpy",
+    "scipy",
     "scikit-learn",
     "matplotlib",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest"]
+# Single-cell perturbation pipeline (Phase 1+). Heavy, processing-time only:
+# imported inside examples/perturbation_response/00_process_norman.py, never by
+# the loader or tests' light path. Install with: pip install -e ".[perturb]"
+perturb = ["anndata>=0.10", "scanpy>=1.10", "scikit-misc>=0.3", "pertpy>=0.9"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

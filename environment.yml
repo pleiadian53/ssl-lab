@@ -15,8 +15,15 @@ dependencies:
   - pytorch>=2.1
   - torchvision>=0.16
   - numpy
+  - scipy
   - scikit-learn
   - matplotlib
+  # Single-cell perturbation processing (Phase 1+). Heavy; needed only to run
+  # examples/perturbation_response/00_process_norman.py, not for the loader/tests.
+  - anndata>=0.10
+  - scanpy>=1.10
+  - scikit-misc>=0.3          # seurat_v3 HVG flavor (raw-count highly-variable genes)
   - pip
   - pip:
       - -e .
+      - pertpy>=0.9
