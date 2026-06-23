@@ -21,6 +21,7 @@ def extract_latents(
     device: torch.device | str = "cpu",
     limit: int | None = None,
     patch: int = PATCH_SIZE,
+    prepare: Callable[[object, torch.device | str], tuple[torch.Tensor, torch.Tensor]] | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Run ``embed_fn`` over the loader, returning ``(Z, Y)``.
 
@@ -31,6 +32,12 @@ def extract_latents(
         (e.g. ``jepa.embed``).
     limit:
         Optional cap on the number of examples (fast smoke runs).
+    prepare:
+        Optional ``callable(batch, device) -> (tokens, labels)`` for non-image
+        modalities whose loader already yields tokenized batches (e.g. the
+        perturbseq dict batch: ``lambda b, d: (b["tokens"].to(d), b["pert_id"])``).
+        When ``None`` the loader is assumed to yield ``(images, labels)`` and
+        ``patchify`` is applied — the MNIST default (backward-compatible).
 
     Returns
     -------
@@ -39,12 +46,16 @@ def extract_latents(
     zs: list[torch.Tensor] = []
     ys: list[torch.Tensor] = []
     seen = 0
-    for images, labels in loader:
-        tokens = patchify(images.to(device), patch)
+    for batch in loader:
+        if prepare is None:
+            images, labels = batch
+            tokens = patchify(images.to(device), patch)
+        else:
+            tokens, labels = prepare(batch, device)
         z = embed_fn(tokens)
         zs.append(z.cpu())
         ys.append(labels.cpu())
-        seen += images.shape[0]
+        seen += tokens.shape[0]
         if limit is not None and seen >= limit:
             break
     Z = torch.cat(zs, dim=0)

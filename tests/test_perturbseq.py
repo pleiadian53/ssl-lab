@@ -28,6 +28,7 @@ from ssllab.data.perturbseq import (
     tokenize_cells,
     write_cache,
 )
+from ssllab.extract import extract_latents
 from ssllab.jepa.model import build_jepa
 
 
@@ -157,6 +158,28 @@ def test_control_sampler(tmp_path):
     assert idx.shape == (20,)
     assert bundle.is_control[idx.numpy()].all()
     assert (bundle.ctrl_group[idx.numpy()] == 0).all()
+
+
+def test_stage_a_wiring(tmp_path):
+    # Stage A: the perturbseq tokens drive a JEPA train step, and extract_latents
+    # pulls pooled cell latents through the prepare hook — no patchify, no images.
+    root = _toy_cache(tmp_path, n_hvg=40, n_tokens=8)
+    train, _, _ = get_perturbseq_dataloaders(data_dir=root, batch_size=16, split="combo", seed=0)
+    meta = train.meta
+    jepa = build_jepa(token_dim=meta["token_dim"], n_tokens=meta["n_tokens"],
+                      embed_dim=32, enc_depth=2, n_target=2, reg_coef=0.04)
+
+    batch = next(iter(train))
+    loss, comp = jepa(batch["tokens"])          # full SSL forward on cell tokens
+    assert torch.isfinite(loss) and loss.requires_grad
+    loss.backward()
+    assert 0.0 <= jepa.update_target(step=0, total=10) <= 1.0
+
+    def prepare(b, d):
+        return b["tokens"].to(d), b["pert_id"]
+
+    Z, Y = extract_latents(jepa.embed, train, device="cpu", limit=20, prepare=prepare)
+    assert Z.shape == (20, 32) and Y.shape == (20,)
 
 
 # --------------------------------------------------------------------------- #

@@ -2,7 +2,7 @@
 
 *Before any tensor, the biology. What experiment produced these numbers, what it means to "perturb" a cell, and why the condition the generative model is steered by is a gene — or a pair of genes — switched on.*
 
-> **Where we are.** This is the data the [generative JEPA](../../../docs/generative_jepa/index.md) learns to generate from. The model's job, stated biologically, is: *given an untreated cell and an intervention, predict the distribution of cell states that intervention produces.* To make sense of that sentence you need to know what the cells are, what an "intervention" physically is, and why we measure both single interventions and combinations. That is this chapter.
+> **Where we are.** This is the data the [generative JEPA](../../../docs/generative_jepa/index.md) learns to generate from. The model's job, stated biologically, is: *given an untreated cell and an intervention, predict the distribution of cell states that intervention produces.* To make sense of that sentence you need to know what the cell states are, what an "intervention" physically is, and why we measure both single interventions and combinations. That is this chapter.
 
 ---
 
