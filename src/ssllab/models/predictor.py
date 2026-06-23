@@ -67,5 +67,7 @@ class JEPAPredictor(nn.Module):
 
         x = torch.cat([ctx, mask], dim=1)
         x = self.trunk(x)
-        # Read out the target slots (the last T positions).
-        return x[:, c : c + t, :]
+        # Read out the target slots (the last T positions). ``.contiguous()`` because
+        # the slice is a non-contiguous view, which MPS rejects in the downstream
+        # loss (e.g. smooth_l1_loss); a no-op cost on CPU/CUDA.
+        return x[:, c : c + t, :].contiguous()

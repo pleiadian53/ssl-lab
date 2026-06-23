@@ -24,7 +24,7 @@ def effective_rank(z: torch.Tensor, eps: float = 1e-12) -> float:
 
     Ranges in ``[1, D]``; higher means the representation spans more directions.
     """
-    z = z.detach().float()
+    z = z.detach().float().cpu()  # svdvals isn't implemented on MPS; a tiny diagnostic, run on CPU
     zc = z - z.mean(dim=0, keepdim=True)
     # Singular values of the centered matrix.
     sv = torch.linalg.svdvals(zc)

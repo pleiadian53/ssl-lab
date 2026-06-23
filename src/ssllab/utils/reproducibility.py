@@ -2,8 +2,8 @@
 
 Mirrors the ``genai-lab`` ``utils/reproducibility.py`` API so the sibling
 projects share the same surface. CPU is the sensible local default for
-correctness; ``get_device("auto")`` upgrades to MPS (Apple) or CUDA when
-present.
+correctness; ``get_device("auto")`` upgrades to CUDA when present (e.g. a pod).
+MPS is deliberately NOT auto-selected — see ``get_device``.
 """
 
 from __future__ import annotations
@@ -40,13 +40,15 @@ def set_seed(seed: int = 42, deterministic: bool = False) -> None:
 def get_device(device: str = "auto") -> torch.device:
     """Resolve a torch device.
 
-    ``"auto"`` prefers CUDA, then MPS (Apple Silicon), then CPU. Any explicit
-    string (``"cpu"``, ``"cuda"``, ``"mps"``) is passed through unchanged.
+    ``"auto"`` prefers **CUDA** (e.g. a GPU pod), else **CPU**. MPS (Apple
+    Silicon) is *not* auto-selected: it has recurring operator gaps (e.g.
+    ``torch.linalg.svdvals`` is unimplemented; ``smooth_l1_loss`` rejects
+    non-contiguous tensors) that silently break training. Request it explicitly
+    as a last resort with ``device="mps"``. Any explicit string (``"cpu"``,
+    ``"cuda"``, ``"mps"``) is passed through unchanged.
     """
     if device == "auto":
         if torch.cuda.is_available():
             return torch.device("cuda")
-        if torch.backends.mps.is_available():
-            return torch.device("mps")
         return torch.device("cpu")
     return torch.device(device)
