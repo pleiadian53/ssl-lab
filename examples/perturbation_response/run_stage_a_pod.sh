@@ -31,17 +31,27 @@ exec > >(tee -a "output/$EXP/logs/train.log") 2>&1
 
 echo "[run_stage_a_pod] exp=$EXP data=$DATA_DIR artifact=$ARTIFACT epochs=$EPOCHS n_hvg=$N_HVG"
 
-# The base pod setup installs only core deps; processing Norman needs the heavy
-# single-cell stack. (pertpy pulls a large tree — one-time cost; the cache persists.)
-pip install anndata scanpy scikit-misc pertpy
-
 # Process Norman onto the (persistent) data dir, only if the cache is absent.
+# The heavy single-cell stack (pertpy/scanpy) is installed ONLY for processing —
+# it upgrades NumPy, which breaks the NGC image's torch (`torch.from_numpy:
+# "Numpy is not available"`). So we capture the torch-built NumPy first and
+# restore it before training. When the cache is already present, we skip all of
+# this and train in the clean base env.
 if [ ! -f "$DATA_DIR/$ARTIFACT/manifest.json" ]; then
   echo "[run_stage_a_pod] processing Norman -> $DATA_DIR/$ARTIFACT (first run)"
+  # pertpy upgrades the whole scientific stack (numpy/scipy/sklearn) to NumPy-2.x-era
+  # versions; torch (NGC, built vs numpy 1.26) and sklearn then break each other. Capture
+  # the base versions and restore ALL of them after processing, so training is clean.
+  NPV="$(python -c 'import numpy; print(numpy.__version__)')"
+  SPV="$(python -c 'import scipy; print(scipy.__version__)' 2>/dev/null || true)"
+  SKV="$(python -c 'import sklearn; print(sklearn.__version__)' 2>/dev/null || true)"
+  echo "[run_stage_a_pod] base stack: numpy=$NPV scipy=$SPV sklearn=$SKV (restored after processing)"
+  pip install anndata scanpy scikit-misc pertpy
   python examples/perturbation_response/00_process_norman.py \
     --source pertpy --data-dir "$DATA_DIR" --artifact "$ARTIFACT" --n-hvg "$N_HVG"
+  pip install --no-deps "numpy==$NPV" ${SPV:+"scipy==$SPV"} ${SKV:+"scikit-learn==$SKV"}
 else
-  echo "[run_stage_a_pod] cache present at $DATA_DIR/$ARTIFACT — skipping processing"
+  echo "[run_stage_a_pod] cache present at $DATA_DIR/$ARTIFACT — skipping processing + heavy install"
 fi
 
 A=(--experiment "$EXP" --data-dir "$DATA_DIR" --artifact "$ARTIFACT")
