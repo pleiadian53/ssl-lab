@@ -37,7 +37,7 @@ if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 from ssllab.data.perturbseq import SPLIT_TEST, load_cache
-from ssllab.eval.effect_size import delta_correlation, summarize
+from ssllab.eval.effect_size import run_effect_size_eval
 from ssllab.experiment import experiment
 from ssllab.generative.perturb import load_cond_flow, load_count_decoder, predicted_expression
 from ssllab.utils import get_device, set_seed
@@ -75,42 +75,27 @@ def main() -> None:
     cache = load_cache(Path(args.data_dir) / args.artifact)
 
     hvg = cache.hvg_X                                  # (N, G) normalized expression
-    names = np.asarray(cache.pert_names)
     split_col = cache.split_cells if args.split == "cells" else cache.split_combo
     control_mean = hvg[cache.is_control.astype(bool)].mean(0)
-    de = cache.de_genes["per_pert"]
     gen = torch.Generator().manual_seed(args.seed)
 
-    # Perturbations evaluable on this split: have DE genes + enough held-out cells.
-    per_pert: dict[str, float] = {}
-    n_genes = hvg.shape[1]
-    evaluable = [p for p in names if p != "control" and p in de]
-    if args.limit_perts:
-        evaluable = evaluable[: args.limit_perts]
+    def predict(pid: int, name: str):
+        return predicted_expression(bundle, decoder, pid, args.n,
+                                    guidance=args.guidance, steps=args.steps, device=device, generator=gen)
 
-    for name in evaluable:
-        pid = int(np.where(names == name)[0][0])
-        test_mask = (cache.pert_id == pid) & (split_col == SPLIT_TEST)
-        if int(test_mask.sum()) < args.min_test_cells:
-            continue
-        true_mean = hvg[test_mask].mean(0)
-        pred_mean = predicted_expression(bundle, decoder, pid, args.n,
-                                         guidance=args.guidance, steps=args.steps, device=device, generator=gen)
-        top_idx = [i for i in de[name]["top_idx"][: args.top_k] if i < n_genes]
-        per_pert[name] = delta_correlation(pred_mean, true_mean, control_mean, top_idx)
-
-    summary = summarize(per_pert)
+    per_pert, summary = run_effect_size_eval(
+        predict,
+        hvg_X=hvg, pert_names=cache.pert_names, pert_id=cache.pert_id,
+        is_test=(split_col == SPLIT_TEST), de_genes=cache.de_genes["per_pert"],
+        control_mean=control_mean, top_k=args.top_k, min_test_cells=args.min_test_cells,
+        limit_perts=args.limit_perts, log=logger.info,
+    )
     logger.info("effect-size Δ-correlation: mean %.3f  median %.3f  over %d perturbations (split=%s, n=%d)",
                 summary["mean_delta_r"], summary["median_delta_r"], summary["n_perturbations"], args.split, args.n)
-    # Show a few of the best/worst for intuition.
-    ranked = sorted(((v, k) for k, v in per_pert.items() if v == v), reverse=True)
-    if ranked:
-        logger.info("best: %s", ", ".join(f"{k}={v:.2f}" for v, k in ranked[:5]))
-        logger.info("worst: %s", ", ".join(f"{k}={v:.2f}" for v, k in ranked[-5:]))
 
     exp.write_report("effect_size", {
         "split": args.split, "n_generated": args.n, "guidance": args.guidance, "top_k": args.top_k,
-        **summary, "per_pert": per_pert,
+        "cond_type": bundle.get("cond_type", "table"), **summary, "per_pert": per_pert,
     })
     logger.info("wrote report -> %s", exp.reports / "effect_size.json")
 

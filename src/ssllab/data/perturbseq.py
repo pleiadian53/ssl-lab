@@ -275,6 +275,7 @@ def _make_collate(partition: torch.Tensor, n_hvg: int):
         feat = torch.stack([it["feat"] for it in items])
         return {
             "tokens": tokenize_cells(feat, partition),       # (B, n_tokens, token_dim)
+            "features": feat,                                # (B, n_hvg) normalized, for non-token heads (VAE baseline)
             "counts": torch.stack([it["counts"] for it in items]),
             "libsize": torch.stack([it["libsize"] for it in items]),
             "pert_id": torch.stack([it["pert_id"] for it in items]),

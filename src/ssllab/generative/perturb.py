@@ -13,26 +13,41 @@ from pathlib import Path
 
 import torch
 
-from ssllab.generative.condition import ConditionEncoder
+from ssllab.generative.condition import (
+    ConditionEncoder,
+    GeneSetConditionEncoder,
+)
 from ssllab.generative.count_decoder import CountDecoder
 from ssllab.generative.flow import VelocityMLP, euler_sample
 
 
 def load_cond_flow(path: str | Path, device: torch.device | str = "cpu") -> dict:
-    """Load the Stage-B checkpoint -> ready flow, condition encoder, and stats."""
+    """Load the Stage-B checkpoint -> ready flow, condition encoder, and stats.
+
+    Rebuilds the table or gene-compositional condition encoder per the saved
+    ``cond_type``; both expose the same ``cond(z_b, pert_id)`` call, so sampling is
+    identical downstream.
+    """
     ck = torch.load(path, map_location=device)
     flow = VelocityMLP(data_dim=ck["dim"], hidden=ck["hidden"], n_layers=ck["n_layers"],
                        cond_dim=ck["cond_dim"]).to(device)
     flow.load_state_dict(ck["flow"])
     flow.eval()
-    cond = ConditionEncoder(latent_dim=ck["dim"], n_perts=ck["n_perts"],
-                            pert_dim=ck["pert_dim"], cond_dim=ck["cond_dim"]).to(device)
+    if ck.get("cond_type", "table") == "geneset":
+        cond = GeneSetConditionEncoder(
+            latent_dim=ck["dim"], pert_gene=ck["pert_gene"], pert_dim=ck["pert_dim"],
+            gene_dim=ck.get("gene_dim", 64), cond_dim=ck["cond_dim"], compose=ck.get("compose", "additive"),
+        ).to(device)
+    else:
+        cond = ConditionEncoder(latent_dim=ck["dim"], n_perts=ck["n_perts"],
+                                pert_dim=ck["pert_dim"], cond_dim=ck["cond_dim"]).to(device)
     cond.load_state_dict(ck["cond"])
     cond.eval()
     return {
         "flow": flow, "cond": cond,
         "mean": ck["mean"].to(device), "std": ck["std"].to(device),
         "ctrl_pool": ck["ctrl_pool"].to(device), "dim": ck["dim"], "n_perts": ck["n_perts"],
+        "cond_type": ck.get("cond_type", "table"), "compose": ck.get("compose", "additive"),
     }
 
 

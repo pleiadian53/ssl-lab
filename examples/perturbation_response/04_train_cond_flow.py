@@ -38,7 +38,11 @@ if str(_SRC) not in sys.path:
 from ssllab.checkpoint import load_jepa
 from ssllab.data.perturbseq import get_perturbseq_dataloaders
 from ssllab.experiment import experiment
-from ssllab.generative.condition import ConditionEncoder
+from ssllab.generative.condition import (
+    ConditionEncoder,
+    GeneSetConditionEncoder,
+    build_pert_gene_matrix,
+)
 from ssllab.generative.flow import VelocityMLP, cfm_loss
 from ssllab.utils import get_device, set_seed
 
@@ -58,8 +62,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--epochs", type=int, default=60)
     p.add_argument("--batch-size", type=int, default=256)
     p.add_argument("--lr", type=float, default=1e-3)
+    p.add_argument("--cond-type", type=str, default="table", choices=["table", "geneset"],
+                   help="table = learned per-pert embedding (in-distribution); "
+                        "geneset = gene-compositional (generalizes to held-out combos)")
+    p.add_argument("--compose", type=str, default="additive", choices=["additive", "deepsets"],
+                   help="geneset composition: additive sum e(A+B)=e(A)+e(B), or a DeepSets refinement")
     p.add_argument("--cond-dim", type=int, default=128)
     p.add_argument("--pert-dim", type=int, default=64)
+    p.add_argument("--gene-dim", type=int, default=64, help="per-target-gene embedding width (geneset)")
     p.add_argument("--hidden", type=int, default=256)
     p.add_argument("--n-layers", type=int, default=4)
     p.add_argument("--p-drop", type=float, default=0.1, help="condition-dropout for classifier-free guidance")
@@ -107,7 +117,14 @@ def main() -> None:
 
     # 2. Conditional velocity field + condition encoder.
     flow = VelocityMLP(data_dim=dim, hidden=args.hidden, n_layers=args.n_layers, cond_dim=args.cond_dim).to(device)
-    cond = ConditionEncoder(latent_dim=dim, n_perts=n_perts, pert_dim=args.pert_dim, cond_dim=args.cond_dim).to(device)
+    pert_gene = None
+    if args.cond_type == "geneset":
+        pert_gene, gene_vocab = build_pert_gene_matrix(train_loader.meta["pert_names"])
+        cond = GeneSetConditionEncoder(latent_dim=dim, pert_gene=pert_gene, pert_dim=args.pert_dim,
+                                       gene_dim=args.gene_dim, cond_dim=args.cond_dim, compose=args.compose).to(device)
+        logger.info("geneset condition: %d target genes, compose=%s", len(gene_vocab), args.compose)
+    else:
+        cond = ConditionEncoder(latent_dim=dim, n_perts=n_perts, pert_dim=args.pert_dim, cond_dim=args.cond_dim).to(device)
     opt = torch.optim.AdamW(list(flow.parameters()) + list(cond.parameters()), lr=args.lr)
 
     loader = DataLoader(TensorDataset(Zn, pert_id), batch_size=args.batch_size, shuffle=True, drop_last=True)
@@ -136,10 +153,13 @@ def main() -> None:
         "flow": flow.state_dict(), "cond": cond.state_dict(),
         "dim": dim, "cond_dim": args.cond_dim, "pert_dim": args.pert_dim,
         "hidden": args.hidden, "n_layers": args.n_layers, "n_perts": n_perts,
+        "cond_type": args.cond_type, "compose": args.compose, "gene_dim": args.gene_dim,
+        "pert_gene": pert_gene,  # multi-hot (geneset) or None (table); lets the loader rebuild cond
         "mean": mean, "std": std,
         "ctrl_pool": ctrl_pool.cpu(),  # standardized control latents, for sampling z_b
     }, out)
-    exp.write_report("stage_b_flow", {"final_cfm_loss": avg, "n_perts": n_perts,
+    exp.write_report("stage_b_flow", {"final_cfm_loss": avg, "n_perts": n_perts, "cond_type": args.cond_type,
+                                      "compose": args.compose if args.cond_type == "geneset" else None,
                                       "train_cells": len(Zn), "n_controls": int(is_control.sum())})
     logger.info("saved conditional flow -> %s", out)
 
