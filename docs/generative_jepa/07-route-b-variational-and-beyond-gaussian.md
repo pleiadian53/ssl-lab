@@ -17,7 +17,7 @@ From [Part 5](05-two-gaps-four-routes.md) and [Route A](06-route-a-latent-decode
 - $z_b$ — the **context** (the "before"): the encoded state you start from — the same role Parts 5–6 called $z_{\text{ctx}}$, now written $z_b$. In biology, the baseline (control) cell, $z_b = f_\theta(x_b)$; in the diabetes example, the person's current metabolic latent. The subscript $b$ reads "baseline."
 - $z_p$ — the **condition / intervention** (the "what we did"): a learned embedding $z_p = e(p)$ of the intervention $p$ — a drug, a knocked-out gene, a logged action. ($e$ is a small learned embedding, the same trick word embeddings use for tokens.)
 
-With those names in hand, the conditioned predictor is $\hat z = g_\phi(z_b, z_p)$ — the *same* predictor, with the abstract "condition" now spelled out as the (baseline, intervention) pair.
+With those names in hand, the conditioned predictor is $\hat z = g_\phi(z_b, z_p)$ — the *same* predictor, with the abstract "condition" now spelled out as the (baseline, intervention) pair. Note that $z_b$ and $z_p$ come from **different maps** — $z_b$ from the encoder $f_\theta$, $z_p$ from a separate learned embedding $e$ — a distinction worth pausing on; the [Q&A on the condition embedding](QA/condition-embedding-where-it-comes-from.md) explains why they differ, where $e$ comes from, and how each is trained.
 
 Route B changes one thing about the predictor's *output*. Instead of a single latent, it emits the **parameters of a distribution** over the next latent. In the simplest, Gaussian form, that is a mean and a (log-)variance:
 
@@ -40,6 +40,8 @@ $$
 where $\odot$ is the elementwise product. Each fresh $\varepsilon$ gives a different $\hat z$ — a different plausible outcome — and (the reason for the trick rather than a raw sampler) gradients flow through $\mu_\phi, \sigma_\phi$ so the predictor is trainable. Draw repeatedly and you get a **population** of outcomes; decode each (a data-space decoder, exactly Route A's G2) and you get a population of data points.
 
 That is the whole mechanism. It closes **G1** the *honest* way Route A asked for — stochasticity in the **latent**, capturing genuine outcome heterogeneity, not just measurement noise — and a decoder closes **G2**.
+
+> **Want the architecture spelled out?** The diagrams in this chapter stay abstract. If you want JEPA's two-stream design rebuilt from scratch — exactly which stream produces $z_b$, $z_p$, the EMA goalpost $z'$, and the $(\mu_\phi, \sigma_\phi)$ heads, and where the reparameterized sample is born — the companion [Part 7a](07a-jepa-two-streams-and-route-b.md) is the wiring diagram, with a vector-by-vector inventory.
 
 ```mermaid
 flowchart LR
@@ -106,7 +108,7 @@ flowchart LR
 
 And there is a **second**, independent defect from the same line of math: the $\mathrm{diag}$ in $\mathrm{diag}(\sigma_\phi^2)$. A diagonal covariance forbids any *correlation* between latent dimensions — the cloud is an axis-aligned ellipsoid, never a tilted one. So even within a single mode it cannot express "when this direction goes up, that one goes down," the co-variation a real response is full of.
 
-Why this matters for the applications, stated plainly: real perturbation responses **are** multimodal (cells take different fates), and a person's trajectory can genuinely fork. A model that averages modes into a nonexistent midpoint mis-estimates exactly the structure you care about — and, tying back, it corrupts the effect-size and counterfactual predictions that were the whole point of reaching data space.
+Why this matters for the applications, stated plainly — and it shows up in *both* domains this series carries, so consider each in turn. In the **cell** setting, real perturbation responses are routinely multimodal: identical cells commit to different fates. In the **digital-phenotyping** setting (the diabetes example), a *person's* metabolic trajectory can genuinely **fork** over time — the same starting state under the same intervention can plausibly lead to two distinct futures (a regimen that stabilizes one week and slips the next). Either way, a model that averages those modes into a nonexistent midpoint mis-estimates exactly the structure you care about — and, tying back, it corrupts the effect-size and counterfactual predictions that were the whole point of reaching data space.
 
 > **A trade-off, not a verdict.** The Gaussian is not *worthless* — it buys real things: a **closed-form density** (you can write down $q(z)$ and score it), **one-shot sampling** (one draw, no iteration), and a **tidy KL** with a Gaussian prior. The price for all that convenience is unimodality and zero correlations. So the Gaussian is a **floor**, not the answer — the right baseline to start from and the thing to *surpass* the moment the response is genuinely multi-modal. Where to sit on that dial is application-specific; the rest of this chapter is the ladder up from the floor.
 

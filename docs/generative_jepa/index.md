@@ -57,6 +57,7 @@ The series has **two halves**. **Parts 0–4** build one complete generative mod
 | **[5 — Two gaps, four routes](05-two-gaps-four-routes.md)** | the map | the two gaps (G1, G2) every generative JEPA must close, and the four routes that pair them — **start of the survey** |
 | **[6 — Route A: a decoder on the latent](06-route-a-latent-decoder-head.md)** | route | the lowest-friction closure; count-aware NB/ZINB decoders (likelihood written out), and the CVAE-collapse honesty |
 | **[7 — Route B: variational JEPA](07-route-b-variational-and-beyond-gaussian.md)** | route | the predictor becomes its own conditional prior; the Gaussian critique and the expressive-posterior ladder |
+| &nbsp;&nbsp;↳ **[7a — JEPA two streams, rebuilt for Route B](07a-jepa-two-streams-and-route-b.md)** | companion | the architecture from scratch: which stream produces $z_b$, $z_p$, the EMA goalpost $z'$, $\mu/\sigma$, the sampled $\hat z$ — a vector-by-vector inventory |
 | **[8 — Route C: conditioned diffusion](08-route-c-conditioned-diffusion.md)** | route | diffusion from scratch, conditioned on the JEPA latent; the most modular, most expressive route |
 | **[9 — The conditional flow prior](09-conditional-flow-prior.md)** | synthesis | the starter made conditional — one model that is Route B's flow posterior and Route C-with-flow at once |
 | **[10 — Route D: world-model planning](10-route-d-world-model-planning.md)** | route | generate *decisions*, not data: plan over actions toward a goal; the bridge to operator world models |
