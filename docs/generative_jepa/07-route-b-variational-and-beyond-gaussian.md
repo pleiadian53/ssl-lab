@@ -146,14 +146,33 @@ flowchart LR
 
 ---
 
-## 5. One Route-B-specific choice — decode where?
+## 5. Representation space vs data space — and how the loss $\mathcal{L}$ closes both gaps
 
-A design fork unique to the variational route: the posterior can be trained to reconstruct in **representation space** or in **data space**, and the difference decides whether you recover effect size.
+Everything in §1–4 was about the *shape of the distribution* over the outcome latent — that is **G1**, the "give me a distribution over outcomes" gap, and we have now handled it (a posterior, sampled, made expressive). But a distribution over *latents* is not yet data. To close **G2** and recover effect size, the model has to be held accountable in **data space** — and that raises a fork worth seeing clearly, because one side of it is *literally vanilla JEPA*.
 
-- **Representation-space decoding.** Match the sampled latent against the target *encoder's* embedding of the true outcome — stay entirely in JEPA's latent world, no data decoder. Clean and cheap, but it never produces data, so (recall [Part 5 §3](05-two-gaps-four-routes.md)) it cannot recover effect-size magnitude. Fine for studying the latent; insufficient for the benchmark.
-- **Data-space decoding.** Hang Route A's count/pixel decoder on the sampled latent. Now you produce actual data and recover calibrated effect sizes — at the cost of the decoder and its likelihood.
+**Representation-space matching — this side is the original JEPA.** The representation learner you started from never decodes to data at all: it trains purely by matching its predicted latent against the *target encoder's* latent — the EMA goalpost $z' = f_{\bar\theta}(x_{\text{out}})$ from [Part 7a](07a-jepa-two-streams-and-route-b.md). In Route B that is the **predict** term, pulling the posterior mean toward the encoded real outcome:
 
-The practical upshot: a *useful* Route B is **the variational predictor (the principled G1) composed with Route A's data decoder (the G2).** The routes are not rivals — Route B supplies the clean stochastic head, Route A supplies the decoder, and together they are the staged model the [computational-biology chapter](11-application-computational-biology.md) builds (intra-cell JEPA encoder → variational perturbation predictor → count decoder).
+$$
+\mathcal{L}_{\text{predict}} = \big\lVert \mu_\phi - \mathrm{sg}(z') \big\rVert^2.
+$$
+
+This is exactly JEPA-as-representation-learner, intact inside Route B — and it is what keeps the latent *meaningful*. But notice what it does **not** do: it never produces a data point, defines no density over data, so on its own it cannot recover effect-size *magnitude* (the [Part 5 §3](05-two-gaps-four-routes.md) finding). Representation-space matching is necessary, and **not generative**.
+
+**Data-space decoding — this side is what makes it a generative model.** To emit actual data — and recover effect size — you hang a decoder on the *sampled* latent $\hat z$ (Route A's NB count head, or a pixel head) and score the real data under it: the **decode** term $\mathcal{L}_{\text{decode}}$. This is the step that reaches data space, closes **G2**, and is where effect-size magnitude lives. Data-space decoding is JEPA-as-generative-model.
+
+> **The distinction in one line.** Representation-space matching is what makes JEPA a good *representation learner*; data-space decoding is the addition that makes it a *generative model*. Route B does both — but that is only *two* of its three pieces. The part §1–4 built sits in between: the prediction is now a **distribution** ($\mu_\phi, \sigma_\phi$), not a fixed latent $z$, and that variational head is what supplies **G1**. So the full move is three-fold — *keep* the representation backbone, *make the prediction variational* (G1), and *decode to data* (G2) — which is exactly the three terms of the loss below.
+
+Now read the full Route B loss (the one from §2) through this lens. Each term has a distinct job, and the three together are exactly why one objective addresses *both* gaps:
+
+$$
+\mathcal{L} = \underbrace{\mathcal{L}_{\text{predict}}}_{\text{rep-space: JEPA backbone}} + \lambda_{\text{kl}} \underbrace{\mathcal{L}_{\text{KL}}}_{\text{G1: prior} \leftrightarrow \text{posterior}} + \lambda_{\text{dec}} \underbrace{\mathcal{L}_{\text{decode}}}_{\text{G2: data-space decode}}.
+$$
+
+- **$\mathcal{L}_{\text{predict}}$ (representation space)** is JEPA's latent-prediction backbone — vanilla JEPA's *entire* loss. It keeps the representation strong but is, alone, not generative.
+- **$\lambda_{\text{kl}} \mathcal{L}_{\text{KL}}$ (the variational coupling)** is what makes **G1** *principled* rather than improvised: the posterior is tied to a learnable prior you can sample at generation, so the stochasticity is *derived*, not bolted on. This single term is the whole reason Route B is "Route B" and not "Route A with a Gaussian head."
+- **$\lambda_{\text{dec}} \mathcal{L}_{\text{decode}}$ (data space)** is the decoder that closes **G2** and is where effect size is recovered.
+
+So a *useful* Route B is the variational predictor (the principled **G1**) composed with a data-space decoder (the **G2**), with the representation-space term as the JEPA backbone they both ride on. The routes are not rivals: Route B supplies the clean stochastic head, Route A supplies the decoder, and together they are the staged model the [computational-biology chapter](11-application-computational-biology.md) builds (intra-cell JEPA encoder → variational perturbation predictor → count decoder).
 
 ---
 
