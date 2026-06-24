@@ -70,6 +70,8 @@ In Route A (and in the [Parts 0–4](index.md) starter) the thing you sample fro
 - a **learnable conditional prior** $\pi(z \mid z_b, z_p)$ — what you sample from at *generation* time, when no outcome is available to peek at;
 - a **KL term** $\mathrm{KL}(q_\phi \Vert \pi)$ that pulls the two together. (KL divergence reads as "how different are these two distributions"; driving it down makes the prior you sample from agree with the posterior the model learned.)
 
+That prior deserves a word of its own, since it is the genuinely new object in the list. A *prior* is what you believe about the outcome latent *before* seeing the outcome, and both words attached to it here mark a departure from the textbook variational autoencoder. In a standard VAE the prior is a fixed, input-free standard normal $\mathcal{N}(0, I)$. This one is instead **learnable** — its parameters are trained rather than fixed — and **conditional** — it depends on the baseline $z_b$ and the intervention $z_p$, so each condition gets its own outcome cloud. Why both departures are necessary rather than cosmetic is what the companion [Part 7b](07b-the-prior-and-the-kl-term.md) works out; here it is enough to hold that the prior is trained and condition-aware, not the off-the-shelf unit Gaussian.
+
 The slogan **"the predictor becomes the conditional prior"** is exactly this: the JEPA predictor already maps $(z_b, z_p)$ to a prediction, so it is *precisely* the object that should emit the conditional prior — no new module, you simply reinterpret its output as distribution parameters. The generative machinery and the JEPA predictor are the *same network*. That is why the theory is clean: you did not staple a generative model onto JEPA; you let JEPA's own predictor *be* the generative model.
 
 The training objective collects the pieces — the latent prediction that carries JEPA's representation quality, the KL that makes the prior sampleable, and the decoder term that closes G2 in data space (the part that, from [Part 5 §3](05-two-gaps-four-routes.md), recovers effect size):
@@ -130,7 +132,7 @@ The **mixture density network (MDN)** is the direct cure for the bimodal-respons
 
 That last move deserves a precise statement, because it unifies this whole route with the next one:
 
-> **The reparameterization trick *is* a one-step flow.** Look again at $\hat z = \mu_\phi + \sigma_\phi \odot \varepsilon$: it is a fixed, closed-form, **one-shot** map from noise to latent, and because it is affine, the only shapes it can reach are Gaussians. A flow keeps the same "transport the noise to a latent" idea but lets the map be a **learned, many-step** drift — so the reachable distribution can be any shape. "Beyond Gaussian" is, literally, *let the noise-to-latent map have more than one step.* The expressive posteriors of Route B and the diffusion model of Route C are points on a single continuum: how expressive you let the conditional sampler be. (This is also the seed of the **conditional flow-matching prior** — a learned conditional transport over the JEPA latent — which is the natural next step beyond this series.)
+> **The reparameterization trick *is* a one-step flow.** Look again at $\hat z = \mu_\phi + \sigma_\phi \odot \varepsilon$: it is a fixed, closed-form, **one-shot** map from noise to latent, and because it is affine, the only shapes it can reach are Gaussians. A flow keeps the same "transport the noise to a latent" idea but lets the map be a **learned, many-step** drift — so the reachable distribution can be any shape. "Beyond Gaussian" is, literally, *let the noise-to-latent map have more than one step.* The expressive posteriors of Route B and the diffusion model of Route C are points on a single continuum: how expressive you let the conditional sampler be. (This is also the seed of the **conditional flow prior** — a learned conditional transport over the JEPA latent — which [Part 9](09-conditional-flow-prior.md) builds in full, and [Part 9a](09a-three-identities-formalized.md) shows is the very same object Route B reaches at the top of this ladder.)
 
 ```mermaid
 flowchart LR
@@ -168,9 +170,33 @@ $$
 \mathcal{L} = \underbrace{\mathcal{L}_{\text{predict}}}_{\text{rep-space: JEPA backbone}} + \lambda_{\text{kl}} \underbrace{\mathcal{L}_{\text{KL}}}_{\text{G1: prior} \leftrightarrow \text{posterior}} + \lambda_{\text{dec}} \underbrace{\mathcal{L}_{\text{decode}}}_{\text{G2: data-space decode}}.
 $$
 
-- **$\mathcal{L}_{\text{predict}}$ (representation space)** is JEPA's latent-prediction backbone — vanilla JEPA's *entire* loss. It keeps the representation strong but is, alone, not generative.
-- **$\lambda_{\text{kl}} \mathcal{L}_{\text{KL}}$ (the variational coupling)** is what makes **G1** *principled* rather than improvised: the posterior is tied to a learnable prior you can sample at generation, so the stochasticity is *derived*, not bolted on. This single term is the whole reason Route B is "Route B" and not "Route A with a Gaussian head."
-- **$\lambda_{\text{dec}} \mathcal{L}_{\text{decode}}$ (data space)** is the decoder that closes **G2** and is where effect size is recovered.
+And — the part not to gloss over — with a Gaussian posterior and prior, each of the three terms has a closed or standard form you can write down and implement.
+
+**(1) The representation-space term** is the latent match from above, anchoring the posterior mean to the EMA-encoded real outcome:
+
+$$
+\mathcal{L}_{\text{predict}} = \big\lVert \mu_\phi - \mathrm{sg}(z') \big\rVert^2.
+$$
+
+This is vanilla JEPA's *entire* loss — it keeps the representation strong, but alone is not generative.
+
+**(2) The KL term** has a **closed form** (no sampling needed) between the diagonal-Gaussian posterior $q = \mathcal{N}(\mu_\phi, \mathrm{diag}(\sigma_\phi^2))$ and the learnable prior $\pi = \mathcal{N}(\mu_\pi, \mathrm{diag}(\sigma_\pi^2))$ — summing a per-dimension expression over the $D$ latent coordinates $i$:
+
+$$
+\mathcal{L}_{\text{KL}} = \sum_{i=1}^{D} \left[ \log\frac{\sigma_{\pi,i}}{\sigma_{\phi,i}} + \frac{\sigma_{\phi,i}^2 + (\mu_{\phi,i} - \mu_{\pi,i})^2}{2 \sigma_{\pi,i}^2} - \frac{1}{2} \right].
+$$
+
+(If you fix the prior to a standard normal, $\pi = \mathcal{N}(0, I)$ — the textbook VAE choice — this collapses to the familiar $\frac{1}{2}\sum_i (\sigma_{\phi,i}^2 + \mu_{\phi,i}^2 - 1 - \log \sigma_{\phi,i}^2)$.) This term is what makes **G1** *principled* rather than improvised: it ties the posterior to a prior you can sample at generation, so the stochasticity is *derived*, not bolted on — the whole reason Route B is "Route B" and not "Route A with a Gaussian head."
+
+> **Why a *learnable* prior, why pull the posterior toward it, and where this KL formula comes from.** Those three questions deserve more than a formula. The companion [Part 7b](07b-the-prior-and-the-kl-term.md) answers each in turn: why the prior is learnable and *conditional* rather than the textbook $\mathcal{N}(0, I)$; why the coupling is a train/test consistency constraint (the decoder is trained on posterior samples but generation draws from the prior) that also *falls out* of a variational lower bound; and the full derivation of the closed-form diagonal-Gaussian KL above, with the standard-normal case as a check.
+
+**(3) The decoder term** is the negative log-likelihood of the *real* data under the decoder applied to a sampled latent $\hat z$. For single-cell counts that is the **negative-binomial** NLL — summed over genes $g$:
+
+$$
+\mathcal{L}_{\text{decode}} = -\sum_g \log \mathrm{NB}\big(x_g \mid \mu_g, \kappa_g\big), \qquad \mu = \ell \rho, \quad \rho = \mathrm{softmax}(\text{decoder}(\hat z)),
+$$
+
+which [Part 6 §2](06-route-a-latent-decoder-head.md) writes out factor by factor; for images it is the Bernoulli/BCE pixel loss. This closes **G2** and is where effect-size magnitude is recovered.
 
 So a *useful* Route B is the variational predictor (the principled **G1**) composed with a data-space decoder (the **G2**), with the representation-space term as the JEPA backbone they both ride on. The routes are not rivals: Route B supplies the clean stochastic head, Route A supplies the decoder, and together they are the staged model the [computational-biology chapter](11-application-computational-biology.md) builds (intra-cell JEPA encoder → variational perturbation predictor → count decoder).
 
@@ -181,6 +207,25 @@ So a *useful* Route B is the variational predictor (the principled **G1**) compo
 It is worth saying out loud, because [Route A §4](06-route-a-latent-decoder-head.md) raised it and Route B is where it becomes undeniable: a variational predictor with a Gaussian posterior and a data decoder, trained jointly, **is a conditional variational autoencoder (CVAE)** living in JEPA's latent space. The encoder produces a context, the predictor produces a latent distribution, a decoder reconstructs — that is a CVAE, full stop.
 
 The series does not hide from this; it **owns** it. The difference Route B makes over "just train a CVAE" is *principle, not architecture*: Route A bolted stochasticity on ad hoc; Route B derives it from a coherent variational objective with a real prior and a KL coupling, on top of a **JEPA-pretrained, dropout-robust encoder** and the predict-in-latent objective. Same family, cleaner derivation, stronger encoder. And the discipline from Route A still binds: you must **show** that the JEPA pretraining and the variational structure beat a plain CVAE trained from scratch — on effect-size correlation, on calibration, on data efficiency — rather than assume it. The honest meta-point from [Part 5 §5](05-two-gaps-four-routes.md) stands: you have rebuilt a CVAE with JEPA as encoder pretraining, and a tractable data-space likelihood is still not free.
+
+### The landmark — Var-JEPA, and where Route B is a deliberate subset of it
+
+This whole reframing is not ours alone: it is the thesis of **Var-JEPA**, the variational formulation of JEPA we name in [Part 5](05-two-gaps-four-routes.md) as Route B's landmark. It is worth being precise about what we share with it and where it goes further, because the differences are exactly the design choices Route B is making — and seeing them sharpens what "Route B" even is.
+
+**What we share — the central insight is the same.** Var-JEPA reverse-engineers a latent-variable model whose ELBO *recovers the JEPA predictor as a learned conditional prior*, coupled to a variational posterior by a KL. That is, line for line, the claim of §2 above ("the predictor becomes the conditional prior") and the ELBO derivation in [Part 7b](07b-the-prior-and-the-kl-term.md). The shared move is to read standard JEPA as a *deterministic specialization* of a variational model, and to make the latent generative structure explicit. On the core idea, Route B and Var-JEPA are the same model.
+
+**Where Var-JEPA goes further.** It is the *fuller* version of the idea, in four concrete ways. (Its notation, briefly: $s_x$ is the context latent, $s_y$ the target latent, and $z$ a separate auxiliary noise variable — distinct from our outcome latent.)
+
+- **Variational on *both* sides.** Var-JEPA makes the *context* a stochastic latent too — its own posterior $q(s_x \mid x)$, its own prior, its own KL term. Route B keeps the baseline deterministic, $z_b = f_\theta(x_b)$. Var-JEPA is variational end-to-end; Route B only on the outcome.
+- **A separate heterogeneity variable.** Var-JEPA factors the outcome randomness into a dedicated auxiliary $z$ ("the variability in $s_y$ that $s_x$ cannot explain"), drawn from a standard normal at generation. Route B folds that randomness into the single outcome posterior — a coarser factorization.
+- **It decodes *both* observations.** Var-JEPA's ELBO reconstructs the context *and* the target (a five-term objective); the context-reconstruction term is what pins the latents to encode predictive information with principled uncertainty. Route B decodes only the outcome.
+- **The ELBO replaces the anti-collapse heuristics.** This is Var-JEPA's headline. It argues that the ELBO — specifically an entropy term on the target posterior — prevents representation collapse *on its own*, so the **EMA target, the stop-gradient, and VICReg-style surrogate costs become unnecessary**; standard JEPA's EMA is reframed as a heuristic stand-in for that variational regularization.
+
+That last point lands directly on a seam this series already exposed. Route B, as we build it, **keeps the EMA backbone**: the representation-space term $\mathcal{L}_{\text{predict}} = \lVert \mu_\phi - \mathrm{sg}(z') \rVert^2$ matches the predicted mean against the EMA-encoded outcome $z'$ — and [Part 7b §3](07b-the-prior-and-the-kl-term.md) notes that this term sits *outside* the ELBO, riding on top of it. In Var-JEPA's language, $\mathcal{L}_{\text{predict}}$ is precisely the "deterministic specialization plus architectural heuristic" you can *drop* once you commit to the full variational objective. So Route B is, deliberately, a **hybrid**: a variational, action-conditioned head bolted onto the EMA–stop-gradient JEPA backbone, rather than the fully variational replacement Var-JEPA derives.
+
+**Where Route B is not a subset, but a different aim.** The hybridity buys a direction Var-JEPA does not pursue. Var-JEPA's auxiliary $z$ is *unconditioned* noise (a VAE-style latent for masked-view self-supervision); Route B's condition $z_p = e(p)$ is an *external intervention* — an action. Route B is therefore an **action-conditioned generative model of an outcome given an intervention**, aimed at perturbation response with a count-space likelihood (NB/ZINB) and the effect-size discipline, where Var-JEPA is a representation-learning reformulation validated on tabular data with Gaussian decoders. Same generative skeleton; one is the principled, fully-variational reformulation of *pretraining*, the other a pragmatic, action-conditioned slice pointed at *conditional generation*.
+
+The honest takeaway: if your goal is the cleanest variational JEPA *as a representation learner*, Var-JEPA is the more complete object and worth reading as the reference. If your goal is a conditional generator of perturbation outcomes, Route B is that object's applied cousin — and the EMA term it keeps is a *choice*, not an oversight, with Var-JEPA marking the principled end of the dial you could slide toward by dropping it.
 
 ---
 
