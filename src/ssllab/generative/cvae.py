@@ -60,7 +60,9 @@ class ConditionalNBVAE(nn.Module):
 
     def encode(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         h = self.enc(x)
-        return self.to_mu(h), self.to_logvar(h)
+        # Clamp logvar: an unbounded posterior log-variance lets exp(logvar) and the KL
+        # term blow up to NaN once the encoder grows (seen at ~epoch 16 without this).
+        return self.to_mu(h), self.to_logvar(h).clamp(-10.0, 10.0)
 
     def decode(self, z: torch.Tensor, pert_id: torch.Tensor) -> dict[str, torch.Tensor]:
         c = self.cond(pert_id)

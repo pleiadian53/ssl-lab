@@ -56,6 +56,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--hidden", type=int, default=512)
     p.add_argument("--compose", type=str, default="additive", choices=["additive", "deepsets"])
     p.add_argument("--beta", type=float, default=1.0, help="KL weight (beta-VAE)")
+    p.add_argument("--grad-clip", type=float, default=5.0, help="max grad norm (VAE stability)")
     p.add_argument("--limit", type=int, default=None)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--device", type=str, default="auto")
@@ -95,6 +96,7 @@ def main() -> None:
             loss, _ = model.loss(x, counts, libsize, pid, beta=args.beta)
             opt.zero_grad()
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)  # VAE stability
             opt.step()
             running += loss.item()
         avg = running / max(len(train_loader), 1)
