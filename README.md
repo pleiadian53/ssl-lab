@@ -6,39 +6,53 @@
 
 A research lab for **self-supervised learning (SSL)**. The aim is to track the state of the art across the SSL families and selectively go deep on the methods most worth mastering — staying at or ahead of the frontier rather than covering everything shallowly.
 
-**Current focus — JEPA.** The first research line studies JEPA (joint-embedding predictive architectures) and extends it into a *sampleable generative model*. JEPA learns a representation by predicting the *embeddings* of masked/target regions from context embeddings — no pixel reconstruction, no likelihood. It is a representation learner, not a generative model. To *sample* data you bolt on two pieces: a **prior** over the latent and a **decoder** back to data space. ssl-lab builds that full vertical slice as a walking skeleton on MNIST (a POC; the core is modality-agnostic so a practically meaningful modality drops in as a data adapter later).
+**Current focus — JEPA.** The first research line studies JEPA (joint-embedding predictive architectures) and extends it into a *sampleable generative model*. JEPA learns a representation by predicting the *embeddings* of masked/target regions from context embeddings — no pixel reconstruction, no likelihood. It is a representation learner, not a generative model. To *sample* data you add two pieces: a **prior** over the latent and a **decoder** back to data space.
+
+The starting point is the simplest such slice — an *unconditional* flow-matching prior over a frozen JEPA latent, decoded back to data — built and verified end to end as a modality-agnostic proof of concept. From there the line has grown into a **design-space survey** of how to make JEPA generative, whose recommended build is a **conditional flow prior**: generation *given a condition* — a class, a perturbation, an intervention — paired with a decoder matched to the data. That conditional architecture is the one shown below, and the one this lab is building toward.
 
 ```mermaid
 flowchart LR
-    NOISE(["noise ε"]) --> PRIOR["flow-matching<br/>prior p(z)"]
-    PRIOR -- "sample z ~ p(z)" --> DEC["decoder<br/>z → x"]
-    DEC --> GEN(["generated sample"])
-    ENC["JEPA encoder<br/>(frozen)"] -. "defines the latent z<br/>the prior is fit to" .-> PRIOR
+    XB(["baseline state x_b"]) --> ENC["JEPA encoder<br/>(frozen)"]
+    P(["intervention p"]) --> EMB["embed e(p)"]
+    ENC -- "z_b" --> COND["condition<br/>c = (z_b, z_p)"]
+    EMB -- "z_p" --> COND
+    NOISE(["noise ε"]) --> FLOW["conditional flow prior<br/>v_η(z, t, c)"]
+    COND --> FLOW
+    FLOW -- "sample z* ~ p(z given c)" --> DEC["decoder z → x<br/>(count-aware / pixel)"]
+    DEC --> GEN(["generated sample<br/>given the condition"])
 
     classDef accent fill:#eef2ff,stroke:#6366f1,color:#1e1b4b;
     classDef io fill:#f8fafc,stroke:#94a3b8,color:#0f172a;
-    class ENC,PRIOR,DEC accent;
-    class NOISE,GEN io;
+    class ENC,EMB,FLOW,DEC accent;
+    class XB,P,NOISE,GEN io;
 ```
 
-This *generative* slice is one of **two complementary extensions of JEPA** the lab pursues. The second turns JEPA from a passive predictor into an *active* world-model — see [Research directions](#research-directions) below.
+> The unconditional generative slice is built and verified end to end, and the conditional flow prior — the `v(z, t, c)` path with classifier-free guidance — is implemented and method-de-risked. The method is modality-agnostic; its applications (single-cell perturbation, digital phenotyping, and more) and the full design space are the **[Generative JEPA series](docs/generative_jepa/index.md)** and [Research directions](#research-directions) below.
+
+This *generative* slice is one of **two complementary extensions of JEPA** the lab pursues. The second turns JEPA from a passive predictor into an *active* world-model — see [Research directions](#research-directions) below. The two are beginning to **converge**: the condition a generative JEPA samples under can be an *action*, and an action read as a latent **operator** is exactly the world-model line — so "generate the outcome of an intervention" and "plan the intervention" become two faces of one model.
 
 ## Why ssl-lab exists
 
-ssl-lab is a spin-off of its sibling project [genai-lab](https://github.com/pleiadian53/genai-lab) (generative AI for computational biology). It's a focused R&D sandbox for state-of-the-art self-supervised learning — JEPA and new ideas built around it — kept deliberately **modality-agnostic** (MNIST is only a fast proof-of-concept). The aim is to mature these methods here and bring them back to genai-lab to develop more meaningful **genomic generative models**.
+ssl-lab is a spin-off of its sibling project [genai-lab](https://github.com/pleiadian53/genai-lab) (generative AI for computational biology). It's a focused R&D sandbox for state-of-the-art self-supervised learning — JEPA and new ideas built around it — kept deliberately **modality-agnostic** — method first, validated on a simple proof-of-concept before it meets real data. The aim is to mature these methods here and bring them back to genai-lab to develop more meaningful **genomic generative models**.
 
 ## Research directions
 
 JEPA is a *representation learner* — it learns by predicting the embeddings of masked regions from context. ssl-lab pushes it past that in two complementary ways:
 
-**1. Generative JEPA — make the representation *sampleable*.** *(built)* Add a prior over the latent and a decoder back to data space — the vertical slice above. Trained end to end on MNIST: a rich, non-collapsed latent (≈95% linear-probe accuracy with no labels in pretraining) and samples that are recognizable, varied, and *genuinely novel* rather than memorized.
+**1. Generative JEPA — make the representation *sampleable*.** *(method built + de-risked; design space mapped; applications WIP)* Add a prior over the latent and a decoder back to data space. The unconditional slice is verified end to end — a rich, non-collapsed latent (strong linear-probe accuracy with no pretraining labels) and *genuinely novel* samples. A full **[Generative JEPA design-space survey](docs/generative_jepa/index.md)** then maps four routes for making JEPA generative — decode the latent, a variational posterior, conditioned diffusion, planning on top — plus the **conditional flow prior** that unifies them: generation *given an intervention*, with a decoder matched to the data's likelihood. The method is modality-agnostic, and the conditional `v(z, t, c)` path is de-risked as a method; the applications are where it earns its keep:
 
-**2. Action operators on JEPA — make prediction *active*.** *(research line — full tutorial corpus written)* Go from passively in-filling hidden regions to *acting on* them. JEPA's predictor already *is* a latent operator — but its query is a **frozen, blind action**: it says only *where* or *when* to predict, never *what acted*. Promote that query to a **learned operator the model chooses and conditions on** — *sensing* ("where should I look?") and *perturbing* ("what happens under this intervention?") — and the passive predictor becomes a controllable **world model**: it can roll futures forward, run counterfactuals ("what if more sleep?"), and surface change that known interventions don't explain. This builds on the **action-operator** formalism from the sibling project [GRL](https://github.com/pleiadian53/GRL), and spans two application poles — continuous behavioral / mental-health monitoring (operator structure *learned*) and protein structure & dynamics (structure *given* by SE(3)).
+- **Single-cell perturbation response** *(flagship, WIP)* — a staged "cell JEPA": intra-cell pretraining (Stage A) → variational / conditional-flow perturbation predictor (Stage B) → NB/ZINB count decoder (Stage C), on Norman-2019 Perturb-seq, graded on *effect size* (predicting unseen gene combinations) against a from-scratch CVAE baseline.
+- **Digital phenotyping** — e.g. diabetes monitoring and management, where the rollout becomes a *generative personal world model*: a fan of plausible future trajectories under an intervention (this is also where Direction 2's world model meets the generative line).
+- **Further modalities** — the core is a likelihood-matched conditional generator, so new domains drop in as data adapters; the [data-modalities primer](docs/generative_jepa/appendix-data-modalities.md) surveys single-cell counts, EHR codes, and wearable / CGM streams.
+
+**2. Action operators on JEPA — make prediction *active*.** *(research line — tutorial corpus written; theory still developing)* Go from passively in-filling hidden regions to *acting on* them. JEPA's predictor already *is* a latent operator — but its query is a **frozen, blind action**: it says only *where* or *when* to predict, never *what acted*. Promote that query to a **learned operator the model chooses and conditions on** — *sensing* ("where should I look?") and *perturbing* ("what happens under this intervention?") — and the passive predictor becomes a controllable **world model**: it can roll futures forward, run counterfactuals ("what if more sleep?"), and surface change that known interventions don't explain. This builds on the **action-operator** formalism from the sibling project [GRL](https://github.com/pleiadian53/GRL), and spans two application poles — continuous behavioral / mental-health monitoring (operator structure *learned*) and protein structure & dynamics (structure *given* by SE(3)).
 
 > 📄 **Tutorial series** (full math on the [documentation site](https://pleiadian53.github.io/ssl-lab/)) — three parts, read in this order:
 > - **[Time-Series JEPA](docs/time_series_jepa/index.md)** — the substrate: JEPA pointed at time series, multimodal channels, and the one blind spot that motivates operators.
 > - **[Action Operators](docs/action_operator/00-from-actions-to-operators.md)** — the foundation: what an action operator is, why JEPA benefits from one, and a gallery of concrete operators.
 > - **[Operator World Models](docs/operator_world_models/index.md)** — the synthesis: condition the predictor on *what acted* for counterfactual rollout, composable interventions, and a sharpened change signal.
+>
+> *Status: an actively developing theoretical line — the operator formalism is still being worked out, not settled — and it now reaches into Direction 1. The [Generative JEPA series](docs/generative_jepa/index.md) treats action-conditioning as the bridge: the conditional flow prior's condition can be an action, and Route D's planner is an action operator, so the generative and world-model lines are converging on one substrate.*
 
 A concrete motivation in genomics: given an RNA sequence, *sense* to localize candidate splice sites, then *perturb* (in-silico edits / mutations) to learn what they do to splicing — the kind of active, hypothesis-driven understanding passive prediction alone can't reach.
 
@@ -60,17 +74,22 @@ This project follows a use-case-driven R&D convention: reusable primitives in `s
 
 ```
 src/ssllab/
-  data/        MNIST adapter -> modality-agnostic token tensors (B, N, token_dim)
+  data/        image-proxy + single-cell Perturb-seq adapters -> modality-agnostic token tensors
   models/      TinyViT backbone, JEPA encoder/predictor, latent decoder
   jepa/        block masking, EMA target, the assembled JEPA module
   objectives/  prediction loss + VICReg collapse regularizer
-  generative/  flow-matching prior over the latent (rectified flow)
+  generative/  flow prior (unconditional + conditional w/ classifier-free guidance),
+               NB/ZINB count decoder, condition encoder, CVAE baseline
   action_operator/  context-conditioned latent operators — generator bases, exp(M)
   eval/        collapse diagnostics, linear probe, image-grid viz
   utils/       seeding, device selection
 examples/
-  jepa_basics/      01 train JEPA · 02 linear probe
-  generative_jepa/  03 train decoder · 04 train flow prior · 05 sample & decode
+  jepa_basics/          01 train JEPA · 02 linear probe
+  generative_jepa/      03 decoder · 04 flow prior · 05 sample · 06 eval ·
+                        07 conditional flow · 08 sample conditional   (image proxy)
+  perturbation_response/  cell-JEPA perturbation pipeline (WIP): process Norman ->
+                        Stage A pretrain -> count decoder -> conditional flow ->
+                        sample -> effect-size eval  (+ CVAE baseline)
 ```
 
 ## Setup
