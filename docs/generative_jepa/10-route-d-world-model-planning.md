@@ -22,7 +22,7 @@ $$
 \mathcal{E}(p) = \big\lVert g_\phi\big(z_b,\ e(p)\big) - z_{\text{goal}} \big\rVert^2.
 $$
 
-(We write the energy $\mathcal{E}$ in script to keep it distinct from the encoder; the norm $\lVert \cdot \rVert^2$ is the squared distance from §-anywhere.) Low energy means "the world model predicts this action lands close to the goal." So the decision you want is the action that **minimizes** the energy:
+(We write the energy $\mathcal{E}$ in script to keep it distinct from the encoder; the norm $\lVert \cdot \rVert^2$ is the squared distance, in latent space, between the predicted outcome $g_\phi(z_b,\ e(p))$ and the goal $z_{\text{goal}}$.) Low energy means "the world model predicts this action lands close to the goal." So the decision you want is the action that **minimizes** the energy:
 
 $$
 p^{*} = \arg\min_{p}\ \mathcal{E}(p).
