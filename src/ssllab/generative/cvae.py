@@ -89,7 +89,9 @@ class ConditionalNBVAE(nn.Module):
         generator: torch.Generator | None = None,
     ) -> torch.Tensor:
         """Mean predicted log1p-CP10K expression for one perturbation (eval interface)."""
-        z = torch.randn(n, self.latent_dim, device=device, generator=generator)
+        # Draw on CPU with the seeded generator, then move to device — a CUDA tensor
+        # cannot take a CPU generator, and this keeps sampling deterministic across devices.
+        z = torch.randn(n, self.latent_dim, generator=generator).to(device)
         pid = torch.full((n,), int(pert_id), dtype=torch.long, device=device)
         rho = self.decode(z, pid)["rho"]
         return torch.log1p(1e4 * rho).mean(0)
