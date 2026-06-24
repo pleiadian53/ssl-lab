@@ -75,7 +75,7 @@ This is why the chapter exists. The conditional flow prior is not a fifth route;
 | seen as… | the conditional flow prior is… | which chapter wanted it |
 |---|---|---|
 | **Route B's expressive limit** | the **flow posterior** — the top rung of the expressive-posterior ladder, replacing the Gaussian $q_\phi(z \mid z_b, z_p)$ with an arbitrarily-shaped, learned conditional distribution | [Part 7 §4](07-route-b-variational-and-beyond-gaussian.md) |
-| **Route C with flow** | Route C's "separate conditional generative model over the latent," realized with **rectified flow** instead of diffusion (the two are siblings — both learned noise→data transports) | [Part 8 §3](08-route-c-conditioned-diffusion.md) |
+| **Route C with flow** | Route C's "separate conditional generative model over the latent," realized with **rectified flow** instead of diffusion (the two are siblings — both learned noise→data transports) | [Part 8 §4](08-route-c-conditioned-diffusion.md) |
 | **the starter, completed** | the [Parts 0–4](index.md) marginal flow prior $v_\eta(z, t)$ with a **condition slot** $v_\eta(z, t, c)$ added — nothing else changed | [Part 2](02-the-latent-prior.md) |
 
 ```mermaid
@@ -90,6 +90,8 @@ flowchart TD
 ```
 
 That triple identity is worth pausing on, because it dissolves a false sense that B and C were rival camps. They were two *descriptions* of the same expressive-conditional-generation idea — one arrived at by making a variational posterior richer and richer, the other by conditioning a standalone transport — and the conditional flow prior is where the descriptions meet. The starter was already standing on that spot, one input short.
+
+> **Want this made precise?** The "same object" claim is stated here as a story; it can be turned into a checkable statement. The companion [Part 9a](09a-three-identities-formalized.md) defines the single object all three name — a base Gaussian pushed through the conditioned flow map, $(\Phi_c)_\# \mathcal{N}(0, I)$ — shows each identity specifies exactly it, and is honest about the one seam: the three are identical as *generative objects* but coincide as *training objectives* only in the idealized limit (the [Part 13](13-choosing-a-route.md) calibration litmus, from the formal side).
 
 ---
 
@@ -114,7 +116,7 @@ And the honest notes, unchanged in spirit from the rest of the series: structura
 
 ### Does the encoder know about the condition?
 
-A natural question, and the answer sharpens what "integrated with the JEPA encoder" actually means. In the freeze-then-add design above, **the encoder does not know about the condition.** It was trained purely self-supervised on *states* (Parts 0–4), then frozen; it produces the context $z_b$ but never sees the intervention $z_p$. All the conditioning lives *downstream*, in the flow prior's velocity field $v_\eta(z, t, c)$. That is deliberate — it keeps the encoder a pure, reusable representation that no generative gradient can disturb (the modularity virtue of §5).
+A natural question, and the answer sharpens what "integrated with the JEPA encoder" actually means. In the freeze-then-add design above, **the encoder does not know about the condition.** It was trained purely self-supervised on *states* (Parts 0–4), then frozen; it produces the context $z_b$ but never sees the intervention $z_p$. All the conditioning lives *downstream*, in the flow prior's velocity field $v_\eta(z, t, c)$. That is deliberate — it keeps the encoder a pure, reusable representation that no generative gradient can disturb (the modularity virtue, [Part 8 §5](08-route-c-conditioned-diffusion.md)).
 
 But "aware of the condition" is a **dial**, not a yes/no, and it is worth knowing the settings, because they are the difference between this chapter and where the broader work is heading:
 
