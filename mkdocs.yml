@@ -82,6 +82,7 @@ nav:
       - 7 · Route B — variational JEPA and the trouble with Gaussian: generative_jepa/07-route-b-variational-and-beyond-gaussian.md
       - "7a · JEPA two streams, rebuilt for Route B": generative_jepa/07a-jepa-two-streams-and-route-b.md
       - "7b · The learnable prior and the KL term, up close": generative_jepa/07b-the-prior-and-the-kl-term.md
+      - "7c · Which network is the prior? (and the action-operator view)": generative_jepa/07c-which-network-is-the-prior.md
       - 8 · Route C — representation-conditioned diffusion: generative_jepa/08-route-c-conditioned-diffusion.md
       - 9 · The conditional flow prior: generative_jepa/09-conditional-flow-prior.md
       - "9a · The three identities, made precise": generative_jepa/09a-three-identities-formalized.md
