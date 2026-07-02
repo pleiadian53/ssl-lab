@@ -86,6 +86,7 @@ nav:
       - 8 · Route C — representation-conditioned diffusion: generative_jepa/08-route-c-conditioned-diffusion.md
       - 9 · The conditional flow prior: generative_jepa/09-conditional-flow-prior.md
       - "9a · The three identities, made precise": generative_jepa/09a-three-identities-formalized.md
+      - "9b · Classifier-free guidance": generative_jepa/09b-classifier-free-guidance.md
       - 10 · Route D — world-model planning: generative_jepa/10-route-d-world-model-planning.md
       - 11 · Application — computational biology: generative_jepa/11-application-computational-biology.md
       - 12 · Application — digital phenotyping: generative_jepa/12-application-digital-phenotyping.md
