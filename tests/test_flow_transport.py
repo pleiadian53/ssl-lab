@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import torch
 
-from ssllab.generative.flow import VelocityMLP, cfm_loss, euler_sample, linear_interpolant
+from ssllab.generative.flow import VelocityMLP, cfm_loss, euler_sample, linear_interpolant, ot_couple
 
 
 def test_linear_interpolant_endpoints():
@@ -38,3 +38,21 @@ def test_cfm_loss_accepts_source():
     z1, z0, c = torch.randn(6, 8), torch.randn(6, 8), torch.randn(6, 4)
     loss = cfm_loss(m, z1, c=c, z0=z0)
     assert loss.ndim == 0 and torch.isfinite(loss)
+
+
+def test_ot_couple_finds_the_optimal_pairing():
+    # z0 and z1 are the same two points in swapped order; OT must un-swap z0 so each
+    # source sits with its nearest target, and the result must be a permutation of z0.
+    z0 = torch.tensor([[0.0], [10.0]])
+    z1 = torch.tensor([[10.1], [0.1]])
+    out = ot_couple(z0, z1)
+    assert torch.allclose(out, torch.tensor([[10.0], [0.0]]))
+    # cost after OT is <= cost under the identity pairing
+    assert (out - z1).pow(2).sum() <= (z0 - z1).pow(2).sum()
+
+
+def test_ot_couple_is_a_permutation():
+    z0, z1 = torch.randn(16, 5), torch.randn(16, 5)
+    out = ot_couple(z0, z1)
+    # every original row appears exactly once (a reordering, not a resampling)
+    assert sorted(map(tuple, out.tolist())) == sorted(map(tuple, z0.tolist()))

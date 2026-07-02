@@ -46,7 +46,7 @@ from ssllab.generative.condition import (
     GeneSetEmbedding,
     build_pert_gene_matrix,
 )
-from ssllab.generative.flow import VelocityMLP, cfm_loss
+from ssllab.generative.flow import VelocityMLP, cfm_loss, ot_couple
 from ssllab.utils import get_device, set_seed
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-7s  %(message)s", datefmt="%H:%M:%S")
@@ -69,6 +69,9 @@ def parse_args() -> argparse.Namespace:
                    help="gaussian = noise->outcome prior, condition fuses (z_b, z_p) [current default]; "
                         "control = transport a control latent -> outcome (source z0=z_b, condition = z_p only) "
                         "so the field models the displacement (the effect) directly")
+    p.add_argument("--coupling", type=str, default="independent", choices=["independent", "ot"],
+                   help="control base only: independent = random control per target; "
+                        "ot = minibatch optimal-transport pairing (straighter paths, lower-variance target)")
     p.add_argument("--cond-type", type=str, default="table", choices=["table", "geneset"],
                    help="table = learned per-pert embedding (in-distribution); "
                         "geneset = gene-compositional (generalizes to held-out combos)")
@@ -159,6 +162,8 @@ def main() -> None:
             # baseline z_b: a control-cell latent sampled per example (population baseline)
             zb = ctrl_pool[torch.randint(len(ctrl_pool), (z1.shape[0],), generator=g)]
             if args.flow_base == "control":
+                if args.coupling == "ot":
+                    zb = ot_couple(zb, z1)                                          # OT-pair source to target
                 loss = cfm_loss(flow, z1, c=cond(pid), p_drop=args.p_drop, z0=zb)   # transport z_b -> z1
             else:
                 loss = cfm_loss(flow, z1, c=cond(zb, pid), p_drop=args.p_drop)      # noise -> z1, c=(z_b,z_p)
@@ -182,6 +187,7 @@ def main() -> None:
     }, out)
     exp.write_report("stage_b_flow", {"final_cfm_loss": avg, "n_perts": n_perts, "cond_type": args.cond_type,
                                       "flow_base": args.flow_base,
+                                      "coupling": args.coupling if args.flow_base == "control" else None,
                                       "compose": args.compose if args.cond_type == "geneset" else None,
                                       "train_cells": len(Zn), "n_controls": int(is_control.sum())})
     logger.info("saved conditional flow -> %s", out)

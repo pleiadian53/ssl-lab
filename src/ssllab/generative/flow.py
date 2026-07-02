@@ -117,6 +117,23 @@ def linear_interpolant(
     return z_t, u_t
 
 
+def ot_couple(z0: torch.Tensor, z1: torch.Tensor) -> torch.Tensor:
+    """Reorder ``z0`` to its minibatch optimal-transport pairing with ``z1``.
+
+    Returns ``z0`` permuted so that ``(z0[i], z1[i])`` minimizes the total squared
+    transport cost ``sum_i ||z0[i] - z1[i]||^2`` (exact assignment). Only meaningful
+    when ``z0`` is real data (the transport source): straighter source→target paths
+    than random pairing, so flow-matching regresses a lower-variance target field.
+    """
+    from scipy.optimize import linear_sum_assignment
+
+    with torch.no_grad():
+        cost = torch.cdist(z1, z0).pow(2).detach().cpu().numpy()   # (B, B)
+        _, col = linear_sum_assignment(cost)                       # z1[i] <- z0[col[i]]
+        idx = torch.as_tensor(col, device=z0.device, dtype=torch.long)
+    return z0[idx]
+
+
 def cfm_loss(
     model: VelocityMLP,
     z1: torch.Tensor,
