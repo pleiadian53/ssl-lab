@@ -122,15 +122,23 @@ def cfm_loss(
     z1: torch.Tensor,
     c: torch.Tensor | None = None,
     p_drop: float = 0.0,
+    z0: torch.Tensor | None = None,
 ) -> torch.Tensor:
     """Conditional flow-matching MSE loss for data latents ``z1`` ``(B, D)``.
 
     ``c`` ``(B, cond_dim)`` is the per-sample condition (None for the
     unconditional prior). ``p_drop`` randomly nulls the condition per sample to
     train classifier-free guidance; ignored when ``c`` is None.
+
+    ``z0`` ``(B, D)`` is the transport **source**. Default ``None`` draws Gaussian
+    noise — the standard noise→data prior. Pass real samples (e.g. control-cell
+    latents) to learn a **distribution-to-distribution transport** source→``z1``,
+    so the field models the *displacement* between two real populations rather
+    than sampling absolute state from noise.
     """
     b = z1.shape[0]
-    z0 = torch.randn_like(z1)
+    if z0 is None:
+        z0 = torch.randn_like(z1)
     t = torch.rand(b, device=z1.device)
     z_t, u_t = linear_interpolant(z0, z1, t)
     if c is not None:
@@ -148,16 +156,21 @@ def euler_sample(
     device: torch.device | str = "cpu",
     c: torch.Tensor | None = None,
     guidance: float = 1.0,
+    z0: torch.Tensor | None = None,
 ) -> torch.Tensor:
-    """Integrate the ODE from noise (t=0) to data (t=1). Returns ``(n, dim)``.
+    """Integrate the ODE from the source (t=0) to data (t=1). Returns ``(n, dim)``.
 
     ``c`` ``(n, cond_dim)`` fixes the condition for every sample (None for the
     unconditional prior). ``guidance > 1`` applies classifier-free guidance,
     extrapolating away from the null-token (unconditional) velocity to sharpen
     the condition; ``guidance=1`` is plain conditional sampling.
+
+    ``z0`` ``(n, dim)`` is the source state. Default ``None`` starts from Gaussian
+    noise (the noise→data prior); pass real samples (control latents) to transport
+    a baseline population toward its conditioned outcome.
     """
     model.eval()
-    z = torch.randn(n, dim, device=device)
+    z = torch.randn(n, dim, device=device) if z0 is None else z0.to(device)
     dt = 1.0 / n_steps
     null = None
     if c is not None and guidance != 1.0:
