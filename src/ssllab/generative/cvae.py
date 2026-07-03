@@ -95,3 +95,20 @@ class ConditionalNBVAE(nn.Module):
         pid = torch.full((n,), int(pert_id), dtype=torch.long, device=device)
         rho = self.decode(z, pid)["rho"]
         return torch.log1p(1e4 * rho).mean(0)
+
+    @torch.no_grad()
+    def generate_population(
+        self, pert_id: int, n: int, library_size: torch.Tensor,
+        device: torch.device | str = "cpu", generator: torch.Generator | None = None,
+    ) -> torch.Tensor:
+        """Per-cell predicted log1p-CP10K expression ``(n, G)``, **sampling counts** from the NB
+        so the population carries realistic technical noise (for calibration)."""
+        z = torch.randn(n, self.latent_dim, generator=generator).to(device)
+        pid = torch.full((n,), int(pert_id), dtype=torch.long, device=device)
+        out = self.decode(z, pid)
+        ls = library_size.to(device)
+        mu = ls.unsqueeze(-1) * out["rho"]
+        kappa = out["kappa"].expand_as(mu)
+        lam = torch.distributions.Gamma(kappa, kappa / (mu + 1e-8)).sample()   # NB = Gamma-Poisson
+        counts = torch.poisson(lam)
+        return torch.log1p(1e4 * counts / ls.unsqueeze(-1))

@@ -111,12 +111,32 @@ def predicted_expression(
     guidance: float = 1.0, steps: int = 100, device: torch.device | str = "cpu",
     generator: torch.Generator | None = None,
 ) -> torch.Tensor:
-    """Mean predicted log1p-CP10K expression over a generated population for one
-    perturbation — directly comparable to the cache's normalized ``hvg_X``.
+    """Mean predicted log1p-CP10K expression over a generated population ``(G,)`` —
+    directly comparable to the cache's normalized ``hvg_X``.
 
-    The decoder's gene-rate ``rho`` (sums to 1) is library-size-free, so the
-    normalized expression is ``log1p(1e4 * rho)`` with no library-size needed.
+    The decoder's gene-rate ``rho`` (sums to 1) is library-size-free, so the mean uses
+    ``log1p(1e4 * rho)`` with no sampling — a clean estimate of the *mean* response (the
+    effect-size metric). Per-cell *spread* needs count sampling; see :func:`predicted_population`.
     """
     z = sample_perturbed_latents(bundle, pert_id, n, guidance, steps, device, generator)
     rho = decoder(z, library_size=torch.ones(n, device=device))["rho"]   # (n, G)
     return torch.log1p(1e4 * rho).mean(0)                                  # (G,)
+
+
+@torch.no_grad()
+def predicted_population(
+    bundle: dict, decoder: CountDecoder, pert_id: int, n: int, library_size: torch.Tensor,
+    guidance: float = 1.0, steps: int = 100, device: torch.device | str = "cpu",
+    generator: torch.Generator | None = None,
+) -> torch.Tensor:
+    """Per-cell predicted log1p-CP10K expression for a generated population ``(n, G)``.
+
+    Unlike :func:`predicted_expression`, this **samples counts** from the decoder's NB so the
+    per-cell spread carries the real technical (count) noise that dominates scRNA-seq — without
+    it a population of decoded rates is near-degenerate and no calibration is measurable.
+    ``library_size`` ``(n,)`` sets the sequencing depth; counts are renormalized to log1p-CP10K.
+    """
+    z = sample_perturbed_latents(bundle, pert_id, n, guidance, steps, device, generator)
+    ls = library_size.to(device)
+    counts = decoder.sample_counts(z, ls)                                  # (n, G)
+    return torch.log1p(1e4 * counts / ls.unsqueeze(-1))                    # (n, G)
