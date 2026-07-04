@@ -410,7 +410,7 @@ an additive pool over a learned *per-gene* table (`build_pert_gene_matrix` turns
 
 The two levers are **orthogonal and composable**:
 
-- **Composition** (the geneset encoder) extends *which* conditions you can form — including combinations absent from training.
+- **Composition** (the gene-set encoder) extends *which* conditions you can form — including combinations absent from training.
 - **Guidance** (CFG) controls *how hard* you lean on whichever condition you formed.
 
 Point both at the same unseen combo and you *generate* $A+B$ (composition) and then *sharpen* its predicted effect (guidance) — the "predict, then amplify, an unseen intervention" workflow a screen actually wants. It is also the in-code shadow of the **composition** property the recap (§12) attributes to the action operator: pooling interventions as $e(A)+e(B)$ here is the embedding-space version of composing operators $f_{\theta(c_2)} \circ f_{\theta(c_1)}$ there.

@@ -1,10 +1,10 @@
 # Part 9a — The three identities, made precise: one push-forward, three training stories
 
-*A companion to [Part 9](09-conditional-flow-prior.md) for readers who want the "one model, three identities" claim turned from a story into a statement you can check. We define the single object all three names point at, show each name specifies exactly it, and then are honest about the one place the equivalence is a limit rather than an identity — the training objective.*
+*A companion to [Part 9](09-conditional-flow-prior.md) for readers who want its "one model, three identities" claim turned from an intuition into something you can check. We show the three are literally one generative object, and pin down the single place they differ: how the flow is trained.*
 
-> **Why this chapter exists.** [Part 9 §4](09-conditional-flow-prior.md) claimed that the conditional flow prior is, at once, Route B's expressive limit, Route C done with flow, and the starter completed — "two descriptions of the same idea," meeting at one model. That is the right intuition, but it is stated informally, and for the chapter's central thesis the informal version invites a fair objection: *a variational posterior trained with a KL term and a flow trained by velocity regression are not obviously the same thing.* They are not — as **objectives**. They are the same as **generative objects**. This chapter draws that line exactly. It assumes [Part 7](07-route-b-variational-and-beyond-gaussian.md) (the variational route and the expressive-posterior ladder), [Part 8 §3](08-route-c-conditioned-diffusion.md) (the score/transport picture), and [Part 9 §1–2](09-conditional-flow-prior.md) (the conditioned velocity field), and adds one tool: the **push-forward** of a distribution through a map.
+> **Why this chapter exists.** [Part 9 §4](09-conditional-flow-prior.md) claimed that three things are secretly the same model. The first is **Route B**, the variational route, where the predictor emits a whole distribution over the outcome; here we take it to its most expressive form. The second is **Route C**, a separate conditional generator trained over the latent, built with flow instead of diffusion. The third is the **Parts 0–4 starter**, the unconditional flow prior, now with a condition added. The claim that these coincide is right, but Part 9 argued it informally, and informally it invites a fair objection: a variational posterior trained with a KL term and a flow trained by plain velocity regression are not obviously the same thing. As *training objectives* they are not. As *generative objects*, the distribution you actually sample from, they are. This chapter shows that precisely, using one tool: the **push-forward** of a distribution through a map. It builds on [Part 7](07-route-b-variational-and-beyond-gaussian.md) (Route B), [Part 8 §3](08-route-c-conditioned-diffusion.md) (Route C's noise-to-data transport), and [Part 9 §1–2](09-conditional-flow-prior.md) (the conditioned velocity field).
 
-The plan is strict buildup. First we name the **one object** — a base Gaussian pushed through a conditioned flow map — and pin down the push-forward notation. Then we take each of the three "identities" in turn and show it specifies *that same object*. Finally we separate the two things the informal claim quietly conflated: the **generative object** (where the equivalence is exact) and the **training objective** (where it is exact only in a limit). The payoff is a precise version of the slogan: *one architecture, three training stories, and a single distribution they all aim at.*
+The plan is strict buildup. First we name the **one object**: a base Gaussian pushed through a conditioned flow map. We pin down the push-forward notation. Then we take each of the three "identities" in turn and show it specifies *that same object*. Finally we separate the two things the informal claim quietly conflated: the **generative object** (where the equivalence is exact) and the **training objective** (where it is exact only in a limit). The payoff is a precise version of the slogan: *one architecture, three training stories, and a single distribution they all aim at.*
 
 ---
 
@@ -20,11 +20,13 @@ $$
 
 The object we care about is the **time-1 map**, written $\Phi_c := \phi^c_1$. It sends a noise point to a generated latent: $z = \Phi_c(z_0)$.
 
-Now the key definition. Feed the standard Gaussian through $\Phi_c$ and you get a distribution over latents. That distribution is the **push-forward** of the base by $\Phi_c$, written $(\Phi_c)_\# \mathcal{N}(0, I)$ — read it as "the distribution of $\Phi_c(z_0)$ when $z_0 \sim \mathcal{N}(0, I)$." Call it $p_\eta(z \mid c)$:
+Now the key definition. Feed the standard Gaussian through $\Phi_c$ and you get a distribution over latents. The recipe is concrete: draw a noise point $z_0 \sim \mathcal{N}(0, I)$, apply the map, and record where $z = \Phi_c(z_0)$ lands. Do that for the whole noise cloud, and the landing points trace out a distribution. Call it $p_\eta(z \mid c)$:
 
 $$
-p_\eta(z \mid c)\ :=\ (\Phi_c)_\# \mathcal{N}(0, I), \qquad \text{i.e.}\quad z = \Phi_c(z_0),\ \ z_0 \sim \mathcal{N}(0, I).
+p_\eta(z \mid c) := (\Phi_c)_* \mathcal{N}(0, I), \qquad \text{i.e. } z = \Phi_c(z_0) \text{ with } z_0 \sim \mathcal{N}(0, I).
 $$
+
+The right-hand side is the standard shorthand for that recipe, called the **push-forward** of $\mathcal{N}(0, I)$ through $\Phi_c$. The subscript star means "push the whole distribution through the map." It is not a product. $(\Phi_c)_* \mathcal{N}(0, I)$ multiplies nothing; it names the distribution you get by sending every $\mathcal{N}(0, I)$ sample through $\Phi_c$.
 
 That is the one object. It is fully determined by two ingredients and nothing else: the **base** ($\mathcal{N}(0, I)$) and the **conditioned field** ($v_\eta$, which fixes $\Phi_c$). Two construction routes that share both ingredients define the *same* distribution — not a similar one, the same one. The whole chapter is the observation that all three "identities" share both ingredients.
 
@@ -34,7 +36,7 @@ That is the one object. It is fully determined by two ingredients and nothing el
 
 ## 2. Identity 1 — the completed starter *is* this object, by construction
 
-This one is immediate, and it is why we start here. [Part 9 §2](09-conditional-flow-prior.md) *built* the completed starter as precisely this push-forward: take the marginal velocity field $v_\eta(z, t)$, add a condition slot to get $v_\eta(z, t, c)$, then sample by integrating from $z_0 \sim \mathcal{N}(0, I)$ to $t = 1$. That integration *is* $\Phi_c$, and the resulting sample distribution *is* $(\Phi_c)_\# \mathcal{N}(0, I)$.
+This one is immediate, and it is why we start here. [Part 9 §2](09-conditional-flow-prior.md) *built* the completed starter as precisely this push-forward: take the marginal velocity field $v_\eta(z, t)$, add a condition slot to get $v_\eta(z, t, c)$, then sample by integrating from $z_0 \sim \mathcal{N}(0, I)$ to $t = 1$. That integration *is* $\Phi_c$, and the resulting sample distribution *is* $(\Phi_c)_* \mathcal{N}(0, I)$.
 
 So "the starter, completed" is not *like* the one object — it is the definition of it, written in the starter's vocabulary. Identity 1 is a tautology, and we keep it as the anchor the other two are measured against.
 
@@ -42,14 +44,14 @@ So "the starter, completed" is not *like* the one object — it is the definitio
 
 ## 3. Identity 2 — Route C with flow is the same push-forward
 
-[Part 8](08-route-c-conditioned-diffusion.md) framed Route C as "keep JEPA as a pure encoder and train a *separate* conditional generative model over the latent — a learned noise-to-data transport steered by $c$." The phrase **learned noise-to-data transport** is the tell: a transport is, by definition, a map carrying a base distribution to a target one. A conditional transport realized as a flow is a map $\Phi_c$, and the model it defines is $(\Phi_c)_\# \mathcal{N}(0, I)$ — Identity 1's object again.
+[Part 8](08-route-c-conditioned-diffusion.md) framed Route C as "keep JEPA as a pure encoder and train a *separate* conditional generative model over the latent — a learned noise-to-data transport steered by $c$." The phrase **learned noise-to-data transport** is the tell: a transport is, by definition, a map carrying a base distribution to a target one. A conditional transport realized as a flow is a map $\Phi_c$, and the model it defines is $(\Phi_c)_* \mathcal{N}(0, I)$, which is Identity 1's object again.
 
 The diffusion-versus-flow choice does not change the *type* of object, only the **path family** the transport travels:
 
 - **Diffusion** ([Part 8 §2–3](08-route-c-conditioned-diffusion.md)) learns a curved, many-step reverse process. Its *stochastic* sampler is not literally a deterministic $\Phi_c$ — but its **probability-flow ODE** (the deterministic map with the same marginals, [Part 8 §6](08-route-c-conditioned-diffusion.md)) *is* a transport map, so even diffusion's generative distribution is a push-forward of the base.
 - **Rectified flow** ([Part 2](02-the-latent-prior.md), [Part 9](09-conditional-flow-prior.md)) learns a near-straight transport directly, and *is* a deterministic $\Phi_c$ out of the box.
 
-Take the flow member, give it the condition slot, and you get the *same field* $v_\eta(z, t, c)$ and the *same* $\Phi_c$ as Identity 1. "Route C with flow" and "the completed starter" are two names for one construction: a conditioned transport over the JEPA latent, with the only difference (diffusion vs. flow) being a path-family choice that leaves the object's *type* — a conditioned push-forward — unchanged.
+Take the flow member, give it the condition slot, and you get the *same field* $v_\eta(z, t, c)$ and the *same* $\Phi_c$ as Identity 1. "Route C with flow" and "the completed starter" are two names for one construction: a conditioned transport over the JEPA latent, with the only difference (diffusion vs. flow) being a path-family choice that leaves the object's *type*, a conditioned push-forward, unchanged.
 
 ---
 
@@ -68,12 +70,12 @@ Read the right-hand side as a *map* applied to noise: $\hat z = T_\phi(\varepsil
 At that top rung, $T_\phi(\cdot;\ c)$ is no longer affine — it is an integrated velocity field, i.e. exactly a time-1 flow map $\Phi_c$. So the distribution Route B samples at the top of its ladder is
 
 $$
-(T_\phi)_\# \mathcal{N}(0, I)\ =\ (\Phi_c)_\# \mathcal{N}(0, I)\ =\ p_\eta(z \mid c).
+(T_\phi)_* \mathcal{N}(0, I) = (\Phi_c)_* \mathcal{N}(0, I) = p_\eta(z \mid c).
 $$
 
 The same object once more. Route B reaches it by asking "how expressive can the reparameterized sampler be?" and answering "let it be a flow"; the answer's *sampler* is identical to Identities 1 and 2.
 
-One honest wrinkle, because Route B has *two* distributions. The thing you sample at generation is the **prior** $\pi(z \mid c)$, not the training-time posterior $q_\phi$ (they are coupled by the KL term, [Part 7 §2](07-route-b-variational-and-beyond-gaussian.md)). So "Route B's flow posterior" is, at generation time, a **flow prior** — the posterior's expressive shape transferred to the prior you sample. That is why Part 9 can call one model both "Route B's expressive limit" and "the conditional flow *prior*" without contradiction: in the well-trained limit the KL coupling drives the prior to match the posterior, and the prior you sample is the flow. We return to this wrinkle next, because it is where the equivalence stops being exact.
+One wrinkle remains, because Route B has *two* distributions. The thing you sample at generation is the **prior** $\pi(z \mid c)$, not the training-time posterior $q_\phi$ (they are coupled by the KL term, [Part 7 §2](07-route-b-variational-and-beyond-gaussian.md)). So "Route B's flow posterior" is, at generation time, a **flow prior** — the posterior's expressive shape transferred to the prior you sample. That is why Part 9 can call one model both "Route B's expressive limit" and "the conditional flow *prior*" without contradiction: in the well-trained limit the KL coupling drives the prior to match the posterior, and the prior you sample is the flow. We return to this wrinkle next, because it is where the equivalence stops being exact.
 
 ---
 
@@ -81,14 +83,14 @@ One honest wrinkle, because Route B has *two* distributions. The thing you sampl
 
 We can now state the precise version of the slogan, and it has two clauses that the informal §4 ran together.
 
-**Exact, as generative objects.** Identities 1, 2, and 3 all sample $(\Phi_c)_\# \mathcal{N}(0, I)$ for a conditioned velocity field $v_\eta(z, t, c)$. Given the *same* trained field and the *same* base, the three produce **identically distributed** samples — this is a genuine identity of measures, not an analogy. The architecture is shared down to the integration.
+**Exact, as generative objects.** Identities 1, 2, and 3 all sample $(\Phi_c)_* \mathcal{N}(0, I)$ for a conditioned velocity field $v_\eta(z, t, c)$. Given the *same* trained field and the *same* base, the three produce **identically distributed** samples — this is a genuine identity of measures, not an analogy. The architecture is shared down to the integration.
 
 **A limit, as training objectives.** What differs is *how each route fits $v_\eta$* — and therefore *which* field each lands on in finite practice:
 
 - **Identities 1 and 2** fit the field by **conditional flow matching**: regress $v_\eta(z_t, t, c)$ onto the straight-line target $u_t = z_1 - z_0$ over pairs $(z_1, c)$ ([Part 9 §2](09-conditional-flow-prior.md)). At the optimum this transports the base onto the *true conditional of outcome latents*, $p(z_1 \mid c)$ — the distribution of encoded real outcomes given the condition.
-- **Identity 3** fits the field inside a **variational objective**: a posterior pulled toward the encoded real outcome (the $\mathcal{L}_{\text{predict}}$ term), a KL coupling to the prior, and a decoder term ([Part 7 §5](07-route-b-variational-and-beyond-gaussian.md)). At its optimum — exact posterior, KL driven to zero, prior fit to the encoded outcomes — the prior it samples is *also* $p(z_1 \mid c)$.
+- **Identity 3** fits the field inside a **variational objective**: a posterior pulled toward the encoded real outcome (the $\mathcal{L}_{\text{predict}}$ term), a KL coupling to the prior, and a decoder term ([Part 7 §5](07-route-b-variational-and-beyond-gaussian.md)). At its optimum (exact posterior, KL driven to zero, prior fit to the encoded outcomes), the prior it samples is *also* $p(z_1 \mid c)$.
 
-So all three are **consistent estimators of the same target conditional** $p(z_1 \mid c)$, realized by the same architecture, differing only in the route they take to it. In the idealized optimum they coincide. In finite practice the regression route (CFM) and the variational route (ELBO with a KL) can land on *different* fields — different estimators, same estimand — and they carry different failure modes: CFM has no posterior-collapse knob to mistune, while the variational route can collapse the posterior onto the prior or drift if $\lambda_{\mathrm{kl}}$ is off ([Part 7 §2](07-route-b-variational-and-beyond-gaussian.md)).
+So all three are **consistent estimators of the same target conditional** $p(z_1 \mid c)$, realized by the same architecture, differing only in the route they take to it. In the idealized optimum they coincide. In finite practice the regression route (CFM) and the variational route (ELBO with a KL) can land on *different* fields (different estimators, same estimand), and they carry different failure modes: CFM has no posterior-collapse knob to mistune, while the variational route can collapse the posterior onto the prior or drift if $\lambda_{\mathrm{kl}}$ is off ([Part 7 §2](07-route-b-variational-and-beyond-gaussian.md)).
 
 ```mermaid
 flowchart TD
@@ -114,8 +116,8 @@ This is also exactly the [Part 13](13-choosing-a-route.md) litmus, seen from the
 
 The slogan "one model, three identities" survives the scrutiny, sharpened into two clauses:
 
-- **One generative object, exactly.** All three names specify $(\Phi_c)_\# \mathcal{N}(0, I)$ — a base Gaussian pushed through a conditioned flow map. Same base, same field, same samples. This is an identity, and it means **one implementation serves all three**: a conditioned velocity field, integrated.
-- **Three training stories, coincident only in the limit.** Conditional flow matching (Identities 1, 2) and the variational objective (Identity 3) are different routes to fitting that field; they meet at the true conditional $p(z_1 \mid c)$ in the idealized optimum, and can differ — with different failure modes — in finite practice.
+- **One generative object, exactly.** All three names specify $(\Phi_c)_* \mathcal{N}(0, I)$ — a base Gaussian pushed through a conditioned flow map. Same base, same field, same samples. This is an identity, and it means **one implementation serves all three**: a conditioned velocity field, integrated.
+- **Three training stories, coincident only in the limit.** Conditional flow matching (Identities 1, 2) and the variational objective (Identity 3) are different routes to fitting that field; they meet at the true conditional $p(z_1 \mid c)$ in the idealized optimum, and can differ in finite practice, with different failure modes.
 
 The practical upshot is liberating: because the *object* is shared, you may choose the **path family** (flow vs. diffusion) and the **training story** (regression vs. variational) *independently*, by engineering taste and by the [Part 13](13-choosing-a-route.md) calibration litmus — without changing what you are ultimately modeling. That freedom is the real content of "they were two descriptions of the same idea."
 
