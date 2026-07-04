@@ -32,9 +32,9 @@ And zeros dominate. In the slice, **70.3% of all (cell, gene) entries are zero.*
 - **Biological zeros** — the gene genuinely is not expressed in that cell.
 - **Technical zeros** — the gene *is* expressed, but the sequencing simply failed to capture any of its molecules. Single-cell capture is lossy; a lowly-expressed transcript easily reads as zero by chance.
 
-You cannot tell which is which from a single zero, and that ambiguity is a modeling problem, not a nuisance to scrub away. It is the reason the [decoder](../../../docs/generative_jepa/06-route-a-latent-decoder-head.md) uses a **count likelihood** (negative binomial, optionally zero-inflated) rather than squared error: squared error would treat these integer, zero-heavy, over-dispersed counts as if they were tidy Gaussian measurements and spend all its capacity modeling the noise. The data's *measurement model* is baked into its shape, and the model must match it.
+You cannot tell which is which from a single zero, and that ambiguity is a modeling problem, not a nuisance to scrub away. It is the reason the [decoder](../../../../docs/generative_jepa/06-route-a-latent-decoder-head.md) uses a **count likelihood** (negative binomial, optionally zero-inflated) rather than squared error: squared error would treat these integer, zero-heavy, over-dispersed counts as if they were tidy Gaussian measurements and spend all its capacity modeling the noise. The data's *measurement model* is baked into its shape, and the model must match it.
 
-> **Why we keep the raw counts.** The cache stores `counts` as raw integers *on purpose* — even though tokens (Part 3) use a normalized version. The eventual count decoder is trained on the likelihood of the **real** counts, and the success metric (Part 4) is computed in count/expression space. Throw the raw counts away and you cannot recover either. This is the "G2 decoder seam" the [pipeline](../README.md) deliberately preserves.
+> **Why we keep the raw counts.** The cache stores `counts` as raw integers *on purpose* — even though tokens (Part 3) use a normalized version. The eventual count decoder is trained on the likelihood of the **real** counts, and the success metric (Part 4) is computed in count/expression space. Throw the raw counts away and you cannot recover either. This is the "G2 decoder seam" the [pipeline](../../README.md) deliberately preserves.
 
 ---
 
@@ -47,7 +47,7 @@ This spread is mostly **technical**: a cell with twice the library size is not t
 Two places it shows up:
 
 - **Normalization for tokens.** To get comparable features, we divide each cell's counts by its library size and rescale to a common total (counts-per-10,000), then take $\log(1 + \cdot)$ to tame the heavy tail. The cache's `hvg_X` is this **log1p-CP10K** matrix (its largest value in the slice is 8.74, versus 2,402 for the raw count — the log compression is dramatic). These normalized features are what become tokens.
-- **A given input to the decoder.** When the model later *generates* counts, it does **not** predict library size — it predicts a relative gene-rate profile and is *handed* $\ell$ as a covariate, assembling the mean as (rate $\times \ell$). The [Route A decoder chapter](../../../docs/generative_jepa/06-route-a-latent-decoder-head.md) writes this out; here the point is that $\ell$ enters as a known quantity, exactly because it is depth, not biology.
+- **A given input to the decoder.** When the model later *generates* counts, it does **not** predict library size — it predicts a relative gene-rate profile and is *handed* $\ell$ as a covariate, assembling the mean as (rate $\times \ell$). The [Route A decoder chapter](../../../../docs/generative_jepa/06-route-a-latent-decoder-head.md) writes this out; here the point is that $\ell$ enters as a known quantity, exactly because it is depth, not biology.
 
 > **The symbol map so far.** $\ell$ = library size (total counts in a cell). Raw `counts` = the integer measurement. `hvg_X` = log1p-CP10K normalized features (depth-corrected). The model reads normalized features through tokens, predicts in count space, and treats $\ell$ as given.
 

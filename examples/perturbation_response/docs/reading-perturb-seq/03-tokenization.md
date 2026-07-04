@@ -30,7 +30,7 @@ $$
 \underbrace{2000 \text{ genes}}_{\text{a cell}} \longrightarrow \underbrace{50 \text{ tokens}}_{n_{\text{tokens}}} \times \underbrace{40 \text{ genes each}}_{d_{\text{tok}}}.
 $$
 
-This is the gene-space analogue of `patchify` — `tokenize_cells` in [`ssllab.data.perturbseq`](../../../src/ssllab/data/perturbseq.py). It gathers, for each of the 50 groups, that group's 40 gene values out of the cell vector, producing the `(50, 40)` tensor. Batch it and you have `(B, 50, 40)` — exactly the contract. (The production run uses 5,000 genes → still 50 tokens, now $d_{\text{tok}} = 100$ each.)
+This is the gene-space analogue of `patchify` — `tokenize_cells` in [`ssllab.data.perturbseq`](../../../../src/ssllab/data/perturbseq.py). It gathers, for each of the 50 groups, that group's 40 gene values out of the cell vector, producing the `(50, 40)` tensor. Batch it and you have `(B, 50, 40)` — exactly the contract. (The production run uses 5,000 genes → still 50 tokens, now $d_{\text{tok}} = 100$ each.)
 
 ```mermaid
 flowchart LR
@@ -71,11 +71,11 @@ These could make masked prediction (next section) more meaningful, at the cost o
 
 You might ask: if it is just a regrouping, why not feed the encoder the flat 2,000-vector? Because tokens are what make JEPA's **masked-prediction** pretraining possible, and that is how the cell encoder (Stage A) will be trained.
 
-The intra-cell JEPA objective is: **hide some of a cell's gene-group tokens, and train the encoder–predictor to fill in the hidden groups' embeddings from the visible ones.** To "hide a gene group" you need gene groups to exist as discrete units — i.e. tokens. The cell learns a representation in which the visible part of its transcriptome predicts the rest, which is a strong, label-free way to learn what a cell *is*. (This mirrors I-JEPA hiding image patches; the [encoder chapter](../../../docs/generative_jepa/01-the-jepa-encoder.md) has the full mechanism.)
+The intra-cell JEPA objective is: **hide some of a cell's gene-group tokens, and train the encoder–predictor to fill in the hidden groups' embeddings from the visible ones.** To "hide a gene group" you need gene groups to exist as discrete units — i.e. tokens. The cell learns a representation in which the visible part of its transcriptome predicts the rest, which is a strong, label-free way to learn what a cell *is*. (This mirrors I-JEPA hiding image patches; the [encoder chapter](../../../../docs/generative_jepa/01-the-jepa-encoder.md) has the full mechanism.)
 
 After pretraining, the encoder produces, for each cell, a single pooled **latent** $z$ (read "z") — the mean of its token embeddings, one vector per cell. That $z$ is the object the rest of the generative stack acts on: the baseline latent $z_b$ (Part 2) is the encoder's $z$ for a control cell, and the conditional flow prior generates perturbed-cell latents $z$ given the condition. **Tokens in, one latent per cell out** — and the whole generative model lives downstream of that latent.
 
-> **One caveat for Stage A.** The masking that decides *which* tokens to hide is, in the current MNIST code, tuned to a 2D image grid. Gene tokens have no grid, so Stage A will supply a gene-appropriate masking (e.g. hide random gene groups). That is encoder-training work, flagged in the [pipeline plan](../README.md), not part of this data-tokenization step — the `(B, 50, 40)` contract is ready regardless.
+> **One caveat for Stage A.** The masking that decides *which* tokens to hide is, in the current MNIST code, tuned to a 2D image grid. Gene tokens have no grid, so Stage A will supply a gene-appropriate masking (e.g. hide random gene groups). That is encoder-training work, flagged in the [pipeline plan](../../README.md), not part of this data-tokenization step — the `(B, 50, 40)` contract is ready regardless.
 
 ---
 

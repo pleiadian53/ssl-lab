@@ -2,7 +2,7 @@
 
 *Before any tensor, the biology. What experiment produced these numbers, what it means to "perturb" a cell, and why the condition the generative model is steered by is a gene — or a pair of genes — switched on.*
 
-> **Where we are.** This is the data the [generative JEPA](../../../docs/generative_jepa/index.md) learns to generate from. The model's job, stated biologically, is: *given an untreated cell and an intervention, predict the distribution of cell states that intervention produces.* To make sense of that sentence you need to know what the cell states are, what an "intervention" physically is, and why we measure both single interventions and combinations. That is this chapter.
+> **Where we are.** This is the data the [generative JEPA](../../../../docs/generative_jepa/index.md) learns to generate from. The model's job, stated biologically, is: *given an untreated cell and an intervention, predict the distribution of cell states that intervention produces.* To make sense of that sentence you need to know what the cell states are, what an "intervention" physically is, and why we measure both single interventions and combinations. That is this chapter.
 
 ---
 
@@ -39,7 +39,7 @@ You may know CRISPR as a gene-*cutting* tool. CRISPRa is a cousin that does not 
 
 So in this dataset an "intervention on gene X" means **make the cell express more of X than it normally would.** This has a beautifully direct fingerprint in the data, which we will see in §5: when you activate a gene, *that gene's own count usually shoots up* — it is frequently the single most-changed gene in the perturbed cells. The intervention is visible in its own readout.
 
-> **Why this matters for the model.** The "condition" the generative model is steered by — written $z_p$ in the [design-space series](../../../docs/generative_jepa/07-route-b-variational-and-beyond-gaussian.md), read "z-perturbation" — is an embedding of *which gene(s) were activated.* Biologically, that condition is an instruction: "drive transcription of CEBPE up." The model must learn what downstream cascade that instruction sets off. (Other Perturb-seq datasets use CRISPR *interference*, CRISPRi, which turns genes **down** instead — the [Adamson 2016](https://pertpy.readthedocs.io/en/stable/api/datasets_index.html) dataset is one. The modeling is identical; only the sign of the nudge flips.)
+> **Why this matters for the model.** The "condition" the generative model is steered by — written $z_p$ in the [design-space series](../../../../docs/generative_jepa/07-route-b-variational-and-beyond-gaussian.md), read "z-perturbation" — is an embedding of *which gene(s) were activated.* Biologically, that condition is an instruction: "drive transcription of CEBPE up." The model must learn what downstream cascade that instruction sets off. (Other Perturb-seq datasets use CRISPR *interference*, CRISPRi, which turns genes **down** instead — the [Adamson 2016](https://pertpy.readthedocs.io/en/stable/api/datasets_index.html) dataset is one. The modeling is identical; only the sign of the nudge flips.)
 
 ---
 
@@ -47,7 +47,7 @@ So in this dataset an "intervention on gene X" means **make the cell express mor
 
 K562 cells are all (approximately) genetically identical and divide indefinitely, which is exactly what you want for this question. If two cells respond differently to the same perturbation, it is **not** because they started as different cell types — they did not — it is because the *response itself* is variable. That isolates the thing we care about: the spread of outcomes a single intervention produces.
 
-This is the biological root of **Gap G1** from the [design-space map](../../../docs/generative_jepa/05-two-gaps-four-routes.md) — the reason a generative model must predict a *distribution*, not a point. Identical cells, identical intervention, genuinely different outcomes. Chapter 2 shows this spread in the numbers; here the point is conceptual: the cell line is what makes "same input, many outputs" a clean, real phenomenon rather than a confound.
+This is the biological root of **Gap G1** from the [design-space map](../../../../docs/generative_jepa/05-two-gaps-four-routes.md) — the reason a generative model must predict a *distribution*, not a point. Identical cells, identical intervention, genuinely different outcomes. Chapter 2 shows this spread in the numbers; here the point is conceptual: the cell line is what makes "same input, many outputs" a clean, real phenomenon rather than a confound.
 
 ---
 
@@ -76,7 +76,7 @@ flowchart LR
     class EMERGE accent;
 ```
 
-This is why the dataset's headline test — built into our pipeline's data split (Chapter 2) — is **predict an unseen combination from its seen singles.** A model that has learned real biology should anticipate at least some of the emergent half; a model that only memorized single-gene effects cannot. It is the sharpest possible probe of whether a model understands genetic interaction, and it is exactly the [combinatorial generalization](../../../docs/generative_jepa/11-application-computational-biology.md) the generative JEPA is meant to demonstrate.
+This is why the dataset's headline test — built into our pipeline's data split (Chapter 2) — is **predict an unseen combination from its seen singles.** A model that has learned real biology should anticipate at least some of the emergent half; a model that only memorized single-gene effects cannot. It is the sharpest possible probe of whether a model understands genetic interaction, and it is exactly the [combinatorial generalization](../../../../docs/generative_jepa/11-application-computational-biology.md) the generative JEPA is meant to demonstrate.
 
 ---
 

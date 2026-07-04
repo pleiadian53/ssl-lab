@@ -2,7 +2,7 @@
 
 *A model can reconstruct a cell beautifully and still be useless. This chapter is about the metric that actually matters in perturbation biology — effect size — what it measures, why it is the right target, and the two companions (calibration, data efficiency) that keep it honest.*
 
-> **Where we are.** [Parts 1–3](01-what-is-perturb-seq.md) built up the data: the intervention, the counts, the controls, the split, the tokens. Now the question that decides everything — **how do we score a prediction?** The answer is the reason the whole [design-space series](../../../docs/generative_jepa/05-two-gaps-four-routes.md) insists on a decoder that reaches data space, and it is sharp enough to rule modeling choices in or out.
+> **Where we are.** [Parts 1–3](01-what-is-perturb-seq.md) built up the data: the intervention, the counts, the controls, the split, the tokens. Now the question that decides everything — **how do we score a prediction?** The answer is the reason the whole [design-space series](../../../../docs/generative_jepa/05-two-gaps-four-routes.md) insists on a decoder that reaches data space, and it is sharp enough to rule modeling choices in or out.
 
 ---
 
@@ -10,7 +10,7 @@
 
 Here is the failure that motivates everything. Suppose you score a model on how well it reproduces a perturbed cell's **absolute state** — its full expression profile. A model can score *wonderfully* on that and still be worthless, because a perturbed cell's state is dominated by the large, stable **baseline** every K562 cell already has. The intervention's effect — the genes the perturbation actually moved — is a comparatively *small* perturbation riding on top of that big baseline.
 
-So a model that nails the baseline and completely fumbles the effect still looks excellent on absolute-state reconstruction. It is the genomics version of forecasting tomorrow's weather as "same as today" — right most days, useless for the *change* a front brings. This is **baseline dominance**, developed in full in [Part 5 §3 of the design-space series](../../../docs/generative_jepa/05-two-gaps-four-routes.md); the consequence here is a rule:
+So a model that nails the baseline and completely fumbles the effect still looks excellent on absolute-state reconstruction. It is the genomics version of forecasting tomorrow's weather as "same as today" — right most days, useless for the *change* a front brings. This is **baseline dominance**, developed in full in [Part 5 §3 of the design-space series](../../../../docs/generative_jepa/05-two-gaps-four-routes.md); the consequence here is a rule:
 
 > **Score the change, not the state.** What we care about is the **effect** of the intervention — how far each gene moved from baseline — not the after-state, most of which was already there before we did anything.
 
@@ -63,9 +63,9 @@ flowchart LR
 
 ## 4. The second axis — calibration (did it get the *spread* right?)
 
-Effect size scores the *average* change. But the whole reason for a **generative** model (Gap G1, [Part 5](../../../docs/generative_jepa/05-two-gaps-four-routes.md)) is that identical cells respond *differently* — the perturbation produces a *distribution* of outcomes, not one. So a second axis asks: **does the model's predicted spread of outcomes match the real cell-to-cell spread?**
+Effect size scores the *average* change. But the whole reason for a **generative** model (Gap G1, [Part 5](../../../../docs/generative_jepa/05-two-gaps-four-routes.md)) is that identical cells respond *differently* — the perturbation produces a *distribution* of outcomes, not one. So a second axis asks: **does the model's predicted spread of outcomes match the real cell-to-cell spread?**
 
-A model can nail the mean effect and still be badly **mis-calibrated** — too confident (predicting all cells respond identically when they fan out) or too diffuse (predicting noise where the real response is tight). Worse, when the true response is genuinely **multi-modal** — the same perturbation drives some cells one way and some another — a model that can only produce one bump per condition will predict a midpoint that *no cell actually occupies* (the two-fates problem, [Part 7 §3](../../../docs/generative_jepa/07-route-b-variational-and-beyond-gaussian.md)). That is the failure the conditional flow prior was chosen to avoid, and calibration is how you catch it.
+A model can nail the mean effect and still be badly **mis-calibrated** — too confident (predicting all cells respond identically when they fan out) or too diffuse (predicting noise where the real response is tight). Worse, when the true response is genuinely **multi-modal** — the same perturbation drives some cells one way and some another — a model that can only produce one bump per condition will predict a midpoint that *no cell actually occupies* (the two-fates problem, [Part 7 §3](../../../../docs/generative_jepa/07-route-b-variational-and-beyond-gaussian.md)). That is the failure the conditional flow prior was chosen to avoid, and calibration is how you catch it.
 
 Calibration is checked by comparing the *generated population* against the *real population* of perturbed cells — their variance per gene, their correlations, whether the predicted cloud covers the real one. You report it **alongside** effect size, never instead of it: a model with great mean effect and terrible spread is only half a generative model.
 
@@ -73,7 +73,7 @@ Calibration is checked by comparing the *generated population* against the *real
 
 ## 5. The third axis — data efficiency (did JEPA earn its keep?)
 
-The last axis is methodological, and it is the experiment the whole approach hangs on. The generative JEPA conditions on a **JEPA-pretrained** cell latent. That pretraining is a *hypothesis* — that a self-supervised representation helps — not a given. So the discipline ([the verdict §7.2](../../../dev/generative_jepa/QA/verdict-which-route-to-build-first.md)) is:
+The last axis is methodological, and it is the experiment the whole approach hangs on. The generative JEPA conditions on a **JEPA-pretrained** cell latent. That pretraining is a *hypothesis* — that a self-supervised representation helps — not a given. So the discipline ([the verdict §7.2](../../../../dev/generative_jepa/QA/verdict-which-route-to-build-first.md)) is:
 
 > **Beat a from-scratch baseline, or the pretraining bought nothing.** Train a plain conditional model (a from-scratch count-VAE, no JEPA) and a JEPA-pretrained one, and compare on effect size, calibration, **and data efficiency** — does JEPA win *with less labeled perturbation data?* If the JEPA model cannot beat the baseline, you learned that the pretraining was an expensive initialization and nothing more — which is worth knowing early.
 
@@ -104,4 +104,4 @@ Across four chapters we read Norman 2019 end to end:
 - **[Part 3](03-tokenization.md)** — a cell's 2,000-gene vector becomes **50 tokens × 40 genes** via a deterministic gene partition (the gene-space `patchify`), enabling masked-prediction pretraining and yielding **one latent $z$ per cell**.
 - **[Part 4](04-success-metrics.md)** — score the **change, not the state**: **effect size** (Pearson of predicted vs true differential expression on top-DE genes), kept honest by **calibration** and **data efficiency**.
 
-With the data understood and verified end to end on the real slice, the next build is **Stage A** — pretraining the intra-cell JEPA encoder on these tokens — which produces the latent $z$ that the [conditional flow prior](../../../docs/generative_jepa/09-conditional-flow-prior.md) and count decoder turn into predicted perturbation responses, scored exactly as above.
+With the data understood and verified end to end on the real slice, the next build is **Stage A** — pretraining the intra-cell JEPA encoder on these tokens — which produces the latent $z$ that the [conditional flow prior](../../../../docs/generative_jepa/09-conditional-flow-prior.md) and count decoder turn into predicted perturbation responses, scored exactly as above.
