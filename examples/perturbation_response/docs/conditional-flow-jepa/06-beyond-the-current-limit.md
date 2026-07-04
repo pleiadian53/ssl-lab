@@ -1,0 +1,39 @@
+# Chapter 6 — Beyond the current limit
+
+*Where a breakthrough would most plausibly come from. The current result is a careful tie against a simpler baseline, and a tie is not a dead end. It is a map of which components to change. This chapter orders the directions from the ones most likely to move the number to the deeper research bets, and says for each what we would expect to see.*
+
+The result to beat, from [Chapter 4](04-results.md): on held-out gene combinations the conditional flow ties a from-scratch NB-VAE on the two axes we can measure, effect size and calibration. [Chapter 5](05-challenges-and-limitations.md) traced that tie to three structural facts. The encoder is frozen and condition-blind, the decoder is a shared and over-dispersed bottleneck, and the metrics reward the mean and the marginals, which a simple generator already handles. Each fact is a lever.
+
+## The one axis we have not measured: data efficiency
+
+The cleanest remaining place for the flow to justify itself is the low-data regime. The whole premise of self-supervised pretraining is that a representation learned on abundant unlabeled cells pays off when labeled examples are scarce. Effect size at full data does not test that premise at all. The experiment is to subsample the training cells per perturbation to a ladder of fractions, retrain the flow and the VAE at each rung, and plot the $\Delta$-correlation against the number of cells. If the JEPA-plus-flow stack degrades more gracefully than the from-scratch VAE as data shrinks, that is a real and practically important win, and it is invisible to every number reported so far. This is the first thing to run, and it needs only the existing pipeline with a subsampling flag.
+
+## Fix the shared bottleneck: a better-calibrated decoder
+
+The negative-binomial decoder is over-dispersed on exactly the genes the metric scores, and both models read out through it. When two models share a miscalibrated component, the differences in the parts they do not share get compressed, so improving the decoder could reveal a gap the current setup hides. Concretely: fit the dispersion more carefully, perhaps conditioning it on the perturbation rather than learning one value per gene; try the zero-inflated variant the code already supports for the heavy dropout of single-cell data; or replace the count head entirely with a more expressive conditional decoder. Because the decoder sits downstream of everything, a well-calibrated one would lift both models, and the more interesting question is whether it lifts the flow more, by letting the flow's richer latent distribution finally reach the output.
+
+## Give the metrics something the flow can win
+
+A generative model's distinctive value is the full joint distribution of the response, including multimodality and gene-gene correlation, and that is the least-rewarded thing on the current scoreboard. Two changes would let the flow show an edge if it has one. First, build metrics that isolate joint structure from marginal noise, for instance comparing predicted and true gene-gene correlation matrices, or measuring how well each model reproduces a known bimodal response where cells split between two fates. Second, and harder, disentangle the biological variation the flow controls from the technical count noise the decoder adds, so that calibration reads the latent distribution rather than the decoder. Until the evaluation can see joint structure, a model that captures it well will keep scoring the same as one that does not.
+
+## Move conditioning into the representation
+
+The frozen, condition-blind encoder is a deliberate choice that buys modularity, and relaxing it is a spectrum rather than a switch. The gentlest step is joint training: stop freezing the encoder and let the conditional generative loss shape it, accepting some risk that the representation drifts from clean self-supervision. A middle step is condition injection, feeding the intervention into the encoder so its output is a state-under-condition rather than a pure state. The scalability of injection turns on how the condition is represented, and a parametric, compositional condition like the gene-set embedding is what lets it reach unbounded interventions.
+
+The deepest step is to make the self-supervised task itself conditional. Pretrain the encoder with a predictor that is conditioned on an action and learns to predict the next latent from the current latent and that action. The representation is then perturbation-aware from the start, because the pretraining required it. This is the operator world model, where an intervention is read as an operator that drives a transition in latent space and the predictor *is* that conditioned transition. Reading the condition as a parametric operator $f_{\theta(c)}$ is also what makes rich conditioning scale, since the operator is generated from the structure of the intervention rather than enumerated over a fixed menu. The [design-space survey](../../../../docs/generative_jepa/10-route-d-world-model-planning.md) and the [operator world models](../../../../docs/generative_jepa/index.md) line develop this route, and it is the most substantial bet on the list, because it changes what the representation is for rather than only what happens downstream of it.
+
+## Smaller levers worth pulling
+
+Several cheaper experiments could sharpen the flow without changing its character. Optimal-transport coupling hurt when applied globally across mixed perturbations, but coupling *within* a perturbation, matching controls to targets of the same intervention, respects the conditioning the global version ignored and might help where the global version hurt. Classifier-free guidance was left at its neutral setting throughout, and a guidance sweep could trade diversity for sharpness in the predicted effect, with the sweet spot found against the $\Delta$-correlation. And the DeepSets variant of the gene-set embedding, which can model interactions a pure additive sum cannot, is worth testing on the combinations where two genes interact non-additively, the genuine epistasis that additivity is bound to miss.
+
+## Buy statistical power
+
+Every combination result rests on twenty held-out combinations, which limits resolution to roughly $0.05$. Norman 2019 contains far more combinations than we held out, so a larger held-out set, more training seeds, and ideally a second Perturb-seq dataset would let a real difference between the flow and the baseline become visible if one exists. This does not change the method, but without it we cannot distinguish a genuine improvement from seed noise, and [Chapter 4](04-results.md) showed how easily that noise misleads.
+
+## How we would read the outcomes
+
+These directions are not equally likely to pay off, and it is worth being explicit about what each would mean. If data efficiency favors the flow, the method has a clear practical niche even at full-data parity, and that is the most likely near-term win. If a better decoder or a joint-structure metric reveals a gap, the flow's distributional modeling was real but hidden, and the contribution stands. If the operator route lifts the result, the value was never in bolting a flow onto a frozen encoder but in making conditioning native to the representation, which reframes the whole line of work. And if none of them move the number, that is itself a clean and publishable conclusion: for this task, a simple conditional generator is enough, and the case for generative JEPA rests on the reusable encoder and transfer rather than on beating a baseline at effect size. Each outcome advances the understanding, which is the point of having measured the tie carefully enough to trust it.
+
+---
+
+*Previous: [Chapter 5 — Challenges and limitations](05-challenges-and-limitations.md). Up: [the method series](index.md).*
