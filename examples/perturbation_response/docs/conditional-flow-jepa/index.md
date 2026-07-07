@@ -17,6 +17,13 @@ We built the full stack and ran it on held-out two-gene combinations from Norman
 5. **[Challenges and limitations](05-challenges-and-limitations.md)** — what fought us: a condition formulation that gave the flow no edge, a coupling that lowered training loss yet hurt the metric, calibration metrics confounded by the decoder, and the statistical-power ceiling of a twenty-combination test set.
 6. **[Beyond the current limit](06-beyond-the-current-limit.md)** — the directions we have not yet exhausted: data efficiency, native and parametric (operator-style) conditioning, better-calibrated decoders, joint training, more test combinations for power, and multimodal-structure metrics. Where a breakthrough would most plausibly come from.
 
+## The two levers, developed
+
+Chapter 6 nominated two levers for pushing past the tie, and these chapters develop them. They are complementary: the operator makes the transition model the change directly, and the decoder fixes make the measurement trustworthy so an operator improvement can reach the scoreboard.
+
+7. **[Modeling the transition — action operators](07-modeling-the-transition-action-operators.md)** — the first lever: model how a perturbation *moves* a cell's latent, as an operator whose effect is its departure from the identity. Develops the state-versus-latent operator, the equivariance bridge, the crack that opens when cells come unpaired, and the fix that recovers it by matching distributions rather than pairs. Cell-first, but built as the one-step corner of a temporal world model.
+8. **[Modeling the readout — count decoders](08-modeling-the-readout-count-decoder.md)** — the second lever: model how a latent *becomes* gene counts, and where the measurement helps or hurts the score. Shows that the readout is already clean on effect size, which relocates the decoder's three knobs onto two axes: an identity-anchored mean head for effect size, and a state-aware but variance-anchored dispersion for calibration. Answers the decoder handoff Chapter 7 deferred.
+
 ## Companion code
 
 Every claim maps to runnable code. The pipeline scripts are [`00`–`10` in this example folder](../../); the generative modules are in [`src/ssllab/generative`](../../../../src/ssllab/generative/) and the metrics in [`src/ssllab/eval`](../../../../src/ssllab/eval/).
