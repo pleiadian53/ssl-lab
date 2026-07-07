@@ -1,6 +1,6 @@
 # Chapter 5 — Challenges and limitations
 
-*What fought us, and what each fight taught. A condition formulation that gave the flow no structural edge, a coupling that improved the training loss yet hurt the metric, calibration metrics confounded by the decoder, and the statistical-power ceiling of a small held-out set. These are the seams where the next idea gets in.*
+*Chapter 4 ended on a tie: the flow did not beat the from-scratch VAE. This chapter is the post-mortem, in four parts. The control cell meant to anchor each prediction was drawn at random and unpaired with the target, so conditioning on it couldn't move the predicted response, and the flow ended up modeling the very same thing as the VAE. Optimal-transport coupling, the training trick that was supposed to sharpen the flow, did lower the training loss but made the effect-size score worse. The calibration numbers largely track the count decoder both models share, which is over-dispersed on the genes we score, rather than the flow's latent distribution. And with only twenty held-out combinations, the change from one training seed to the next is larger than the gaps we are trying to measure. Each cause is concrete and fixable, and Chapter 6 turns them into directions.*
 
 ## The baseline that would not lose
 

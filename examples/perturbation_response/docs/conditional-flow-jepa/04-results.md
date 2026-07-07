@@ -4,6 +4,8 @@
 
 Every result here is on Norman 2019, evaluated by the effect-size metric of [Chapter 3](03-training-and-evaluation.md): for a perturbation, generate a predicted response population, form its differential expression $\Delta = \mathrm{mean}(\text{predicted}) - \mathrm{mean}(\text{control})$, and correlate it against the true $\Delta$ on the perturbation's top differentially-expressed genes. The score is the Pearson correlation $r$, which we call the $\Delta$-correlation. Higher is better; $1.0$ is a perfect match of the response's shape across those genes.
 
+This chapter is the narrative. A companion note, [Chapter 4a](04a-reading-the-head-to-head.md), is the audit behind it: one consolidated scoreboard at full precision, the paired-bootstrap statistics that make the gap a tie, the seed-noise evidence, and a map from each number to the experiment that produced it.
+
 ## The encoder learns real structure
 
 Before any generation, Stage A has to produce a representation worth generating in, and two diagnostics say it does.
@@ -28,9 +30,9 @@ With that compositional condition in place, the method does generalize. On the t
 
 ## The baseline that reframes everything
 
-A number in isolation means little. To calibrate it we built the obvious control: a from-scratch conditional negative-binomial VAE, described in [Chapter 5](05-challenges-and-limitations.md), with no JEPA pretraining and no flow, conditioned on the same gene-set embedding so the comparison isolates the generative machinery rather than the perturbation encoding. On the same twenty held-out combinations the baseline scores a mean $\Delta$-correlation of $0.633$.
+A number in isolation means little. To calibrate it we built the obvious control: a from-scratch conditional negative-binomial VAE, described in [Chapter 5](05-challenges-and-limitations.md), with no JEPA pretraining and no flow, conditioned on the same gene-set embedding, so the comparison isolates the generative machinery rather than being confounded by the perturbation encoding. On the same twenty held-out combinations the baseline scores a mean $\Delta$-correlation of $0.633$.
 
-That is the result that reframes the project. The from-scratch baseline matches, and by the point estimate slightly exceeds, the full JEPA-plus-flow stack. The machinery that was supposed to be the contribution is not, on this metric, beating a simpler conditional generator.
+That result reframes the project. Line the numbers up: the baseline's $0.633$ is level with the flow's $0.62$, and on the raw average it sits a shade above. The elaborate part of the method, a JEPA representation plus a learned conditional flow, was meant to be the contribution here, and on this metric it does not beat a plain conditional VAE that has neither piece. Whether the small gap in the baseline's favor is even real is what the seed analysis below settles; the point for now is only that the fancy stack has not pulled ahead of the simple generator.
 
 ## The transport reformulation helps the flow
 
@@ -56,15 +58,15 @@ The table below reports the seed-averaged mean $\Delta$-correlation for each con
 | transport − Gaussian | +0.028 | [−0.006, +0.064] | borderline; transport's edge is likely real |
 | OT − transport | −0.023 | [−0.041, −0.007] | significant; OT coupling **hurts** |
 | transport − VAE | −0.020 | [−0.077, +0.044] | not significant; a tie |
-| VAE − Gaussian | +0.053 | [−0.024, +0.126] | not significant |
+| VAE − Gaussian | +0.049 | [−0.021, +0.112] | not significant |
 
 Two things stand out. First, the transport reformulation's edge over the Gaussian flow survives seed averaging, at borderline significance. Second, and this is the one clearly significant effect in the whole sweep, optimal-transport coupling *hurts*: it lowers the flow-matching training loss by straightening the paths, yet it lowers the $\Delta$-correlation. A clean reminder that a better training objective is not the same as a better downstream metric. The reasons are discussed in [Chapter 5](05-challenges-and-limitations.md).
 
-Notably, the last row also corrects an earlier, hastier reading. The single-seed run had the VAE ahead of the Gaussian flow by $0.053$, which looked like the baseline decisively winning. With three seeds and a paired test, that gap is not statistically distinguishable from zero. The most defensible statement is that on this test set the three generative configurations are within noise of each other, with the transport flow the best of the flow variants and the VAE at or slightly above them all.
+Notably, the last row also corrects an earlier, hastier reading. The single-seed run had the VAE ahead of the Gaussian flow by $0.053$, which looked like the baseline decisively winning. Seed-averaged the gap narrows to $0.049$, and with three seeds and a paired test it is not statistically distinguishable from zero. The most defensible statement is that on this test set the three generative configurations are within noise of each other, with the transport flow the best of the flow variants and the VAE at or slightly above them all.
 
 ## Calibration: the same verdict from a different angle
 
-Effect size grades only the mean of the response. A generative model's real promise is the whole predictive *distribution*, and a flow can in principle bend noise into a multimodal, correlated population that a cruder generator cannot. So we measured calibration directly, comparing each model's generated population against the held-out real cells on the top differentially-expressed genes. The metrics are per-gene spread correlation, central-interval coverage, mean 1-Wasserstein distance, and a multivariate two-sample energy distance that sees the joint structure across genes. Details are in [`calibration.py`](../../../../src/ssllab/eval/calibration.py).
+Effect size grades only the mean of the response. A generative model's real promise is the whole predictive *distribution*, and a flow can in principle bend noise into a multimodal, correlated population that a cruder generator cannot. So we measured calibration directly, comparing each model's generated population against the held-out real cells on the top differentially-expressed genes. The metrics are per-gene spread correlation, central-interval coverage, mean 1-Wasserstein distance, and a multivariate two-sample energy distance that sees the joint structure across genes. [Chapter 3b](3b-reading-the-calibration-metrics.md) is a primer on all four — in particular what coverage means and why $1.00$ is a bad sign — and the implementation is in [`calibration.py`](../../../../src/ssllab/eval/calibration.py).
 
 | model | joint energy (lower better) | 1-Wasserstein (lower better) | coverage (nominal 0.80) |
 |---|---|---|---|
