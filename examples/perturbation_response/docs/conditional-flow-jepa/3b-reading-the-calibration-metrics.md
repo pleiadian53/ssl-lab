@@ -8,7 +8,7 @@
 
 Effect size, the headline metric, grades exactly one thing: the **mean** response. For a perturbation you generate a population of cells, average their expression gene by gene, subtract the control mean, and check that the resulting shift $\Delta$ points the right way. That is a statement about the *center* of the predicted response and nothing else.
 
-But a perturbation does not produce one outcome. Identical cells given the identical intervention respond differently, and the responding population has a real *spread* — sometimes it even splits into two fates. A good generative model should get that spread right, not only the center. And this is where the whole argument for a **flow** lives: a flow can bend noise into an arbitrarily shaped, multimodal population, structure that a point predictor or a plain Gaussian generator cannot represent. If that capability is real, it shows up in the *distribution*, not in the mean. So once the means tie — as [Chapter 4](04-results.md) finds they do — calibration is the axis that could still separate the models. It is where the flow's machinery would earn its keep, if it earns it anywhere.
+But a perturbation does not produce one outcome. Identical cells given the identical intervention respond differently, and the responding population has a real *spread* — sometimes it even splits into two fates. A good generative model should get that spread right, not only the center. And this is where the whole argument for a **flow** lives: a flow can bend noise into an arbitrarily shaped, multimodal population, structure that a point predictor or a plain Gaussian generator cannot represent. If that capability is real, it shows up in the *distribution*, not in the mean. So once the means tie (as [Chapter 4](04-results.md) finds they do) calibration is the axis that could still separate the models. It is where the flow's machinery would earn its keep, if it earns it anywhere.
 
 ## 2. The shared setup, and the one rule you cannot skip
 
@@ -102,4 +102,4 @@ Four numbers, all comparing a **sampled** predicted population to the real held-
 
 ---
 
-*Previous: [Chapter 3a — The models in the head-to-head](3a-the-models-in-the-head-to-head.md). Up: [the method series](index.md). Next: [Chapter 4 — Results](04-results.md).*
+*Previous: [Chapter 3a — The models in the head-to-head](3a-the-models-in-the-head-to-head.md). Up: [the method series](index.md). Next: [Chapter 3c — The VICReg collapse guard](3c-the-vicreg-collapse-guard.md).*
