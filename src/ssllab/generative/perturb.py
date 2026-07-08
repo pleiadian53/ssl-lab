@@ -75,7 +75,11 @@ def load_cond_flow(path: str | Path, device: torch.device | str = "cpu") -> dict
 
 def load_count_decoder(path: str | Path, device: torch.device | str = "cpu") -> CountDecoder:
     ck = torch.load(path, map_location=device)
-    dec = CountDecoder(latent_dim=ck["latent_dim"], n_genes=ck["n_genes"], zinb=ck["zinb"]).to(device)
+    dec = CountDecoder(
+        latent_dim=ck["latent_dim"], n_genes=ck["n_genes"], zinb=ck["zinb"],
+        anchored_mean=ck.get("anchored_mean", False),
+        state_dispersion=ck.get("state_dispersion", False),
+    ).to(device)
     dec.load_state_dict(ck["state"])
     dec.eval()
     return dec
