@@ -48,7 +48,14 @@ Stage B carries the method's main design dials as flags, and each one is a lever
 
 Script: [`05_sample_perturbed.py`](../../05_sample_perturbed.py) for a single perturbation, [`06_eval_effect_size.py`](../../06_eval_effect_size.py) for the benchmark.
 
-Once all three components exist, generating a response is the full story read left to right. Pick a perturbation. Draw a population of outcome latents from the conditional flow, integrating under that perturbation's condition with the baseline drawn from the control pool. Decode each latent to a gene-count profile with the NB decoder. A thousand draws simulate a thousand responding cells. The sampler exposes the number of integration steps and the classifier-free guidance weight as knobs, and it inverts the Stage B standardization so decoded counts are on the real data scale. The evaluation script wraps this into the effect-size benchmark, covered in Section 4.
+Once all three components exist — the frozen encoder, the decoder, and the flow — generating a response is four steps, in this order:
+
+1. **Pick a perturbation.** Its identity is all that changes between one generated response and another.
+2. **Draw a population of outcome latents from the conditional flow.** Each draw samples a fresh baseline latent $z_b$ from the control pool and integrates the flow under that perturbation's condition; a thousand draws simulate a thousand responding cells. The sampler exposes the number of integration steps and the classifier-free guidance weight as knobs, and it inverts the Stage B standardization so the latents it returns are back on the encoder's own scale.
+3. **Decode each latent to a gene-count profile with the NB decoder.** This is the same frozen decoder from Stage C, applied to freshly sampled latents instead of real ones.
+4. **Aggregate the population into whatever the downstream question needs** — a mean response for effect size, or the full distribution for calibration.
+
+The evaluation script wraps exactly this sequence into the effect-size benchmark, covered in Section 4.
 
 ## 2. The data and the holdout split
 
