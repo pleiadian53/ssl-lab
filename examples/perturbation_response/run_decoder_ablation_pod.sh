@@ -21,12 +21,13 @@
 # Knobs (env): DEC_EPOCHS (30), ANCHOR_WEIGHT (0.1), EVAL_N (200), TOP_K (20), SEED (0).
 set -uo pipefail
 
-OUT_ROOT="${1:-output}"
-DATA_DIR="${DATA_DIR:-data}"
+# Inputs default to the persistent RunPod volume (survives pod teardown); override any via env.
+VOL="${VOL:-/runpod-volume/ssl-lab}"
+OUT_ROOT="${1:-$VOL/output}"
+DATA_DIR="${DATA_DIR:-$VOL/data}"
 ARTIFACT="${ARTIFACT:-norman2019}"
-ENCODER="${ENCODER:-output/norman_flow_control/checkpoints/encoder.pt}"
-FLOW="${FLOW:-output/norman_flow_control/checkpoints/cond_flow.pt}"
-if [ "$OUT_ROOT" != "output" ]; then mkdir -p "$OUT_ROOT"; ln -sfn "$OUT_ROOT" output; fi
+ENCODER="${ENCODER:-$VOL/output/norman_flow_control/checkpoints/encoder.pt}"
+FLOW="${FLOW:-$VOL/output/norman_flow_control/checkpoints/cond_flow.pt}"
 
 : "${DEC_EPOCHS:=30}"
 : "${ANCHOR_WEIGHT:=0.1}"
@@ -34,13 +35,36 @@ if [ "$OUT_ROOT" != "output" ]; then mkdir -p "$OUT_ROOT"; ln -sfn "$OUT_ROOT" o
 : "${TOP_K:=20}"
 : "${SEED:=0}"
 
+# --- Preflight: verify EVERY input on the volume before any training, with a specific fix ---
+# --- per missing input, so a launch never half-runs and the fix is unambiguous.          ---
+miss=0
 if [ ! -f "$DATA_DIR/$ARTIFACT/manifest.json" ]; then
-  echo "[decoder_ablation] ERROR: cache absent at $DATA_DIR/$ARTIFACT -- stage it via file_mounts." >&2
+  echo "[preflight] MISSING cache       : $DATA_DIR/$ARTIFACT/manifest.json" >&2
+  echo "            fix: build it -> python examples/perturbation_response/00_process_norman.py" >&2
+  echo "                 stage it -> python examples/ops/ops_stage_data.py data/norman2019" >&2
+  miss=1
+fi
+if [ ! -f "$ENCODER" ]; then
+  echo "[preflight] MISSING encoder      : $ENCODER  (Stage A output)" >&2
+  echo "            fix: if absent locally you skipped Stage A -> ops_run_pipeline.py --execute --gpu a40 -- \\" >&2
+  echo "                     bash examples/perturbation_response/run_stage_a_pod.sh" >&2
+  echo "                 then stage -> python examples/ops/ops_stage_data.py output/norman_flow_control/checkpoints" >&2
+  miss=1
+fi
+if [ ! -f "$FLOW" ]; then
+  echo "[preflight] MISSING transport flow: $FLOW  (Stage B output)" >&2
+  echo "            fix: if absent locally you skipped Stage B -> ops_run_pipeline.py --execute --gpu a40 -- \\" >&2
+  echo "                     bash examples/perturbation_response/run_flow_compare_pod.sh" >&2
+  echo "                 then stage -> python examples/ops/ops_stage_data.py output/norman_flow_control/checkpoints" >&2
+  miss=1
+fi
+if [ "$miss" -ne 0 ]; then
+  echo "[preflight] Not launching the A/B (fix each missing input above, then re-launch)." >&2
   exit 2
 fi
-[ -f "$FLOW" ]    || { echo "[decoder_ablation] ERROR: transport flow absent at $FLOW" >&2; exit 2; }
-[ -f "$ENCODER" ] || { echo "[decoder_ablation] ERROR: encoder absent at $ENCODER" >&2; exit 2; }
-echo "[decoder_ablation] cache+flow+encoder present; dec_epochs=$DEC_EPOCHS anchor=$ANCHOR_WEIGHT seed=$SEED"
+[ "$OUT_ROOT" != "output" ] && { mkdir -p "$OUT_ROOT"; ln -sfn "$OUT_ROOT" output; }
+python -c 'import torch; print("[preflight] cuda:", torch.cuda.is_available())' 2>/dev/null || true
+echo "[preflight] OK  cache=$DATA_DIR/$ARTIFACT  encoder+flow present  out=$OUT_ROOT  dec_epochs=$DEC_EPOCHS anchor=$ANCHOR_WEIGHT seed=$SEED"
 
 run_arm() {  # run_arm <name> <extra 03 flags...>
   local name="$1"; shift
