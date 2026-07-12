@@ -26,6 +26,8 @@ The deepest step is to make the self-supervised task itself conditional. Pretrai
 
 Several cheaper experiments could sharpen the flow without changing its character. Optimal-transport coupling hurt when applied globally across mixed perturbations, but coupling *within* a perturbation, matching controls to targets of the same intervention, respects the conditioning the global version ignored and might help where the global version hurt. Classifier-free guidance was left at its neutral setting throughout, and a guidance sweep could trade diversity for sharpness in the predicted effect, with the sweet spot found against the $\Delta$-correlation. And the DeepSets variant of the gene-set embedding, which can model interactions a pure additive sum cannot, is worth testing on the combinations where two genes interact non-additively, the genuine epistasis that additivity is bound to miss.
 
+One further lever sits earlier in the pipeline than any of these: how genes are grouped into tokens before Stage A. The default is a fixed random partition ([Chapter 3 §2](03-training-and-evaluation.md)). [Chapter 6a](06a-the-tokenization-design-space.md) develops the full design space: pathway groups, co-expression modules, the bias mechanisms each introduces, and how to test a swap without breaking the combo-split discipline.
+
 ## Buy statistical power
 
 Every combination result rests on twenty held-out combinations, which limits resolution to roughly $0.05$. Norman 2019 contains far more combinations than we held out, so a larger held-out set, more training seeds, and ideally a second Perturb-seq dataset would let a real difference between the flow and the baseline become visible if one exists. This does not change the method, but without it we cannot distinguish a genuine improvement from seed noise, and [Chapter 4](04-results.md) showed how easily that noise misleads.
@@ -36,4 +38,4 @@ These directions are not equally likely to pay off, and it is worth being explic
 
 ---
 
-*Previous: [Chapter 5 — Challenges and limitations](05-challenges-and-limitations.md). Up: [the method series](index.md).*
+*Previous: [Chapter 5 — Challenges and limitations](05-challenges-and-limitations.md). Up: [the method series](index.md). Related: [Chapter 6a — The tokenization design space](06a-the-tokenization-design-space.md).*

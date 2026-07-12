@@ -10,7 +10,7 @@ The method has three trainable components, and each has its own runnable script 
 
 The through-line across all three is the same: the encoder is trained once and then *frozen*, and everything downstream is fit against its fixed latents. That is what makes the stages independent, and it is why the decoder and the flow can each be trained by a plain, single-objective regression.
 
-### Stage A — pretrain the JEPA cell encoder
+### Stage A: pretrain the JEPA cell encoder
 
 Script: [`01_pretrain_stage_a.py`](../../01_pretrain_stage_a.py), with the encoder-quality probe in [`02_probe_cell_encoder.py`](../../02_probe_cell_encoder.py).
 
@@ -22,7 +22,7 @@ The default geometry is an embedding dimension of $256$ and an encoder depth of 
 
 The probe script is a quality gate, not part of the benchmark. It extracts one pooled latent $z$ per cell and asks two questions. First, does a logistic-regression probe recover the perturbation label from $z$ alone, well above the chance rate of $1 / n_{\text{perturbations}}$? Second, has the representation collapsed, judged again by effective rank and feature standard deviation? The probe runs on the `cells` split rather than `combo`, because a random per-cell hold-out keeps the same perturbation vocabulary in train and test and so makes the multiclass probe well-posed. Pretraining on `combo` and probing on `cells` are two independent choices, each matched to its own purpose.
 
-### Stage C — the negative-binomial count decoder
+### Stage C: the negative-binomial count decoder
 
 Script: [`03_train_count_decoder.py`](../../03_train_count_decoder.py).
 
@@ -30,7 +30,7 @@ Stage C closes the gap between a latent and actual data, where effect size lives
 
 Because the encoder is frozen, the decoder is the only thing learning, and it learns by one clean likelihood objective on a fixed target. The default is roughly $30$ epochs. The output is `count_decoder.pt`. The decoder trains on the `cells` split, matching the in-distribution effect-size test the pipeline runs by default.
 
-### Stage B — the conditional flow
+### Stage B: the conditional flow
 
 Script: [`04_train_cond_flow.py`](../../04_train_cond_flow.py).
 
@@ -48,12 +48,12 @@ Stage B carries the method's main design dials as flags, and each one is a lever
 
 Script: [`05_sample_perturbed.py`](../../05_sample_perturbed.py) for a single perturbation, [`06_eval_effect_size.py`](../../06_eval_effect_size.py) for the benchmark.
 
-Once all three components exist — the frozen encoder, the decoder, and the flow — generating a response is four steps, in this order:
+Once all three components exist (the frozen encoder, the decoder, and the flow), generating a response is four steps, in this order:
 
 1. **Pick a perturbation.** Its identity is all that changes between one generated response and another.
 2. **Draw a population of outcome latents from the conditional flow.** Each draw samples a fresh baseline latent $z_b$ from the control pool and integrates the flow under that perturbation's condition; a thousand draws simulate a thousand responding cells. The sampler exposes the number of integration steps and the classifier-free guidance weight as knobs, and it inverts the Stage B standardization so the latents it returns are back on the encoder's own scale.
 3. **Decode each latent to a gene-count profile with the NB decoder.** This is the same frozen decoder from Stage C, applied to freshly sampled latents instead of real ones.
-4. **Aggregate the population into whatever the downstream question needs** — a mean response for effect size, or the full distribution for calibration.
+4. **Aggregate the population into whatever the downstream question needs:** a mean response for effect size, or the full distribution for calibration.
 
 The evaluation script wraps exactly this sequence into the effect-size benchmark, covered in Section 4.
 
@@ -61,13 +61,21 @@ The evaluation script wraps exactly this sequence into the effect-size benchmark
 
 The data are from Norman et al. 2019, a CRISPR-activation Perturb-seq screen. The [Reading Perturb-seq series](../reading-perturb-seq/index.md) develops the biology of this dataset in full, including why the negative binomial is the right count model. Here we need only the shape of the processed cache the pipeline trains on.
 
-After quality control the cache holds $109{,}737$ cells on a highly-variable-gene panel of $5{,}000$ genes. There are $237$ perturbations: one non-targeting control, $105$ single-gene activations, and $131$ two-gene combinations. Tokenization splits each cell's $5{,}000$-gene vector into $50$ gene-group tokens of $100$ features each, using a deterministic random partition of gene indices. That partition is the gene-space analogue of image patchify, and its seed is recorded in the cache so processing and training always agree on the same grouping.
+After quality control the cache holds $109{,}737$ cells on a highly-variable-gene panel of $5{,}000$ genes.
+
+The pipeline indexes every cell's condition with an integer `pert_id` into a vocabulary of $237$ entries: $105$ single-gene CRISPR activations, $131$ two-gene combinations, and one **non-targeting control** class. [Chapter 3d](3d-the-perturbation-vocabulary.md) unpacks what those classes are, why control counts as a label rather than as missing data, and how that choice surfaces in the gene-set condition and the perturbation-identity probe.
+
+Tokenization splits each cell's $5{,}000$-gene vector into $50$ gene-group tokens of $100$ features each, using a deterministic random partition of gene indices. That partition is the gene-space analogue of image patchify, and its seed is recorded in the cache so processing and training always agree on the same grouping. Alternative schemes (pathway modules, co-expression clusters) are an open Stage-A design choice. [Reading Perturb-seq, Part 3 §3](../reading-perturb-seq/03-tokenization.md) names them, and [Chapter 6a](06a-the-tokenization-design-space.md) develops the tradeoffs.
 
 Two splits are precomputed and stored per cell, and choosing between them is choosing what question you are asking.
 
 The `combo` split is the generalization test, and it is the Norman headline. It holds out $20$ two-gene combinations, chosen under one deliberate rule: for each held-out pair `A+B`, both single genes `A` and `B` still appear *on their own* as single-gene perturbations in the training set. So at test time the model has met each gene individually, many times, but has never seen the two applied together.
 
-That rule is what makes the split a clean test of *compositional* generalization — predicting the joint effect of `A+B` from having learned `A` and `B` separately — and a hard one, because two perturbations applied together usually interact: their combined effect is rarely just the sum of the two single effects, so the model has to capture the interaction, not merely add. The rule also makes the test well-posed for the gene-set embedding, which builds a combination's representation additively from its single-gene parts, $z_p(A{+}B) = e(A) + e(B)$: both parts must have been trained for the model to have *any* basis on which to compose the unseen pair. And because the model already holds every ingredient — each single gene — the only thing new at test time is the conjunction, so a success or failure here is attributable to composition specifically rather than to missing information. The training side of `combo` spans $197$ perturbations covering $105$ distinct target genes.
+That rule is what makes the split a clean test of *compositional* generalization. The question it poses is sharp: can the model predict the joint effect of `A+B` from having learned `A` and `B` only separately? It is also a genuinely hard question, because two perturbations applied together usually interact. Their combined effect is rarely just the sum of the two single effects, so the model has to capture the interaction rather than merely add the parts.
+
+The same rule makes the test well-posed for the gene-set embedding, which builds a combination's representation additively from its single-gene parts, $z_p(A{+}B) = e(A) + e(B)$. Both single-gene parts must have been trained for the model to have *any* basis on which to compose the unseen pair, and the holdout rule guarantees exactly that.
+
+The design is clean for one further reason. Because the model has already met every ingredient (each single gene appears many times in training), the only genuinely new thing at test time is the conjunction itself. A success or failure on a held-out combination is therefore attributable to composition specifically, rather than to missing information about either gene on its own. On the training side, the `combo` split spans $197$ perturbations covering $105$ distinct target genes.
 
 The `cells` split is the in-distribution control. It holds out random cells of *seen* perturbations, so the same perturbation vocabulary appears in both train and test. This split measures whether the method recovers effect size at all when generalization to novel combinations is not being asked of it, and it is the default for the decoder, the flow, and the standard effect-size run.
 
@@ -87,7 +95,7 @@ One device detail rounds this out. The code resolves its device with an `"auto"`
 
 Two axes grade the method, and they are complementary. Effect size asks whether the *mean* shift is right. Calibration asks whether the *distribution* around that mean is right. A model can win on one and lose on the other, and the whole reason to build a full flow rather than a point predictor is the second axis, so both are measured.
 
-### Effect size — the field's benchmark
+### Effect size: the field's benchmark
 
 Code: [`effect_size.py`](../../../../src/ssllab/eval/effect_size.py), the functions `delta_correlation` and `run_effect_size_eval`.
 
@@ -101,7 +109,7 @@ where $\operatorname{mean}(\text{predicted})$ is the per-gene mean over a genera
 
 The harness is single-sourced on purpose. `run_effect_size_eval` takes a `predict_fn(pid, name)` that returns one perturbation's predicted per-gene expression, and for every evaluable perturbation it computes the held-out truth as the mean over that perturbation's *test* cells, then scores `delta_correlation` on the top-DE genes. The exact same loop grades the flow, the from-scratch NB-VAE baseline, and any future predictor, so no model can win by being scored on a friendlier harness. Perturbations with too few held-out cells are skipped, and the per-perturbation correlations are aggregated to a mean and a median. The generalization number in [Chapter 4](04-results.md) comes from running this harness on the held-out cells of the `combo` split.
 
-### Calibration — the distributional axis
+### Calibration: the distributional axis
 
 Code: [`calibration.py`](../../../../src/ssllab/eval/calibration.py).
 

@@ -61,7 +61,7 @@ Now the honesty. A random partition is **deliberately neutral, not biologically 
 - **Pathway / gene-program groups** — put genes from the same biological program (a signaling pathway, a regulon) in one token, so a token means something.
 - **Co-expression groups** — group genes that vary together across cells (data-driven modules).
 
-These could make masked prediction (next section) more meaningful, at the cost of baking in a prior. The series treats this as a Stage-A design choice, not a settled answer — the default gets us a runnable, reproducible contract today.
+These could make masked prediction (next section) more meaningful, at the cost of baking in a prior. The series treats this as a Stage-A design choice, not a settled answer. The default gets us a runnable, reproducible contract today. The conditional-flow method series develops the full tradeoff in [Chapter 6a](../../conditional-flow-jepa/06a-the-tokenization-design-space.md): why random grouping is defensible, what pathway and co-expression alternatives would change, and how to test a swap without breaking the combo split.
 
 > **Inverse exists.** Because the partition is a permutation of the gene indices, tokenization is exactly invertible: `detokenize_cells` scatters the token values back to a 2,000-gene vector. Nothing is lost in the regrouping — it is a reshaping, like `patchify`/`unpatchify` for images.
 

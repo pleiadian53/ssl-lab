@@ -91,6 +91,7 @@ def sample_perturbed_latents(
     device: torch.device | str = "cpu", generator: torch.Generator | None = None,
 ) -> torch.Tensor:
     """Sample ``n`` outcome latents for one perturbation, integrate the flow, de-standardize.
+       We need to de-standardize the latents to get the original latent space.
 
     ``control`` base: draw baselines z_b from the control pool and transport them
     (source z0=z_b, condition = z_p) — the sample is anchored to a real baseline.
