@@ -10,6 +10,11 @@ A four-part primer on the data. What a single-cell perturbation experiment measu
 ### [The conditional-flow + JEPA method](conditional-flow-jepa/index.md)
 The method itself and its evaluation. The idea (a conditional flow prior over frozen JEPA latents, with a negative-binomial count decoder), the implementation, the training and pod workflow, the experimental results against a from-scratch baseline, the challenges we ran into, and the directions we think can push past the current limits. This series reports findings honestly, including the ones that did not go our way, because that is where the next idea comes from.
 
+## Running it yourself
+
+### [Running the pipeline](running-the-pipeline.md)
+The runnable companion to the method series: the exact sequence of commands from raw data to the effect-size scoreboard, what each script reads and writes, the GPU-pod workflow, a provenance map from every number in the results chapter back to its script and report, the failure modes and how to recover from them, and the pattern we use to run a lever experiment. Follow it top to bottom the first time, then keep it as a reference and a recovery guide.
+
 ## How they relate
 
 The [design-space survey](../../../docs/generative_jepa/index.md) decided *what* to build and *why*, at the level of theory. The **Reading Perturb-seq** series grounds that decision in the real dataset. The **conditional-flow + JEPA** series builds it, runs it, and measures it. Read the data series to understand the problem, the method series to understand the attempt and where it stands.
