@@ -73,6 +73,52 @@ def load_cond_flow(path: str | Path, device: torch.device | str = "cpu") -> dict
     }
 
 
+def load_operator(path: str | Path, device: torch.device | str = "cpu") -> dict:
+    """Load a Stage-B **operator** checkpoint into the same bundle shape the flow uses.
+
+    The operator is a drop-in alternative to the conditional flow: it produces the same object
+    (a cloud of outcome latents for a perturbation), so every downstream evaluator grades it
+    through the identical harness. :func:`sample_perturbed_latents` branches on ``kind``.
+    """
+    from ssllab.generative.operator_perturb import PerturbationOperator
+
+    ck = torch.load(path, map_location=device, weights_only=False)
+    model = PerturbationOperator(
+        pert_gene=ck["pert_gene"], dim=ck["dim"], num_generators=ck["num_generators"],
+        gene_dim=ck["gene_dim"], cond_dim=ck["cond_dim"], compose=ck["compose"],
+        stochastic=ck["stochastic"], residual_scale=ck["residual_scale"],
+    ).to(device)
+    model.load_state_dict(ck["model"])
+    model.eval()
+    return {
+        "kind": "operator", "model": model,
+        "mean": ck["mean"].to(device), "std": ck["std"].to(device),
+        "ctrl_pool": ck["ctrl_pool"].to(device), "dim": ck["dim"], "n_perts": ck["n_perts"],
+    }
+
+
+def load_operator_algebra(path: str | Path, device: torch.device | str = "cpu") -> dict:
+    """Load an operator-*algebra* checkpoint into the same ``kind == "operator"`` bundle.
+
+    :class:`~ssllab.generative.operator_algebra.NamedGeneratorOperator` exposes the identical
+    ``pushforward(z_ctrl, pert_id)`` contract as round 3's operator, so it reuses the operator branch
+    of :func:`sample_perturbed_latents` unchanged and is graded by the same harness. The only new
+    payload is the trained per-gene generators (in ``model``) and the gene vocabulary, which the
+    bracket-epistasis eval reads to compute ``||[M_A, M_B]||``.
+    """
+    from ssllab.generative.operator_algebra import NamedGeneratorOperator
+
+    ck = torch.load(path, map_location=device, weights_only=False)
+    model = NamedGeneratorOperator(pert_gene=ck["pert_gene"], dim=ck["dim"]).to(device)
+    model.load_state_dict(ck["model"])
+    model.eval()
+    return {
+        "kind": "operator", "model": model, "gene_vocab": ck.get("gene_vocab"),
+        "mean": ck["mean"].to(device), "std": ck["std"].to(device),
+        "ctrl_pool": ck["ctrl_pool"].to(device), "dim": ck["dim"], "n_perts": ck["n_perts"],
+    }
+
+
 def load_count_decoder(path: str | Path, device: torch.device | str = "cpu") -> CountDecoder:
     ck = torch.load(path, map_location=device)
     dec = CountDecoder(
@@ -95,11 +141,20 @@ def sample_perturbed_latents(
 
     ``control`` base: draw baselines z_b from the control pool and transport them
     (source z0=z_b, condition = z_p) — the sample is anchored to a real baseline.
-    ``gaussian`` base: start from noise, condition on the fused c=cond(z_b, z_p)."""
-    flow, cond = bundle["flow"], bundle["cond"]
+    ``gaussian`` base: start from noise, condition on the fused c=cond(z_b, z_p).
+    ``operator`` bundle: push the control cloud through A_p = exp(M(e(p))). The operator is the
+    flow with a structurally restricted velocity field, so it produces the same object and is
+    graded by the same harness."""
     pool = bundle["ctrl_pool"]
     idx = torch.randint(len(pool), (n,), generator=generator)
     z_b = pool[idx].to(device)
+
+    if bundle.get("kind") == "operator":
+        pid1 = torch.tensor([int(pert_id)], dtype=torch.long, device=device)
+        z_std = bundle["model"].pushforward(z_b, pid1)
+        return z_std * bundle["std"] + bundle["mean"]
+
+    flow, cond = bundle["flow"], bundle["cond"]
     pid = torch.full((n,), int(pert_id), dtype=torch.long, device=device)
     if bundle.get("flow_base", "gaussian") == "control":
         z_std = euler_sample(flow, n, bundle["dim"], n_steps=steps, device=device,

@@ -39,7 +39,13 @@ if str(_SRC) not in sys.path:
 from ssllab.data.perturbseq import SPLIT_TEST, load_cache
 from ssllab.eval.effect_size import run_effect_size_eval
 from ssllab.experiment import experiment
-from ssllab.generative.perturb import load_cond_flow, load_count_decoder, predicted_expression
+from ssllab.generative.perturb import (
+    load_cond_flow,
+    load_count_decoder,
+    load_operator,
+    load_operator_algebra,
+    predicted_expression,
+)
 from ssllab.utils import get_device, set_seed
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-7s  %(message)s", datefmt="%H:%M:%S")
@@ -56,6 +62,15 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--n", type=int, default=200, help="generated cells per perturbation")
     p.add_argument("--steps", type=int, default=100, help="ODE integration steps")
     p.add_argument("--guidance", type=float, default=1.0, help="classifier-free guidance weight")
+    p.add_argument("--stage-b", type=str, default="flow", choices=["flow", "operator", "operator_algebra"],
+                   help="which Stage-B model to grade: the conditional flow (cond_flow.pt), round 3's "
+                        "action operator (operator.pt), or the operator-algebra variant "
+                        "(operator_algebra.pt). All produce a cloud of outcome latents, so the harness "
+                        "below is identical for any of them.")
+    p.add_argument("--decoder", type=str, default=None,
+                   help="path to a count_decoder.pt to REUSE. A Stage-B lever (flow or "
+                        "operator) does not change the readout, so the decoder is reused "
+                        "rather than retrained. Defaults to this experiment\'s own.")
     p.add_argument("--top-k", type=int, default=20, help="top-DE genes for the correlation")
     p.add_argument("--min-test-cells", type=int, default=20, help="skip perts with fewer held-out cells")
     p.add_argument("--limit-perts", type=int, default=None, help="cap #perturbations (smoke)")
@@ -70,8 +85,13 @@ def main() -> None:
     device = get_device(args.device)
     exp = experiment(args.experiment, args.output_root).ensure()
 
-    bundle = load_cond_flow(exp.checkpoints / "cond_flow.pt", device)
-    decoder = load_count_decoder(exp.checkpoints / "count_decoder.pt", device)
+    if args.stage_b == "operator":
+        bundle = load_operator(exp.checkpoints / "operator.pt", device)
+    elif args.stage_b == "operator_algebra":
+        bundle = load_operator_algebra(exp.checkpoints / "operator_algebra.pt", device)
+    else:
+        bundle = load_cond_flow(exp.checkpoints / "cond_flow.pt", device)
+    decoder = load_count_decoder(args.decoder or (exp.checkpoints / "count_decoder.pt"), device)
     cache = load_cache(Path(args.data_dir) / args.artifact)
 
     hvg = cache.hvg_X                                  # (N, G) normalized expression
