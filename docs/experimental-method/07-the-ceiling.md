@@ -44,11 +44,13 @@ Read as a budget, from a perfect $1.000$ down to what the real transition achiev
 
 | step | from | to | lost | what the loss is |
 |---|---|---|---|---|
-| encoder ceiling | $1.000$ | $0.852$ | $0.148$ | what a linear readout of the latent cannot recover: information the encoder did not preserve |
+| encoder, **under a linear readout** | $1.000$ | $0.852$ | $0.148$ | what a *linear* readout of the latent cannot recover |
 | decoder | $0.852$ | $0.679$ | $0.173$ | what the trained decoder loses relative to a plain linear readout of the same latent |
 | transition | $0.679$ | $0.648$ | $0.031$ | what the real transition loses relative to the perfect one |
 
 The stage everyone had been improving was responsible for $0.031$ of the loss. The decoder, which no one had touched during those three rounds, was responsible for $0.173$, almost six times as much. The ladder did not just measure a ceiling. It named the bottleneck, and the bottleneck was not the stage under active development.
+
+Read the first row's qualifier carefully, because it is doing real work and it is easy to drop. That $0.148$ is **not** "information the encoder destroyed." It is what a *linear* map cannot pull back out, and those are different claims. The missing information might have been discarded when $5000$ genes were compressed into $256$ dimensions, or it might have been kept and stored **nonlinearly**, where a linear readout cannot reach. A linear probe cannot distinguish the two, so this row bounds the encoder only under the readout used to measure it. The distinction matters: the first case makes the encoder a hard wall, the second says even that residue is recoverable with a better-shaped readout. Separating them takes a different instrument, and [Chapter 7a](07a-probes-and-weak-instruments.md) names it.
 
 ## 4. The reading that changes the project
 
