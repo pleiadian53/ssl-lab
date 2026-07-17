@@ -12,7 +12,9 @@
 
 **The from-scratch conditional NB-VAE beats every generative configuration we have built, on the primary endpoint, by about $0.12$.** It scores $0.766$ in $\Delta$-correlation against the transport flow's $0.648$ and the action operator's $0.645$. Both gaps are significant under simultaneous intervals covering the whole contrast family, and the VAE's seed-to-seed spread is $0.006$, so this is not a lucky draw and reseeding will not close it.
 
-**Two structural levers have now been measured and neither closes the gap.** The decoder (round 2) targets the readout and is bounded by construction. The action operator (round 3) targets the transition, which was the deeper bet, and it lands in a dead tie with the flow it was meant to replace ($-0.003$, not significant). A third lever, the metric itself, was corrected and made the picture *worse* for the method rather than better.
+**Three structural levers have now been measured and none closes the gap.** The decoder (round 2) targets the readout and is bounded by construction. The action operator (round 3) targets the transition, which was the deeper bet, and it lands in a dead tie with the flow it was meant to replace ($-0.003$, not significant). The operator *algebra* (round 4) gave the operator the one mechanism round 3 never used, composition in the group, and its structural claim is refuted outright. A fourth lever, the metric itself, was corrected and made the picture *worse* for the method rather than better.
+
+**And a ceiling now explains why the transition rounds could not have won.** Handing the pipeline the *real* held-out perturbed latents, a Stage B that is perfect by construction, scores $0.679$ against the flow's $0.648$. The transition is at $96\%$ of the best it can do given this encoder and this decoder, so **at most $0.03$ was ever available there**. The same ladder relocates the loss: a plain linear readout of the frozen latents scores $0.852$, above the baseline, so the representation is information-rich and the **decoder** is where the effect is lost. See [Chapter 7 of the methodology series](../../../../docs/experimental-method/07-the-ceiling.md).
 
 Three findings do survive and are worth keeping. Transporting from a real control latent beats transporting from noise ($+0.036$, significant). Optimal-transport coupling hurts ($-0.021$, significant). And the operator is the only model that has ever raised the latent distribution's share of the predicted spread, which is the mechanism the calibration axis actually needs, even though it does not raise it nearly enough to matter.
 
@@ -39,7 +41,13 @@ Every configuration evaluated on the twenty held-out Norman combinations, on the
 | 1 | **transport flow** (control to outcome) | 3 | **0.648** | 0.234 | 0.375 | 0.982 | **3.578** |
 | 3 | **action operator** (deterministic) | 3 | 0.645 | 0.215 | **0.382** | 1.005 | 3.658 |
 | 3 | action operator (stochastic + residual) | 3 | 0.646 | 0.208 | 0.344 | 1.005 | 3.746 |
+| 4 | operator algebra, weak prior ($\lVert M\rVert$ $12.4$, **not near identity**) | 1 | 0.629 | | | | |
+| 4 | operator algebra, near-identity prior held ($\lVert M\rVert$ $1.10$) | 1 | 0.497 | | | | |
 | 1 | **conditional NB-VAE** (the bar) | 3 | **0.766** | **0.522** | 0.328 | **0.956** | 3.962 |
+| — | *oracle Stage B (real held-out latents, same decoder)* | — | *0.679* | | | | |
+| — | *linear readout of the frozen latents (diagnostic, not a model)* | — | *0.852* | | | | |
+
+The last two rows are not models and cannot be run; they are the [ceiling](../../../../docs/experimental-method/07-the-ceiling.md). The first says a *perfect* Stage B scores $0.679$ through this decoder, so every transition row above is within $0.03$ of the best it could possibly do. The second says the effect is sitting in the frozen representation at $0.852$, above the baseline, and the decoder is losing it.
 
 Read the bolded rows against each other and that is the project so far. Every generative configuration we have built clusters between $0.61$ and $0.65$, and the baseline sits alone at $0.766$. **No model's coverage is anywhere near nominal**, and the best coverage of any model belongs to the operator, which is the one model that widened its own latent cloud.
 
@@ -120,14 +128,59 @@ A near-identity-initialized, least-action-penalized operator produces a *structu
 
 **Carry forward.** The energy distance *fell* for the stochastic arm ($0.428$ against the deterministic $0.447$), meaning it matched the latent cloud better in latent space while getting *worse* downstream. A better training objective is not a better model, and that has now happened three times in this project (optimal-transport coupling, the dispersion anchor, and now this).
 
+## Round 4 — the operator algebra: is epistasis non-commutativity?
+
+**What changed.** Round 3's operator applied $\exp$ once, to a single generator, and composed two genes in the *additive gene-set embedding*, which is the same object the NB-VAE uses. The matrix exponential was doing the work of a reparameterization and never the work of a capability, and the operator's own algebra sat idle. This round gives each single gene its own dense generator $M_g$ and composes a combination **in the group**, through the symmetric product
+
+$$A_{A+B} = \exp(\tfrac{1}{2}M_A) \exp(M_B) \exp(\tfrac{1}{2}M_A).$$
+
+The motivation is a theorem rather than an analogy. That product collapses to $\exp(M_A + M_B)$ exactly when the generators commute, so **non-commutativity is the departure from additivity**, and departure from additivity is what epistasis means. See [the algebra of composition](../../../../docs/action_operator/03-the-algebra-of-composition.md). The product is symmetrized because both guides are delivered at once: the observation carries no order, while the leading BCH term $\tfrac12[M_A,M_B]$ is swap-odd, so an ordered product would predict two answers for a thing that has one.
+
+**The pre-committed primary endpoint was NOT $\Delta r$.** The [ceiling analysis](../../../../docs/experimental-method/07-the-ceiling.md) had already shown Stage B is saturated: an oracle handed the real perturbed latents scores $0.679$ against the flow's $0.648$, so no Stage-B lever can move effect size by more than about $0.03$. Grading this round on $\Delta r$ would have measured the one thing already known to be pinned. The endpoint was instead a structural claim, benchmark-independent and needing no comparison to the baseline: does $\lVert [M_A, M_B] \rVert$ predict a pair's measured genetic interaction? The decision rule was fixed in advance: the **in-sample** arm carries the statistical power, and a null there kills the idea.
+
+**Verdict: refuted.** One seed, A40, 105 generators, 91 training combinations and 20 held out.
+
+| test | in-sample ($n=91$) | held-out ($n=20$) |
+|---|---|---|
+| **raw bracket against rel_GI** (the pre-committed endpoint) | $\mathbf{-0.070}$ (perm-$p$ $0.75$) | $-0.262$ (perm-$p$ $0.87$) |
+| raw bracket against the directional component (post-hoc) | $+0.114$ | $+0.042$ |
+| scale-normalized bracket against rel_GI (post-hoc) | $-0.141$ | $-0.344$ |
+| scale-normalized bracket against the directional component (post-hoc) | $-0.023$ | $-0.120$ |
+
+Every variant, every target, both splits, all $111$ pairs: nothing. The two post-hoc refinements were genuine attempts to rescue the hypothesis and both failed, which makes the negative stronger rather than weaker.
+
+**A confound that nearly produced a fake result, and the gate that now prevents it.** The first run used a least-action weight of $10^{-4}$ and returned the same null. That null was **uninformative**, and reading it as a refutation would have been wrong. The generators had wandered to a median $\lVert M_g \rVert_F$ of $12.4$, with $\lVert A - I \rVert_F$ near $11$: nowhere close to the identity. This matters because the equivalence the whole round rests on is a *near-identity* statement. Far from the identity, two generic large matrices fail to commute merely because they are large, and indeed the bracket was $0.916$ rank-correlated with $\lVert M_A \rVert \cdot \lVert M_B \rVert$. The bracket had degenerated into a readout of generator magnitude and could not have carried pair-specific information whatever the answer.
+
+Sweeping the penalty fixed it. At $10^{-1}$ the median $\lVert M_g \rVert$ falls to $1.10$ and the near-identity premise holds. **The endpoint is unchanged.** So the refutation is measured in the regime where the claim's mathematics actually applies, which is what makes it credible. Stage B now **gates itself** on this premise: a run whose median generator norm exceeds a threshold reports that it cannot test the claim, rather than returning a null that reads like a refutation.
+
+**What is refuted, and what is not.** Not the mathematics: "generators commute $\iff$ composition is additive" is a theorem, verified numerically. What is refuted is that *these learned generators carry it*. The likely cause is **identifiability**, and it is visible in the numbers. Each $M_g$ is $65{,}536$ parameters fit only to make $\exp(M_g)$ push the control cloud onto one perturbation's marginal, which constrains what the operator does to one cloud rather than what the matrix is. The bracket therefore lives largely in directions the loss never touched, and even at near-identity it remains $0.63$ rank-correlated with the product of the generator norms. It measures how strong the two perturbations are individually, not how they interact.
+
+**The finding worth more than the refutation: the two requirements are in direct conflict.** Grading both arms on the standing benchmark exposes a tension the design never anticipated.
+
+| arm | $\lVert M_g \rVert$ (median) | near-identity gate | training energy | $\Delta r$ |
+|---|---|---|---|---|
+| weak prior ($10^{-4}$) | $12.40$ | **failed** | $0.482$ | $0.629$ |
+| strong prior ($10^{-1}$) | $1.10$ | **passed** | $0.777$ | $0.497$ |
+
+The arm that models the perturbation well sits far outside the regime where its bracket means anything. The arm whose bracket is interpretable is too constrained to model the perturbation, and pays $0.13$ of effect size for the privilege. **The operator cannot simultaneously fit the response and stay where its own algebra applies**, because fitting the response demands a generator far from zero and the bracket-is-epistasis equivalence demands one near zero.
+
+That indicts a premise this series has leaned on since [Chapter 7](07-modeling-the-transition-action-operators.md), which motivates the near-identity prior by asserting that effects are *small shifts on a large, intervention-independent baseline*. Measured in this latent geometry they are not small: fitting the response wants $\lVert M \rVert \approx 12$, and constraining it to $1.1$ costs a fifth of the score. Baseline dominance is a true statement about *expression*, where a perturbation moves a handful of genes against thousands that do not move. It does not survive the trip through the encoder into *latent* coordinates, where the response is evidently a large rotation rather than a small nudge. The prior was imported from the wrong space.
+
+**Carry forward.** The empirical epistasis this round targeted is real and well-structured, which is why the null is informative rather than vacuous. Across the twenty held-out pairs the interaction spans $0.17$ to $0.54$ of the effect, the additive scale $\lambda$ spans $0.655$ to $1.266$ (nine super-additive, seven sub-additive, four with the magnitude right), and a median $76\%$ of each interaction is **directional**, meaning the pair moves genes the additive model does not predict. There was a real, varied signal to find. The bracket did not find it.
+
+---
+
 ## Open, and what comes next
 
-Both structural levers have now been built and measured, and neither closes a gap of $0.12$. That is worth stating plainly rather than softening, because it changes what the remaining questions are.
+Three structural levers have now been built and measured, and none closes a gap of $0.12$. The ceiling explains why two of them never could: the transition they targeted had at most $0.03$ of headroom. That is worth stating plainly rather than softening, because it changes what the remaining questions are, and it retires some of them.
 
-1. **Data efficiency is the one premise never tested.** Self-supervised pretraining does not claim to win at full data. It claims that a representation learned on abundant *unlabeled* cells pays off when *labeled* examples are scarce. Every number in this ledger is a full-data number, so not one of them tests the actual claim. The experiment is a subsampling ladder: shrink the training cells per perturbation, retrain the flow (or operator) and the VAE at each rung, and plot $\Delta$-correlation against cells. If the pretrained stack degrades more gracefully, the method has a real and practically important niche even at full-data parity. **This is now the first thing to run**, and it needs only a subsampling flag.
-2. **Separate the two changes in the stochastic operator arm.** Run stochastic-$\alpha$ alone and residual-alone, so the regression in $\sigma^2_{\text{bio}}$ can be attributed. One lever per arm.
-3. **The frozen, condition-blind encoder** remains the deepest structural constraint, and relaxing it (joint training, or a conditional pretext task) is the biggest swing still available. It is also the point at which the method stops being "a flow prior over frozen JEPA latents" and becomes something else, which is the fork this ledger's scope note names.
-4. **Or accept the negative result.** "A frozen self-supervised representation plus a learned conditional prior does not beat a from-scratch conditional VAE at Perturb-seq effect size, and here is the careful measurement, the two structural levers we tried, and the metric-selection trap that nearly hid all of it" is a real contribution. It is more useful to the field than a fourth lever that also fails.
+**Retired.** *Stage-B levers, for effect size.* The ceiling bounds them at $0.03$, and a fourth transition design would be a fourth round spent on three percent. The operator thread is closed on the primary endpoint, and round 4 closes its structural claim as well.
+
+1. **The readout is where the loss actually is, and it is the one lever never aimed correctly.** The linear rung of the ceiling scores $0.852$ on the frozen latents, above the baseline's $0.766$, while the trained decoder scores $0.679$ on the identical latents. That $0.173$ is the largest single term in the loss budget, it is six times the transition's, and round 2 aimed at the decoder's *dispersion* rather than at this. An un-attenuated mean head is the only route on the table that could plausibly beat the baseline on $\Delta r$. Note the honest caveat: the linear rung is a diagnostic, not a model, since it is handed real latents and emits no distribution.
+2. **Data efficiency is still the one premise never tested.** Self-supervised pretraining does not claim to win at full data. It claims that a representation learned on abundant *unlabeled* cells pays off when *labeled* examples are scarce. Every number in this ledger is a full-data number, so not one of them tests the actual claim. The experiment is a subsampling ladder: shrink the training cells per perturbation, retrain the flow and the VAE at each rung, and plot $\Delta$-correlation against cells. It needs only a subsampling flag, and it is independent of everything above.
+3. **The frozen, condition-blind encoder** remains the deepest structural constraint, and three separate findings now converge on it. The ceiling says the representation was never shaped for the decoder that consumes it. The baseline's advantage survives with an architecturally *identical* decoder, which leaves co-adaptation as the difference. And [Chapter 9](09-why-the-operator-is-linear-koopman.md) says the operator's linearity is licensed only by an encoder trained to supply Koopman coordinates, which ours was not. Relaxing it is the biggest swing still available, and it is the point at which the method stops being "a flow prior over frozen JEPA latents" and becomes something else.
+4. **If the generator identifiability of round 4 is ever revisited**, the diagnosis names the fix: constrain the generators to a shared low-rank basis, $M_g = \sum_i \beta_{g,i} B_i$, so a bracket lives in the span of $[B_i, B_j]$ rather than in $65{,}536$ directions the marginal-matching loss never touched. This is a hypothesis with a named mechanism, not a rescue of the refuted claim, and it should be pre-registered like any other round.
+5. **Or accept the negative result.** "A frozen self-supervised representation plus a learned conditional prior does not beat a from-scratch conditional VAE at Perturb-seq effect size; here is the ceiling that says why the transition never could; here are three structural levers that failed; and here is the metric-selection trap that nearly hid all of it" is a real contribution, and more useful to the field than a fifth lever that also fails.
 
 ---
 
