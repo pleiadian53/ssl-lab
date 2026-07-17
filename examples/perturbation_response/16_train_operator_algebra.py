@@ -65,6 +65,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument("--action-weight", type=float, default=1e-4,
                    help="Frobenius (least-action) penalty on the generators: the near-identity prior")
+    p.add_argument("--max-generator-norm", type=float, default=3.0,
+                   help="acceptance gate: median ||M_g||_F above this means the near-identity prior "
+                        "failed and the bracket is a magnitude proxy, so the run cannot test the claim")
     p.add_argument("--min-cells", type=int, default=20, help="skip perturbations with fewer train cells")
     p.add_argument("--limit", type=int, default=None)
     p.add_argument("--seed", type=int, default=0)
@@ -138,6 +141,23 @@ def main() -> None:
         vals = [float(model.bracket_norm(torch.tensor([p]))) for p in trainable if "+" in str(pert_names[p])]
         return float(np.mean(vals)) if vals else 0.0
 
+    @torch.no_grad()
+    def near_identity() -> tuple[float, float]:
+        """Is the least-action prior actually holding? Returns (median ||M_g||_F, max ||A_g - I||_F).
+
+        This is load-bearing, not decoration. The whole claim that a bracket measures epistasis rests
+        on the equivalence "generators commute <=> composition is additive", and that equivalence is a
+        NEAR-IDENTITY statement: it is what BCH gives you when ||M|| is small. Let the generators wander
+        far from zero and two generic large matrices fail to commute for no reason except that they are
+        large, so ||[M_A,M_B]|| degenerates into a readout of ||M_A||*||M_B|| and carries no pair-specific
+        information at all. If these numbers are not small, the run cannot test the thesis.
+        """
+        g = model.generators.detach()
+        norms = torch.linalg.matrix_norm(g)
+        worst = torch.matrix_exp(g[int(norms.argmax())])
+        eye = torch.eye(worst.shape[0], device=worst.device, dtype=worst.dtype)
+        return float(norms.median()), float(torch.linalg.matrix_norm(worst - eye))
+
     avg = float("nan")
     for epoch in range(args.epochs):
         model.train()
@@ -164,10 +184,26 @@ def main() -> None:
             n_seen += 1
         avg = running / max(n_seen, 1)
         if (epoch + 1) % 5 == 0 or epoch == 0:
-            logger.info("epoch %d/%d  energy=%.4f  mean||[M_A,M_B]||=%.3f",
-                        epoch + 1, args.epochs, avg, mean_bracket_over_combos())
+            med_m, dev_a = near_identity()
+            logger.info("epoch %d/%d  energy=%.4f  mean||[M_A,M_B]||=%.3f  med||M_g||=%.2f  max||A-I||=%.2f",
+                        epoch + 1, args.epochs, avg, mean_bracket_over_combos(), med_m, dev_a)
         else:
             logger.info("epoch %d/%d  energy=%.4f", epoch + 1, args.epochs, avg)
+
+    # Acceptance gate on the run's own premise. A bracket only means "epistasis" near the identity;
+    # far from it, ||[M_A,M_B]|| collapses into a proxy for ||M_A||*||M_B|| and the endpoint is
+    # uninformative whatever it returns. Say so here rather than let a null be misread as a refutation.
+    med_m, dev_a = near_identity()
+    if med_m > args.max_generator_norm:
+        logger.warning(
+            "NEAR-IDENTITY PRIOR FAILED: median ||M_g||=%.2f exceeds --max-generator-norm %.2f "
+            "(max ||A-I||=%.2f). The generators wandered far from zero, so the bracket is dominated by "
+            "generator MAGNITUDE rather than pair-specific non-commutativity, and this run CANNOT test "
+            "the epistasis claim. Raise --action-weight (currently %.1e) and re-run.",
+            med_m, args.max_generator_norm, dev_a, args.action_weight,
+        )
+    else:
+        logger.info("near-identity gate PASSED: median ||M_g||=%.2f, max ||A-I||=%.2f", med_m, dev_a)
 
     out = exp.checkpoints / "operator_algebra.pt"
     torch.save({
@@ -177,6 +213,8 @@ def main() -> None:
     }, out)
     exp.write_report("stage_b_operator_algebra", {
         "final_energy": avg, "mean_bracket": mean_bracket_over_combos(),
+        "median_generator_norm": med_m, "max_dev_from_identity": dev_a,
+        "near_identity_ok": bool(med_m <= args.max_generator_norm),
         "n_perts": n_perts, "n_trainable_perts": len(trainable), "n_trainable_combos": n_combo,
         "n_generators": len(gene_vocab), "action_weight": args.action_weight,
         "train_cells": len(Zn), "n_controls": int(is_control.sum()), "seed": args.seed,
