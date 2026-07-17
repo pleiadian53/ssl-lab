@@ -148,6 +148,7 @@ That basis-coefficient form is the bridge from this gallery to running code, and
 ## Where to go next
 
 - **The narrative on-ramp:** [From actions to operators](00-from-actions-to-operators.md).
+- **Next, composing two operators:** [The Algebra of Composition](03-the-algebra-of-composition.md) — what the commutator above actually measures, why $\exp(A)\exp(B) = \exp(A+B)$ exactly when the generators commute, the BCH correction series, and why its swap-symmetric twin (the anticommutator) answers a different question.
 - **The JEPA connection:** [Augmenting JEPA with Action Operators](01-jepa-action-operators.md).
 - **State vs latent operators:** [State and latent operators](../operator_world_models/01-state-and-latent-operators.md), in the downstream world-model series.
 - **More operator families (deep reference):** the GRL *Action-Operator Formalization* note in the [GRL project](https://github.com/pleiadian53/GRL).
