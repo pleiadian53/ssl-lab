@@ -276,23 +276,35 @@ def launch(
     output_local.mkdir(parents=True, exist_ok=True)
     yaml_path = _write_generated(config, job_name)
 
+    launched = False
     try:
         try:
             _run(["sky", "launch", str(yaml_path), "-y", "-c", cluster_name])
+            launched = True
         except subprocess.CalledProcessError as e:
             raise RuntimeError(
                 f"job failed on cluster '{cluster_name}'. Inspect logs:\n"
                 f"    sky logs {cluster_name}\n"
                 f"    ssh {cluster_name}"
             ) from e
+        # ``-u`` (--update) is load-bearing, not a nicety: it SKIPS any file that is newer on
+        # the receiver. Without it this is a blanket overwrite of the whole results tree, and a
+        # pod whose inputs are stale (an out-of-date cache on the volume, say) will silently
+        # replace correct local results with wrong ones. That has happened. A result that
+        # changes when you re-run the same command is the hardest kind of bug to notice, so the
+        # fetch must never be able to move a result backwards.
         _run([
-            "rsync", "-Pavz",
+            "rsync", "-Pavz", "-u",
             f"{cluster_name}:{infra.output_remote}/",
             f"{output_local}/",
         ])
-        print(f"[ssl-ops] results -> {output_local}/")
+        print(f"[ssl-ops] results -> {output_local}/  (--update: newer local files were kept)")
     finally:
-        if teardown:
+        if not launched:
+            # Provisioning never succeeded, so there is no pod. Saying otherwise turns a
+            # failure into something that reads like a success.
+            print(f"[ssl-ops] cluster '{cluster_name}' was NOT provisioned; nothing to tear down.")
+        elif teardown:
             # check=False: a teardown hiccup must not mask the original error.
             subprocess.run(["sky", "down", cluster_name, "-y"], check=False)
             print(f"[ssl-ops] torn down cluster '{cluster_name}'")
