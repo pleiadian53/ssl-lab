@@ -161,6 +161,7 @@ def process(adata, args) -> dict:
 
     # 6. Differential expression vs control (effect-size metric seam).
     de_genes = differential_expression(adata, sc, top_k=args.de_top_k, min_cells=args.min_cells_per_pert)
+    validate_de_genes(de_genes, adata)          # acceptance gate: refuse to cache silent "DE" genes
 
     # 7. Splits at the perturbation level.
     split_combo = make_combo_split(perts, pert_names, seed=args.seed,
@@ -220,34 +221,101 @@ def process(adata, args) -> dict:
     return manifest
 
 
-def differential_expression(adata, sc, top_k: int, min_cells: int) -> dict:
-    """Top-``top_k`` DE HVG indices per perturbation (vs control, Wilcoxon, |logFC|)."""
+def differential_expression(
+    adata, sc, top_k: int, min_cells: int,
+    min_detect_frac: float = 0.10, max_pval: float = 0.05,
+) -> dict:
+    """Top-``top_k`` DE HVG indices per perturbation (vs control, Wilcoxon).
+
+    Ranked by ``|score|``, the Wilcoxon z-statistic, which is scanpy's own default ordering.
+
+    **Not by |logFC|.** Scanpy computes the log fold-change with a ``1e-9`` pseudocount, so a
+    gene that is silent in *both* control and perturbed can post an enormous |logFC| out of pure
+    count noise. Ranking by it selects genes that are not expressed at all. That is not
+    hypothetical: it is what this function used to do, and it made every scored gene come back
+    with ``pval_adj ~= 1.0`` and *every* held-out cell exactly zero, which silently forced
+    interval coverage to 1.00 and left the whole calibration axis unreadable. A rank statistic
+    cannot blow up on a silent gene, so ``|score|`` is self-guarding.
+
+    Two guards are applied on top: a gene must be **detected** in at least ``min_detect_frac`` of
+    the group's cells and be **significant** at ``max_pval``. Under ``|score|`` ranking these are
+    very nearly no-ops, which is exactly the point. They pin the invariant so that a future
+    change to the ranking cannot quietly reintroduce silent genes.
+    """
+    empty = {"method": "wilcoxon", "vs": CONTROL, "top_k": top_k,
+             "ranked_by": "abs_wilcoxon_z", "gene_space": "hvg_index",
+             "guards": {"min_detect_frac": min_detect_frac, "max_pval": max_pval},
+             "per_pert": {}}
     counts_per_pert = adata.obs["perturbation"].value_counts()
     keep = [p for p, n in counts_per_pert.items() if p != CONTROL and n >= min_cells]
     if not keep:
         logger.warning("no perturbation has >= %d cells; DE cache will be empty", min_cells)
-        return {"method": "wilcoxon", "vs": CONTROL, "top_k": top_k,
-                "ranked_by": "abs_logFC", "gene_space": "hvg_index", "per_pert": {}}
+        return empty
 
     sub = adata[adata.obs["perturbation"].isin(keep + [CONTROL])].copy()
     sc.tl.rank_genes_groups(sub, groupby="perturbation", groups=keep,
                             reference=CONTROL, method="wilcoxon")
     res = sub.uns["rank_genes_groups"]
     gene_to_idx = {g: i for i, g in enumerate(adata.var_names)}
+    counts = sub.layers["counts"]
+    group_of = sub.obs["perturbation"].to_numpy()
 
-    per_pert = {}
+    per_pert, short = {}, []
     for p in keep:
         names = np.asarray(res["names"][p])
+        score = np.asarray(res["scores"][p], dtype=float)
         logfc = np.asarray(res["logfoldchanges"][p], dtype=float)
         pvals = np.asarray(res["pvals_adj"][p], dtype=float)
-        order = np.argsort(-np.abs(logfc))[:top_k]
+        gi = np.array([gene_to_idx[g] for g in names])
+
+        cg = counts[group_of == p][:, gi]
+        cg = cg.toarray() if hasattr(cg, "toarray") else np.asarray(cg)
+        detect = (cg > 0).mean(axis=0)                      # fraction of the group's cells expressing it
+
+        ok = (detect >= min_detect_frac) & (pvals < max_pval)
+        rank = np.where(ok, -np.abs(score), np.inf)         # guarded genes only, strongest |z| first
+        order = np.argsort(rank)[:top_k]
+        order = order[np.isfinite(rank[order])]             # never pad with genes that failed a guard
+        if order.size < top_k:
+            short.append((p, int(order.size)))
         per_pert[p] = {
-            "top_idx": [int(gene_to_idx[names[i]]) for i in order],
+            "top_idx": [int(gi[i]) for i in order],
+            "score": [float(score[i]) for i in order],
             "logfc": [float(logfc[i]) for i in order],
             "pval_adj": [float(pvals[i]) for i in order],
+            "detect_frac": [float(detect[i]) for i in order],
         }
-    return {"method": "wilcoxon", "vs": CONTROL, "top_k": top_k,
-            "ranked_by": "abs_logFC", "gene_space": "hvg_index", "per_pert": per_pert}
+    if short:
+        logger.warning("%d/%d perturbations have < %d genes passing the DE guards (weakest: %s)",
+                       len(short), len(keep), top_k, sorted(short, key=lambda t: t[1])[:3])
+    return {**empty, "per_pert": per_pert}
+
+
+def validate_de_genes(de: dict, adata) -> None:
+    """Fail loudly if the DE selection produced genes the metric cannot meaningfully score.
+
+    This is the acceptance gate for Stage 00. The |logFC| bug shipped silently for months
+    because nothing downstream ever asked whether the "top-DE genes" were expressed. Now the
+    pipeline refuses to emit a cache that would repeat it.
+    """
+    per_pert = de["per_pert"]
+    if not per_pert:
+        return
+    detect = np.array([d for v in per_pert.values() for d in v["detect_frac"]])
+    pvals = np.array([p for v in per_pert.values() for p in v["pval_adj"]])
+    logger.info("DE gene check: median detection %.1f%%, %.0f%% significant, over %d (pert, gene) pairs",
+                100 * float(np.median(detect)), 100 * float((pvals < 0.05).mean()), detect.size)
+    if float(np.median(detect)) < 0.05:
+        raise RuntimeError(
+            f"DE selection is degenerate: median detection {np.median(detect):.1%} of cells. "
+            "The scored genes are effectively silent, so coverage would be forced to 1.00 and "
+            "the effect-size correlation would be noise. Check the ranking criterion."
+        )
+    if float((pvals < 0.05).mean()) < 0.5:
+        raise RuntimeError(
+            f"DE selection is degenerate: only {(pvals < 0.05).mean():.1%} of scored genes are "
+            "significant vs control. The metric would be scoring genes the perturbation did not move."
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -380,11 +448,50 @@ def parse_args() -> argparse.Namespace:
                    help="comma-separated perturbations to keep (tutorial / iteration slice)")
     p.add_argument("--max-cells-per-pert", type=int, default=None, help="cap cells per perturbation")
     p.add_argument("--smoke", action="store_true", help="tiny synthetic run (no network)")
+    p.add_argument("--de-only", action="store_true",
+                   help="recompute ONLY de_genes.json from the existing processed.h5ad. Leaves "
+                        "tokens_meta.npz and splits.json untouched, so trained checkpoints stay "
+                        "valid and can be re-evaluated without retraining.")
     return p.parse_args()
+
+
+def rewrite_de_only(args) -> None:
+    """Regenerate ``de_genes.json`` in place, reusing the cached ``processed.h5ad``.
+
+    The DE gene list is the *scoring seam*, not a modeling input: no stage trains on it, and it
+    lives in its own file. So a bad DE selection can be corrected without re-deriving the splits
+    (which would strand every trained checkpoint) or re-writing the multi-GB token cache.
+    """
+    import anndata as ad
+    import scanpy as sc
+
+    cache_dir = Path(args.data_dir) / args.artifact
+    h5 = cache_dir / "processed.h5ad"
+    if not h5.exists():
+        raise FileNotFoundError(f"{h5} not found; run 00 without --de-only first")
+
+    logger.info("reading %s", h5)
+    adata = ad.read_h5ad(h5)
+    de_genes = differential_expression(adata, sc, top_k=args.de_top_k, min_cells=args.min_cells_per_pert)
+    validate_de_genes(de_genes, adata)
+
+    out = cache_dir / "de_genes.json"
+    backup = cache_dir / "de_genes.prev.json"
+    if out.exists() and not backup.exists():
+        backup.write_text(out.read_text())
+        logger.info("backed up previous DE selection -> %s", backup)
+    out.write_text(json.dumps(de_genes, indent=2))
+    logger.info("rewrote %s (%d perturbations, ranked_by=%s)",
+                out, len(de_genes["per_pert"]), de_genes["ranked_by"])
+    logger.info("splits.json and tokens_meta.npz untouched -> existing checkpoints remain valid; "
+                "re-run the evals (06 / 09 / 10) to rescore them.")
 
 
 def main() -> None:
     args = parse_args()
+    if args.de_only:
+        rewrite_de_only(args)
+        return
     if args.smoke:
         logger.info("SMOKE: synthetic AnnData (no network)")
         adata = synthetic_adata(seed=args.seed)
