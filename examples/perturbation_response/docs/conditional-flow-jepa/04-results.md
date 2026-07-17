@@ -1,89 +1,112 @@
 # Chapter 4 — Results
 
-*The numbers, with confidence intervals. The encoder learns real structure; the method generalizes to unseen gene combinations; and measured against a from-scratch baseline, it does not yet win. This chapter reports the head-to-head honestly, which is what will point to the next move.*
+*The numbers, with simultaneous confidence intervals. The encoder learns real structure and the method generalizes to unseen gene combinations. But measured against a from-scratch baseline, it loses, and it loses by a margin that survives every correction we can apply. This chapter reports that honestly, because a clean negative result is worth more than an ambiguous positive one.*
 
-Every result here is on Norman 2019, evaluated by the effect-size metric of [Chapter 3](03-training-and-evaluation.md): for a perturbation, generate a predicted response population, form its differential expression $\Delta = \mathrm{mean}(\text{predicted}) - \mathrm{mean}(\text{control})$, and correlate it against the true $\Delta$ on the perturbation's top differentially-expressed genes. The score is the Pearson correlation $r$, which we call the $\Delta$-correlation. Higher is better; $1.0$ is a perfect match of the response's shape across those genes.
+Every result here is on Norman 2019. The headline metric is the **effect size**, defined in [Chapter 3](03-training-and-evaluation.md): for a perturbation, generate a predicted response population, form its differential expression $\Delta = \mathrm{mean}(\text{predicted}) - \mathrm{mean}(\text{control})$, and correlate it against the true $\Delta$ on the perturbation's top differentially-expressed genes. The score is the Pearson correlation $r$, which we call the $\Delta$-correlation. Higher is better.
 
-This chapter is the narrative. A companion note, [Chapter 4a](04a-reading-the-head-to-head.md), is the audit behind it: one consolidated scoreboard at full precision, the paired-bootstrap statistics that make the gap a tie, the seed-noise evidence, and a map from each number to the experiment that produced it.
+Which genes enter that correlation is a design decision rather than a detail, and [Chapter 3e](3e-the-genes-the-metric-scores.md) is the companion that explains it. The genes are the top 20 by $|z|$, the Wilcoxon rank-sum statistic against control, and they are detected in about 83% of the perturbation's cells. Ranking instead by fold change would select genes that are barely expressed at all, which produces metrics that are well-formed and meaningless. The numbers below are all on the $|z|$-selected genes.
+
+[Chapter 4a](04a-reading-the-head-to-head.md) is the audit behind this chapter: the full scoreboard, the statistical procedure, and the map from each number to the run that produced it.
 
 ## The encoder learns real structure
 
-Before any generation, Stage A has to produce a representation worth generating in, and two diagnostics say it does.
+Before any generation, Stage A has to produce a representation worth generating in, and two diagnostics say it does. Neither depends on the gene selection above, because neither involves the effect-size metric.
 
-The first is a collapse check. A self-supervised objective that predicts embeddings from embeddings has a trivial cheat available to it: map every cell to the same latent, and the prediction loss vanishes while the representation carries nothing. The guard against this is *effective rank*, a soft count of how many latent directions the representation actually spreads across, ranging from $1$ (fully collapsed onto a single direction) to $256$ (every direction used equally). On the full data the pretrained encoder reaches an effective rank of about $176$ out of $256$, so it is far from the collapsed, low-rank failure a self-supervised objective can fall into and uses most of the space available to it.
+The first is a collapse check. A self-supervised objective that predicts embeddings from embeddings has a trivial cheat available to it: map every cell to the same latent, and the prediction loss vanishes while the representation carries nothing. The guard is *effective rank*, a soft count of how many latent directions the representation actually spreads across, ranging from $1$ (collapsed onto a single direction) to $256$ (every direction used equally). The pretrained encoder reaches an effective rank of about $176$ out of $256$, so it is far from collapse and uses most of the space available to it.
 
-The second diagnostic asks whether that space encodes anything *biological*, and the result only makes sense against its setup. Stage A never sees a perturbation label. We freeze the encoder, encode each cell to its single pooled latent $z$, and then train a plain logistic-regression classifier to predict which of the $237$ perturbations a cell received from $z$ alone. If a linear rule can read perturbation identity off the frozen latent, the encoder learned perturbation-relevant biology without ever being told about it. That is the headline self-supervised claim, and this probe is how we test it.
-
-The probe reaches $5.2\%$ accuracy on held-out cells. Measured against $100\%$ that looks poor, but $100\%$ is the wrong yardstick: with $237$ classes, random guessing scores only $0.42\%$, so $5.2\%$ is roughly twelve times chance, a lift far beyond what noise across thousands of test cells could produce. The absolute number is low for a biological reason rather than a modeling failure. A single cell's transcriptome is dominated by its baseline state, and a perturbation is a small shift riding on top of that baseline, so one cell rarely reveals which intervention it received. The perturbation signal is a population-level property, which is exactly what the flow will condition on. The honest reading is therefore modest but real: the frozen latent carries perturbation-relevant information for the flow to use, even when no single cell pins its own label down.
+The second asks whether that space encodes anything *biological*. Stage A never sees a perturbation label. We freeze the encoder, encode each cell to its pooled latent $z$, and train a plain logistic regression to predict which of the $237$ perturbations a cell received from $z$ alone. The probe reaches $5.2\%$ on held-out cells. Against $100\%$ that looks poor, but $100\%$ is the wrong yardstick: with $237$ classes, chance is $0.42\%$, so $5.2\%$ is roughly twelve times chance. The absolute number is low for a biological reason rather than a modeling failure, because a single cell's transcriptome is dominated by its baseline state and a perturbation is a small shift riding on top of it. The perturbation signal is a population-level property. The honest reading is modest but real: the frozen latent carries perturbation-relevant information for the flow to use.
 
 ## In-distribution effect size
 
-The first question is whether the full stack recovers effect size at all, on the easier test: held-out *cells* of *seen* perturbations, the `cells` split. The condition fed to the flow here is the simplest of the two encoders from [Chapter 2](02-implementation.md), the *table* condition. A perturbation is a label naming which gene or genes were activated, a single gene such as `CEBPE` or a two-gene combination such as `CEBPE+RUNX1T1`, and each of the $237$ perturbations carries its own integer ID. The table condition is a learned lookup table with one row per ID: to condition on a perturbation you fetch its row, and that row is the perturbation embedding. This is all we need in distribution, because every perturbation seen at test time was also seen in training, so its row was trained. The harder combination test in the next section is exactly where a per-perturbation table breaks, and a compositional encoder has to take over. With the table condition, the conditional flow scores a mean $\Delta$-correlation of $0.469$ across $216$ perturbations, with a median of $0.470$. The spread is wide and informative. About $45\%$ of perturbations exceed $0.5$ and $22\%$ exceed $0.7$, while only $5\%$ go negative. Two-gene combinations score higher on average than singles, $0.548$ against $0.384$, because a combination usually moves more genes by larger amounts, which gives the correlation more signal to lock onto. The weak singles are the biologically weak perturbations, where the true $\Delta$ is small and dominated by noise, so a near-zero correlation there is expected rather than a model failure.
+The easier test is held-out *cells* of *seen* perturbations, the `cells` split, with the simplest of the two condition encoders from [Chapter 2](02-implementation.md), the *table* condition: a learned lookup with one row per perturbation ID. This suffices in distribution, because every perturbation seen at test time was also seen in training.
+
+The conditional flow scores a mean $\Delta$-correlation of $\mathbf{0.612}$ across $216$ perturbations, with a median of $0.626$. Two-gene combinations score higher than singles on average, because a combination usually moves more genes by larger amounts, which gives the correlation more signal to lock onto. The weak singles are the biologically weak perturbations, where the true $\Delta$ is small and dominated by noise, so a near-zero correlation there is expected rather than a model failure.
 
 ## The harder test: generalizing to unseen combinations
 
-The test that actually matters for this method is the `combo` split: hold out twenty two-gene combinations entirely, train on everything else, and ask the model to predict a combination it has never seen. This is only possible because of the compositional gene-set condition of [Chapter 2](02-implementation.md).
+The test the method exists to pass is the `combo` split: hold out twenty two-gene combinations entirely, train on everything else, and predict a combination never seen.
 
-It is worth being precise about *which* representation makes this work, because it is not the one the rest of the chapter has been discussing. Two separate encoders are in play. The JEPA encoder maps a cell's expression to a latent and represents *cell state*; it never sees a perturbation label. The condition encoder is a distinct module that maps a perturbation *label* to the intervention embedding $z_p$, and it is the one that must handle unseen combinations. The default table version of it assigns each perturbation its own learned embedding row, so an unseen combination has no row to use and cannot be predicted at all. The gene-set version instead builds the combination's embedding additively from its two single-gene parts, $z_p(A{+}B) = e(A) + e(B)$, and both parts were trained whenever their genes appeared in any perturbation. So the capability being tested here is a property of how the *condition* is represented, not of the JEPA cell latents and not of the flow. The result does not say the latent space composes gene combinations; it says the gene-set condition does. The baseline below makes that attribution concrete.
+It is worth being precise about *which* representation makes this possible, because it is not the one this chapter has been discussing. Two separate encoders are in play. The JEPA encoder maps a cell's expression to a latent and represents *cell state*; it never sees a perturbation label. The condition encoder is a distinct module that maps a perturbation *label* to an intervention embedding, and it is the one that must handle unseen combinations. The default table version assigns each perturbation its own row, so an unseen combination has no row and cannot be predicted at all. The gene-set version builds a combination's embedding from its single-gene parts, $z_p(A{+}B) = e(A) + e(B)$, and both parts were trained whenever their genes appeared in any perturbation. So the capability tested here is a property of how the *condition* is represented, not of the JEPA cell latents and not of the flow. The baseline below makes that attribution concrete.
 
-With that compositional condition in place, the method does generalize. On the twenty held-out combinations the flow reaches a mean $\Delta$-correlation of $0.61$. That is higher than the in-distribution cells number above, which is not a contradiction: these held-out combinations happen to have large, clean effects, exactly the regime where the metric is easiest. Generalization here is about the *kind* of held-out example, not about the raw difficulty of the number.
+With the compositional condition in place, the method generalizes: on the twenty held-out combinations the transport flow reaches a seed-averaged $\Delta$-correlation of $\mathbf{0.648}$.
 
-## The baseline that reframes everything
+## The baseline beats it
 
-A number in isolation means little. To calibrate it we built the obvious control: a from-scratch conditional negative-binomial VAE, described in [Chapter 5](05-challenges-and-limitations.md), with no JEPA pretraining and no flow, conditioned on the same gene-set embedding, so the comparison isolates the generative machinery rather than being confounded by the perturbation encoding. On the same twenty held-out combinations the baseline scores a mean $\Delta$-correlation of $0.633$.
+A number in isolation means little, so we built the obvious control: a from-scratch conditional negative-binomial VAE, with no JEPA pretraining and no flow, conditioned on the *same* gene-set embedding, so the comparison isolates the generative machinery rather than the perturbation encoding. On the same twenty held-out combinations it scores $\mathbf{0.766}$.
 
-That result reframes the project. Line the numbers up: the baseline's $0.633$ is level with the flow's $0.62$, and on the raw average it sits a shade above. The elaborate part of the method, a JEPA representation plus a learned conditional flow, was meant to be the contribution here, and on this metric it does not beat a plain conditional VAE that has neither piece. Whether the small gap in the baseline's favor is even real is what the seed analysis below settles; the point for now is only that the fancy stack has not pulled ahead of the simple generator.
+That is not a tie. The full stack, a self-supervised representation plus a learned conditional flow, is beaten by a plain conditional VAE that has neither, by $0.118$ in $\Delta$-correlation. The gap is larger than every effect we have chased inside the flow family, and the statistics below say it is real.
 
-## The transport reformulation helps the flow
+## The statistics, and why they are stricter than they look
 
-Investigating why led to a real improvement. In the original formulation the flow transports Gaussian noise to the outcome latent, and the baseline state $z_b$ enters only as part of the condition, drawn as a random, unpaired control cell. Because that $z_b$ is statistically independent of the specific target, it cannot shift the predicted mean, so the condition collapses to "generate the perturbed population," which is the same object the VAE fits. The reformulation, developed in [Chapter 5](05-challenges-and-limitations.md), makes the flow transport a real control latent to the outcome, so it models the displacement, the effect itself, with $z_b$ anchoring each sample.
+Two facts about the test set drive the whole procedure. The unit of analysis is the **perturbation**, not the cell and not the gene, because the metric is defined per perturbation. And there are only **twenty** of them. That is a small sample, so the analysis has to work hard to be honest.
 
-Run head to head with the same encoder, decoder, and seed, the transport formulation lifts the mean $\Delta$-correlation from $0.580$ to $0.621$, and improves on fourteen of the twenty combinations. The largest gains land on the hard, low-signal combinations, and the worst case moves from slightly negative to positive. So the reformulation is a genuine improvement to the flow. It is not, however, enough to clear the baseline: $0.621$ still sits below the VAE's $0.633$.
+Three choices do that work, and [Chapter 4a](04a-reading-the-head-to-head.md) develops each.
 
-## Seeds change the ranking, so we measured the noise
+**Seeds are averaged before testing.** Every configuration is retrained at three seeds and its per-perturbation scores averaged, so a difference is not an artifact of one lucky initialization.
 
-A single training seed turned out to be an unreliable narrator. Retraining each configuration at three seeds shows the per-seed $\Delta$-correlation swinging by more than the effects we care about. The Gaussian flow alone ranges across $0.623$, $0.562$, and $0.569$; the transport flow across $0.575$, $0.653$, and $0.611$. At one seed the Gaussian flow wins, at another the transport flow wins by a wide margin. Only by averaging over seeds and comparing per-combination pairs does a stable picture emerge.
+**One primary endpoint, declared in advance.** The $\Delta$-correlation is the only metric on which we make a significance claim. Everything else is secondary and reported as an interval without a verdict, because a difference discovered on a secondary metric after the fact is a hypothesis rather than a result.
 
-The table below reports the seed-averaged mean $\Delta$-correlation for each configuration, and the paired bootstrap difference between configurations, resampling the twenty combinations ten thousand times. A confidence interval that excludes zero is a difference we can trust; one that spans zero is within the noise of a twenty-combination test set.
+**A joint bootstrap with simultaneous intervals.** The contrasts below share arms and are computed on the same twenty perturbations, so they are not independent. We resample the perturbations once per bootstrap iteration, evaluate every contrast on that shared resample, and take a **max-$t$** critical value across the family. The result is intervals that hold *simultaneously* at 95% over all three contrasts. The critical value comes out at $2.95$, against $1.96$ for a single unadjusted test, so this is a materially higher bar than testing each comparison on its own.
 
-| configuration | mean $\Delta$-correlation |
+| configuration | mean $\Delta$-correlation (3 seeds) |
 |---|---|
-| Gaussian flow (noise to outcome) | 0.584 |
-| transport flow (control to outcome) | 0.613 |
-| transport flow with OT coupling | 0.590 |
-| conditional NB-VAE (baseline) | 0.633 |
+| Gaussian flow (noise to outcome) | 0.612 |
+| transport flow with OT coupling | 0.627 |
+| transport flow (control to outcome) | 0.648 |
+| **conditional NB-VAE (baseline)** | **0.766** |
 
-| comparison | difference | 95% CI | reading |
+| contrast | difference | simultaneous 95% CI | reading |
 |---|---|---|---|
-| transport − Gaussian | +0.028 | [−0.006, +0.064] | borderline; transport's edge is likely real |
-| OT − transport | −0.023 | [−0.041, −0.007] | significant; OT coupling **hurts** |
-| transport − VAE | −0.020 | [−0.077, +0.044] | not significant; a tie |
-| VAE − Gaussian | +0.049 | [−0.021, +0.112] | not significant |
+| transport − Gaussian | $+0.036$ | $[+0.019, +0.052]$ | **significant**: the transport reformulation is a real improvement |
+| OT − transport | $-0.021$ | $[-0.039, -0.002]$ | **significant**: optimal-transport coupling *hurts* |
+| **transport − NB-VAE** | $\mathbf{-0.118}$ | $\mathbf{[-0.228, -0.008]}$ | **significant**: the baseline wins |
 
-Two things stand out. First, the transport reformulation's edge over the Gaussian flow survives seed averaging, at borderline significance. Second, and this is the one clearly significant effect in the whole sweep, optimal-transport coupling *hurts*: it lowers the flow-matching training loss by straightening the paths, yet it lowers the $\Delta$-correlation. A clean reminder that a better training objective is not the same as a better downstream metric. The reasons are discussed in [Chapter 5](05-challenges-and-limitations.md).
+All three survive the simultaneous correction. Two of them are findings we keep and build on. The third is the result of the chapter.
 
-Notably, the last row also corrects an earlier, hastier reading. The single-seed run had the VAE ahead of the Gaussian flow by $0.053$, which looked like the baseline decisively winning. Seed-averaged the gap narrows to $0.049$, and with three seeds and a paired test it is not statistically distinguishable from zero. The most defensible statement is that on this test set the three generative configurations are within noise of each other, with the transport flow the best of the flow variants and the VAE at or slightly above them all.
+Note also what the seeds say. The VAE's three seeds score $0.762$, $0.767$, $0.768$, a spread of $0.006$. This is not a lucky draw, and no amount of reseeding the flow will close a gap of $0.118$ against a baseline that stable.
 
-## Calibration: the same verdict from a different angle
+## Calibration: a second axis, and it does not rescue the flow
 
-Effect size grades only the mean of the response. A generative model's real promise is the whole predictive *distribution*, and a flow can in principle bend noise into a multimodal, correlated population that a cruder generator cannot. So we measured calibration directly, comparing each model's generated population against the held-out real cells on the top differentially-expressed genes. The metrics are per-gene spread correlation, central-interval coverage, mean 1-Wasserstein distance, and a multivariate two-sample energy distance that sees the joint structure across genes. [Chapter 3b](3b-reading-the-calibration-metrics.md) is a primer on all four — in particular what coverage means and why $1.00$ is a bad sign — and the implementation is in [`calibration.py`](../../../../src/ssllab/eval/calibration.py).
+Effect size grades only the mean of the response. A generative model's real promise is the whole predictive *distribution*, and a flow can in principle bend noise into a multimodal, correlated population that a cruder generator cannot. So we measured calibration directly, comparing each model's generated population against the held-out real cells on the top-DE genes, with the four metrics of [Chapter 3b](3b-reading-the-calibration-metrics.md).
 
-| model | joint energy (lower better) | 1-Wasserstein (lower better) | coverage (nominal 0.80) |
-|---|---|---|---|
-| transport flow | 0.038 | 0.009 | 1.00 |
-| Gaussian flow | 0.045 | 0.010 | 1.00 |
-| NB-VAE | 0.032 | 0.008 | 1.00 |
+These are **secondary endpoints**. The intervals are reported; no significance is claimed on them.
 
-The marginal picture is unflattering for everyone. Coverage sits at $1.00$ against a nominal $0.80$, meaning the sampled populations are over-dispersed on the top-DE genes, a property of the negative-binomial decoders rather than of the flow. The two flow variants look nearly identical on the marginal metrics precisely because they share a decoder, which tells us these metrics are reading the decoder, not the latent distribution. The one metric that can see the flow's would-be advantage, the joint energy distance, again ranks the VAE best at $0.038$ for the transport flow against $0.032$ for the VAE, with the transport-minus-VAE difference not significant. The transport flow beats the Gaussian flow here too, consistent with the effect-size axis.
+| model | spread correlation ↑ | coverage (nominal 0.80) | 1-Wasserstein ↓ | joint energy ↓ |
+|---|---|---|---|---|
+| Gaussian flow | 0.205 | 0.357 | 1.013 | 3.794 |
+| transport flow | 0.234 | 0.375 | 0.982 | **3.578** |
+| transport + OT | 0.214 | 0.365 | 1.010 | 3.746 |
+| NB-VAE | **0.522** | 0.328 | **0.956** | 3.962 |
 
-So both axes we can measure agree. The transport formulation is the right way to build the flow, optimal-transport coupling is the wrong way, and the from-scratch NB-VAE is equal or slightly better than the flow across the board.
+Three things to read here, in descending order of confidence.
+
+**Every model is badly under-dispersed.** Coverage sits between $0.33$ and $0.38$ against a nominal $0.80$, meaning each model's predicted $80\%$ interval captures only about a third of the real cells. The predicted populations are far *too narrow*. This is the single most robust fact on the calibration axis and it applies to the flow and the VAE alike, so it is a property of the count decoders that both read out through rather than of the flow.
+
+**The VAE tracks per-gene variability much better.** Its spread correlation of $0.522$ against the transport flow's $0.234$ says it is substantially better at knowing *which* genes vary in a response. The contrast is $-0.288$ with an interval of $[-0.429, -0.136]$, which does not go near zero.
+
+**The flow's apparent advantage on joint structure does not resolve.** The transport flow posts the best joint energy distance, $3.578$ against the VAE's $3.962$, and the energy distance is precisely the metric built to see the gene-gene structure a flow should capture and a marginal metric cannot. It is tempting to call this the flow earning its keep. But the contrast is $-0.383$ with an interval of $[-0.960, +0.172]$, which **crosses zero**. On twenty perturbations this difference is not resolvable, and it is a secondary endpoint besides. It is a hypothesis worth testing on a larger held-out set, and nothing more than that today.
+
+## Where the predicted spread actually goes
+
+The under-dispersion is worth one more measurement, because it says which component is responsible. By the law of total variance, a generated population's per-gene variance splits exactly into two parts: the count noise the decoder adds around each cell's own mean, and the spread of the decoded mean across the latent cloud. The second is the latent distribution's entire contribution, and it is the only part the flow and the VAE do differently.
+
+| | real variance | predicted total | $\sigma^2_{\text{dec}}$ (decoder) | $\sigma^2_{\text{bio}}$ (latent) | latent's share |
+|---|---|---|---|---|---|
+| transport flow | 0.824 | 0.678 (0.84×) | 0.538 | 0.140 | 22% |
+| NB-VAE | 0.824 | 0.355 (0.46×) | 0.226 | 0.128 | 38% |
+
+Both models under-produce total spread, the VAE more severely than the flow. The latent distribution contributes a real but minority share in both, and the two models' latent contributions are close ($0.140$ against $0.128$). The gap between the models is therefore not a gap in what their latent distributions do; it is mostly in the decoder each learned. This is the measurement that tells the decoder work in [Chapter 8](08-modeling-the-readout-count-decoder.md) which direction to push, and the answer is *more* dispersion, not less.
 
 ## The honest scoreboard
 
-On Norman held-out combinations, the JEPA-plus-conditional-flow stack does not beat a from-scratch conditional NB-VAE on either effect size or calibration. It ties or slightly trails on both. The compositional gene-set embedding, shared by both models, is what drives combination generalization. Within the flow family, transporting from a real control latent beats transporting from noise, and optimal-transport coupling makes things worse.
+On Norman held-out combinations, **the JEPA-plus-conditional-flow stack does not beat a from-scratch conditional NB-VAE. It loses to it, by $0.118$ in $\Delta$-correlation, significantly, and against a baseline whose seed-to-seed spread is $0.006$.** The compositional gene-set embedding, shared by both models, is what drives combination generalization, and the baseline's strength makes that attribution concrete: almost everything the method achieves on unseen combinations is achievable without JEPA and without a flow.
 
-This is a negative result in the narrow sense that the flagship method did not clear its baseline. It is a productive one in the broader sense that it was measured carefully enough to be trusted, it isolated which component carries the generalization, and it surfaced a formulation fix worth keeping. Two caveats bound it. The evaluation rests on a single dataset and a twenty-combination held-out set, which limits statistical power to effects of roughly $0.05$. And there is one axis we have not yet measured, data efficiency, where the flow's inductive bias could still pay off. [Chapter 5](05-challenges-and-limitations.md) dissects the challenges behind these numbers, and [Chapter 6](06-beyond-the-current-limit.md) lays out where a breakthrough would most plausibly come from.
+Within the flow family the picture is coherent and useful. Transporting from a real control latent beats transporting from noise, significantly. Optimal-transport coupling makes things worse, significantly, even though it lowers the training loss. Both of those findings survive the simultaneous correction and both are worth keeping.
+
+This is a negative result, and it is a clean one. The method was built carefully, measured carefully, and it lost to a simpler thing. That is more useful than an ambiguous tie, because it forces the question of *why*, and the answer is not "we needed a slightly better decoder." [Chapter 5](05-challenges-and-limitations.md) dissects the causes, and [Chapter 6](06-beyond-the-current-limit.md) argues that the remaining hope is structural: the encoder is frozen and condition-blind, and the one axis on which the self-supervised premise makes a differential prediction, data efficiency, is the one we have not yet measured.
+
+Two caveats bound everything above. The evaluation rests on a single dataset and twenty held-out combinations, and those combinations share genes, so they are not strictly independent draws. And the intervals capture uncertainty from the finite test set but not from training-seed randomness, which is averaged out before the bootstrap rather than propagated through it. Both push in the direction of the intervals being, if anything, too narrow.
 
 ---
 
-*Previous: [Chapter 3 — Training and evaluation](03-training-and-evaluation.md). Up: [the method series](index.md). Next: [Chapter 5 — Challenges and limitations](05-challenges-and-limitations.md).*
+*Previous: [Chapter 3 — Training and evaluation](03-training-and-evaluation.md). Up: [the method series](index.md). Next: [Chapter 5 — Challenges and limitations](05-challenges-and-limitations.md). The audit: [Chapter 4a](04a-reading-the-head-to-head.md). The gene selection: [Chapter 3e](3e-the-genes-the-metric-scores.md). Current state of play across all rounds: [the results ledger](results-ledger.md).*

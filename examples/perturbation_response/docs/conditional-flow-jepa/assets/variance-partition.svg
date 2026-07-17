@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 640" width="1240" height="640" role="img" aria-labelledby="ttl desc">
+  <title id="ttl">Two ways to fix an under-dispersed model, and only one of them lets the flow be seen</title>
+  <desc id="desc">The real per-gene variance is a fixed bar. The model produces less than it, so its predicted population is too narrow. The shortfall can be closed either by giving the shared decoder more count noise, which fixes coverage but shrinks the latent distribution's share and hides the flow further, or by giving the latent distribution more spread, which fixes coverage and makes the flow's contribution visible.</desc>
+
+  <defs>
+    <pattern id="gap" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="8" stroke="#cbd5e1" stroke-width="2"/>
+    </pattern>
+  </defs>
+
+  <rect x="0" y="0" width="1240" height="640" fill="#fbfbf9"/>
+
+  <!-- ============ reference: the real spread ============ -->
+  <text x="60" y="40" font-family="system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#111827">The real spread of held-out cells</text>
+  <rect x="60" y="56" width="1000" height="44" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.6"/>
+  <text x="560" y="84" text-anchor="middle" font-family="system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="17" font-weight="600" fill="#334155">variance = 0.824   (this is the target: coverage 0.80)</text>
+
+  <!-- ============ what the model produces ============ -->
+  <text x="60" y="152" font-family="system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#111827">What the model produces: too narrow (0.84x, coverage 0.375)</text>
+  <rect x="60" y="168" width="653" height="76" rx="8" fill="#e7f6ee" stroke="#34a97b" stroke-width="1.6"/>
+  <text x="386" y="198" text-anchor="middle" font-family="system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="19" font-weight="700" fill="#065f46">decoder count noise</text>
+  <text x="386" y="222" text-anchor="middle" font-family="system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="16" fill="#065f46">0.538  (shared)</text>
+  <rect x="713" y="168" width="170" height="76" rx="8" fill="#ecebfd" stroke="#6366f1" stroke-width="1.6"/>
+  <text x="798" y="198" text-anchor="middle" font-family="system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="17" font-weight="700" fill="#3730a3">latent</text>
+  <text x="798" y="222" text-anchor="middle" font-family="system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="16" fill="#3730a3">0.140</text>
+  <rect x="883" y="168" width="177" height="76" rx="8" fill="url(#gap)" stroke="#94a3b8" stroke-width="1.6" stroke-dasharray="5 4"/>
+  <text x="971" y="204" text-anchor="middle" font-family="system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="16" font-weight="600" fill="#64748b">missing</text>
+  <text x="971" y="226" text-anchor="middle" font-family="system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="15" fill="#64748b">0.146</text>
+
+  <!-- ============ fix A ============ -->
+  <text x="60" y="316" font-family="system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#b45309">Fix A: give the decoder more noise</text>
+  <rect x="60" y="332" width="830" height="76" rx="8" fill="#e7f6ee" stroke="#34a97b" stroke-width="2.4"/>
+  <text x="475" y="362" text-anchor="middle" font-family="system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="19" font-weight="700" fill="#065f46">decoder count noise</text>
+  <text x="475" y="386" text-anchor="middle" font-family="system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="16" fill="#065f46">0.684  (grown, now 83% of the spread)</text>
+  <rect x="890" y="332" width="170" height="76" rx="8" fill="#ecebfd" stroke="#6366f1" stroke-width="1.6"/>
+  <text x="975" y="362" text-anchor="middle" font-family="system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="17" font-weight="700" fill="#3730a3">latent</text>
+  <text x="975" y="386" text-anchor="middle" font-family="system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="16" fill="#3730a3">0.140</text>
+  <text x="60" y="432" font-family="system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="17" fill="#b45309">Coverage is fixed. But the latent's share fell from 22% to 17%, so the shared decoder now hides the flow even more.</text>
+
+  <!-- ============ fix B ============ -->
+  <text x="60" y="496" font-family="system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#3730a3">Fix B: give the latent distribution more spread</text>
+  <rect x="60" y="512" width="653" height="76" rx="8" fill="#e7f6ee" stroke="#34a97b" stroke-width="1.6"/>
+  <text x="386" y="542" text-anchor="middle" font-family="system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="19" font-weight="700" fill="#065f46">decoder count noise</text>
+  <text x="386" y="566" text-anchor="middle" font-family="system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="16" fill="#065f46">0.538  (unchanged)</text>
+  <rect x="713" y="512" width="347" height="76" rx="8" fill="#ecebfd" stroke="#6366f1" stroke-width="2.4"/>
+  <text x="886" y="542" text-anchor="middle" font-family="system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="19" font-weight="700" fill="#3730a3">latent distribution</text>
+  <text x="886" y="566" text-anchor="middle" font-family="system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="16" fill="#3730a3">0.286  (grown, now 35% of the spread)</text>
+  <text x="60" y="612" font-family="system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="17" fill="#3730a3">Coverage is fixed AND the latent's share grew. This is the only fix that makes the generative model's contribution visible.</text>
+</svg>

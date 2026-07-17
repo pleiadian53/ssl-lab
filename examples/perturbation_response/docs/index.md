@@ -15,6 +15,9 @@ The method itself and its evaluation. The idea (a conditional flow prior over fr
 ### [Running the pipeline](running-the-pipeline.md)
 The runnable companion to the method series: the exact sequence of commands from raw data to the effect-size scoreboard, what each script reads and writes, the GPU-pod workflow, a provenance map from every number in the results chapter back to its script and report, the failure modes and how to recover from them, and the pattern we use to run a lever experiment. Follow it top to bottom the first time, then keep it as a reference and a recovery guide.
 
+### [Running an experiment you can trust](../../../docs/experimental-method/index.md)
+The methodology behind every number in these series, written to transfer to any R&D project rather than to this one. What the metric is actually computed on (and the trap that had us scoring silent genes), seeds versus metric noise, ablations versus controls, and the joint bootstrap with simultaneous intervals that turns a difference into a verdict. This project is its worked example, including the mistakes.
+
 ## How they relate
 
 The [design-space survey](../../../docs/generative_jepa/index.md) decided *what* to build and *why*, at the level of theory. The **Reading Perturb-seq** series grounds that decision in the real dataset. The **conditional-flow + JEPA** series builds it, runs it, and measures it. Read the data series to understand the problem, the method series to understand the attempt and where it stands.
