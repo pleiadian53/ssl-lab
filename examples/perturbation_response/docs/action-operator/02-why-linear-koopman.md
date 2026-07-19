@@ -185,4 +185,4 @@ The premise is testable, and cheaply, which makes the omission worse rather than
 
 ---
 
-*Previous: [What an operator is](01-what-an-operator-is.md). Next: why $\exp(M)$, and what the generator buys. Up: [the series index](index.md).*
+*Previous: [What an operator is](01-what-an-operator-is.md). Next: [why $\exp(M)$](03-why-exp-of-m.md), and what the generator buys. Up: [the series index](index.md).*
