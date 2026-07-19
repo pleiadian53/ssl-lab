@@ -4,6 +4,8 @@
 
 The whole point of writing this down is research velocity. Once the workflow is precise, changing one component and re-measuring becomes a mechanical, low-risk operation rather than a fresh archaeology each time. That is exactly what the lever-A (operator) and lever-B (decoder) experiments need.
 
+> **This page is the route; [Workflows](workflows/index.md) is the map.** Follow this one to *reproduce* the result. Read that one when you have a question rather than a recipe: it groups all eighteen scripts into the five kinds of workflow they actually belong to (build, score, diagnose, decide, vary), and it covers the diagnostic and operator scripts (`13`–`17`) that postdate this page.
+
 ## 1. The pipeline at a glance
 
 Five kinds of script produce everything: one data-prep step, the three training stages, and the evaluators. A from-scratch NB-VAE baseline hangs off to the side as a comparator. The dependency graph is small:
