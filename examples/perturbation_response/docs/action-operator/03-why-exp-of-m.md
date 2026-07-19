@@ -141,4 +141,4 @@ The lesson generalizes past this project, and it is the third row of the [premis
 
 ---
 
-*Previous: [Why the operator is linear](02-why-linear-koopman.md). Next: the anatomy, where the generator basis and the policy actually live. Up: [the series index](index.md). The algebra that the next-but-one chapter develops: [the algebra of composition](../../../../docs/action_operator/03-the-algebra-of-composition.md).*
+*Previous: [Why the operator is linear](02-why-linear-koopman.md). Next: [the anatomy](04-basis-policy-least-action.md), where the generator basis and the policy actually live. Up: [the series index](index.md). The algebra that the next-but-one chapter develops: [the algebra of composition](../../../../docs/action_operator/03-the-algebra-of-composition.md).*
