@@ -129,4 +129,4 @@ This is the first of the three things perturbation response breaks, and it is no
 
 ---
 
-*Next: why the operator is linear, and the Koopman argument that licenses it. Up: [the series index](index.md). The short domain-general version of this chapter: [From actions to operators](../../../../docs/action_operator/00-from-actions-to-operators.md).*
+*Next: [why the operator is linear](02-why-linear-koopman.md), and the Koopman argument that licenses it. Up: [the series index](index.md). The short domain-general version of this chapter: [From actions to operators](../../../../docs/action_operator/00-from-actions-to-operators.md).*

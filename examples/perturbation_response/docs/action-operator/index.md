@@ -38,9 +38,9 @@ The application is perturbation response: what a cell does when you activate a g
 
 1. **[What an operator is, and what makes it mean anything](01-what-an-operator-is.md)** — the two-space picture (the real transformation you cannot write down, and the latent one you build), why moving to latent space is what lets you choose something simple, and the **commuting square** that is the difference between an operator and an arbitrary matrix. The conceptual crux of the whole framework, and the one most treatments mention in a sentence and move past.
 
-The remaining chapters are drafted in outline and will land in order:
+2. **[Why the operator is linear](02-why-linear-koopman.md)** — the Koopman argument: you do not linearize the dynamics, you change what you track until they are already linear. The Koopman operator is *exactly* linear on observables for any nonlinear system, an invariant subspace turns it into a matrix, and that subspace **is** the encoder. Shows a system where the linearization is exact, explains why such coordinates exist (eigenfunctions), and proves that Chapter 1's commuting square and Koopman invariance are **the same equation**. Ends on the premise our own encoder never satisfied, and the cheap test that would have caught it.
 
-2. **Why the operator is linear** — the Koopman argument: you do not linearize the dynamics, you choose coordinates in which they already are. Exact on an invariant subspace, and the invariant subspace *is* the encoder. Includes the premise our own encoder never satisfied.
+The remaining chapters are drafted in outline and will land in order:
 3. **Why $\exp(M)$** — the generator, the one-parameter semigroup, and why the matrix exponential is what the dynamics *are* rather than a convenient parameterization. Invertibility, the identity start, and the least-action prior all fall out as consequences.
 4. **The anatomy: basis, policy, and least action** — where the design choices actually live. The generator basis as the main dial (free, named, structured), the policy that emits coefficients, and the energy functional that keeps the operator honest.
 5. **Composition** — applying two operators. Why the commutator is the exact measure of non-additivity, why BCH contains only nested commutators, and why the anticommutator answers a different question.
