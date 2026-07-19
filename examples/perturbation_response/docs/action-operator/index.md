@@ -44,8 +44,9 @@ The application is perturbation response: what a cell does when you activate a g
 
 4. **[The anatomy: basis, policy, and least action](04-basis-policy-least-action.md)** — $M$ has $65{,}536$ entries, so where does it come from? The three objects between an intervention and its operator: the **basis** (the real design decision, since it fixes what is representable at all *and* confines every bracket the model can produce), the **policy** (direct or learned, on the state or on the condition alone, deterministic or a mixture), and the **energy**. Includes the gauge freedom that makes free-basis generators uninterpretable, why a deterministic operator *cannot* split a population, and a table of where this project set every dial.
 
+5. **[Composition](05-composition.md)** — what happens when two interventions meet, and the framework's most distinctive claim: that their **interaction is the bracket of their generators**, computable without ever observing the pair. Establishes it, then measures its **radius of validity**, which yields the uncomfortable structural fact that the window where the bracket is trustworthy and the window where the interaction matters barely overlap. Then the symmetry argument: a *simultaneous* experiment sees the magnitude of non-commutativity but never its sign, because the raw bracket is swap-odd. Ends on the two ways this premise failed here.
+
 The remaining chapters are drafted in outline and will land in order:
-5. **Composition** — applying two operators. Why the commutator is the exact measure of non-additivity, why BCH contains only nested commutators, and why the anticommutator answers a different question.
 6. **Training an operator** — the paired case (the equivariance loss computes directly) and the unpaired case (match distributions instead), and why the second is a generalization rather than a patch.
 7. **The application, and what it taught** — perturbation response as the $T=1$ corner: three things the domain breaks, what we built, the refutation, and the diagnosis. Including the finding that outlived the hypothesis, that the near-identity prior was imported from the wrong space.
 

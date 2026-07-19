@@ -145,4 +145,4 @@ The pattern is that we sat near the **expressive, unstructured** end of every di
 
 ---
 
-*Previous: [Why $\exp(M)$](03-why-exp-of-m.md). Next: composition, and what the algebra says about interacting interventions. Up: [the series index](index.md).*
+*Previous: [Why $\exp(M)$](03-why-exp-of-m.md). Next: [composition](05-composition.md), and what the algebra says about interacting interventions. Up: [the series index](index.md).*
