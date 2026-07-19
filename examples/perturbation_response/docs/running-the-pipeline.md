@@ -167,7 +167,7 @@ The stages are GPU work, and the shell wrappers in `examples/perturbation_respon
 | wrapper | what it runs | writes to |
 |---|---|---|
 | `run_stage_a_pod.sh` | 00 (only if cache absent) -> 01 -> 02 | `norman_stage_a` |
-| `run_full_pipeline_pod.sh` | 01 -> 02 -> 03 -> 04 -> 06, all on `cells` | `norman_stage_a` (the 0.469 in-distribution number) |
+| `run_full_pipeline_pod.sh` | 01 -> 02 -> 03 -> 04 -> 06, all on `cells` | `norman_stage_a` (the 0.612 in-distribution number) |
 | `run_combo_generalization_pod.sh` | 03 -> 04 -> 06 (combo) + 08 -> 09 (VAE) | `norman_combo` |
 | `run_flow_compare_pod.sh` | 04 -> 06 for `--flow-base {gaussian,control}` | `norman_flow_{gaussian,control}` |
 | `run_seed_sweep_pod.sh` | 04 -> 06 for 3 flow configs x 3 seeds | `norman_sweep_*` |
@@ -236,7 +236,7 @@ The gate at `00` is the one that earns its keep, because it is the furthest from
 - **`00` breaks the torch build.** Installing pertpy upgrades NumPy/scipy/sklearn and can shadow the pod's CUDA torch. The Stage-A wrapper captures and restores the base stack around `00`; if you run `00` by hand on a pod, isolate it or reinstall torch afterward. Best practice: build the cache once and stage it, so pods never install pertpy.
 - **"No control cells."** Stage B raises if the precomputed set has no controls (bump `--limit`); Stage C's B1/B2 anchors silently no-op if controls are absent. If a decoder ablation shows the levers doing nothing, check the control pre-pass logged a non-zero control count.
 - **A held-out combo scores near zero with the table condition.** The `table` condition cannot embed a combination it never saw. Use `--cond-type geneset` for any `combo`-split run.
-- **A single seed disagrees with an earlier run.** Seed-to-seed spread on the twenty-combo test set is about 0.06 to 0.08, larger than the effects we chase, so a single seed is directional only. Use the seed-sweep wrapper and the paired bootstrap before calling any difference real. See [Chapter 4a §3](conditional-flow-jepa/04a-reading-the-head-to-head.md).
+- **A single seed disagrees with an earlier run.** Seed-to-seed spread on the twenty-combo test set is small on the current gene selection (the NB-VAE's three seeds span 0.006, the Gaussian flow's about 0.012), but it was five times larger before the scoring seam was fixed, and most of what looked like seed noise was *metric* noise. A single seed is still directional only. Use the seed-sweep wrapper and the paired bootstrap before calling any difference real. See [Chapter 4a §3](conditional-flow-jepa/04a-reading-the-head-to-head.md).
 
 ## 7. Running a lever experiment
 
