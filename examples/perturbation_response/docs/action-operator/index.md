@@ -8,6 +8,8 @@
 
 The action-operator idea can be said in one sentence: *an action is not a label you pick from a menu, it is a transformation you apply to a state.* People nod at that sentence and then get lost, and the reason is worth naming up front, because it shapes how this series is organized.
 
+The idea originates in the sibling **GRL** project, *Generalized Reinforcement Learning: Actions as Operators on State Space*, where the policy constructs an operator rather than choosing an index, and classical reinforcement learning falls out as the special case where the operator family is a finite set of displacements. What follows carries that framework into a setting it was not designed for, one with no reward, no trajectory, and a system that is destroyed by being measured.
+
 **The framework is a stack of premises, and every one of them is easy to state and easy to leave unchecked.**
 
 | the premise | what it buys | what happens if it silently fails |

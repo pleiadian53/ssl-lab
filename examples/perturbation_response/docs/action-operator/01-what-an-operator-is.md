@@ -3,6 +3,10 @@
 *Two objects wear the name "action operator" and they live in different spaces. Keeping them apart is the first thing, and the bridge between them is the second. That bridge is the whole subject: without it, what you have built is not an operator, it is a matrix that happens to fit.*
 
 > **Prerequisites.** None beyond knowing what a function and a matrix are. Every symbol is defined at first use.
+>
+> **Origin.** The framework comes from the sibling **GRL** project, *Generalized Reinforcement Learning: Actions as Operators on State Space*, where it is developed as a strict generalization of reinforcement learning. There the policy does not select an action from a menu; it **constructs** an operator $\hat{O} : \mathcal{S} \to \mathcal{S}$, and the environment merely adds noise,
+> $$s' = \hat{O}(s) + \xi, \qquad \xi \sim \mathcal{N}(0, \sigma^2 I),$$
+> with the pipeline $s \xrightarrow{\pi_\psi} \theta \xrightarrow{\Phi} \hat{O}_\theta \xrightarrow{\text{apply}} s'$. Classical RL is recovered exactly when the operator family is a finite set of displacements $s \mapsto s + b_i$, which makes discrete-action reinforcement learning a special case rather than a different subject. The monoid and Lie-group structure, the generalized Bellman equation with its least-action term, and the operator families are formalized in [`GRL/docs/action_operator`](https://github.com/pleiadian53/GRL). **This series takes that framework out of the reinforcement-learning setting** and asks what it does when the "action" is a biological intervention, the system is measured once and destroyed, and there is no reward anywhere.
 
 ---
 
@@ -20,7 +24,9 @@ Read $\hat{O}$ as a **function from states to states**. The hat marks it as an o
 
 Three things follow immediately, and they are why the generalization is worth anything:
 
-**Actions become composable.** Two operators applied in sequence are a third operator, $\hat{O}_2 \circ \hat{O}_1$. Labels do not compose; you cannot multiply "press left" by "press right."
+**Actions compose, in a strong sense.** Labels can of course be *sequenced*: "press right, then press left" is a perfectly good instruction, and a trajectory is a list of them. But the list is not itself an action. There is no entry in the menu for "right-then-left," and the only way to find out what the sequence does is to **execute** it, pushing a state through the transition function one step at a time. Composition exists operationally, as something you run.
+
+Operators are **closed** under composition: the composite $\hat{O}_2 \circ \hat{O}_1$ is *itself an operator*, the same kind of object as the two it was built from. Together with the identity operator $I(s) = s$, the family forms a **monoid**: closure, associativity, an identity element. That closure is the whole difference, because it turns composition from a procedure you execute into an object you can compute with. When the operators are matrices, the composite is a matrix you can form, store, and inspect **without ever touching a state**. Repeating one $k$ times collapses to $\exp(M)^k = \exp(kM)$, a single matrix whose eigenvalues say what $k$ steps do without simulating $k$ steps. And "does the order matter?" stops being a question you answer empirically, by running both orders and comparing outcomes, and becomes the commutator $[M_1, M_2] = M_1M_2 - M_2M_1$, computable directly from the two generators. 
 
 **Actions become continuous and parameterized.** You are not restricted to a menu. An operator can be *constructed* from parameters, and nearby parameters give nearby transformations, so "a bit more of this intervention" is a meaningful and differentiable thing to ask for.
 
