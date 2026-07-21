@@ -142,4 +142,4 @@ The general lesson is the one §4 already stated and is worth repeating as a des
 
 ---
 
-*Previous: [The anatomy](04-basis-policy-least-action.md). Next: training an operator, and what changes when the data comes unpaired. Up: [the series index](index.md). The full algebra with its proofs: [the algebra of composition](../../../../docs/action_operator/03-the-algebra-of-composition.md).*
+*Previous: [The anatomy](04-basis-policy-least-action.md). Next: [training an operator](06-training.md), and what changes when the data comes unpaired. Up: [the series index](index.md). The full algebra with its proofs: [the algebra of composition](../../../../docs/action_operator/03-the-algebra-of-composition.md).*
