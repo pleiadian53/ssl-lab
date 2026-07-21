@@ -115,6 +115,8 @@ In practice the left term is a **stop-gradient** target, written $\mathrm{sg}(\c
 
 Notice also what the diagram quietly requires of the encoder. If $E$ discards the very information the intervention changes, then $E(s)$ and $E(s')$ are nearly identical, the square commutes with $f_\theta = I$, and the honest conclusion "this intervention does nothing in these coordinates" is indistinguishable from a good fit. The bridge constrains the operator *given* an encoder; it cannot rescue an encoder that threw the signal away.
 
+This is a *necessary* condition on the encoder, and it is worth flagging now that it is not a *sufficient* one, because the difference is the whole story of this project's central experiment. Retaining the perturbation's information is one demand. Keeping it in coordinates where the intervention is a **small, structured** motion is a second, independent demand, and [Chapter 2](02-why-linear-koopman.md) is about why the operator needs it too. Our own encoder, as it happens, met the first and failed the second: the signal was demonstrably present, yet the operator that fit the data was a large rotation rather than a near-identity nudge, which is a failure this chapter cannot yet name. The bridge cannot rescue an encoder that kept the signal in the wrong geometry any more than one that discarded it, and both are encoder problems that no cleverness in the operator downstream can fix.
+
 ## 5. The crack this opens, and where it leads
 
 Look hard at what $\mathcal{L}_{\text{equiv}}$ *requires*. For a single training example you need **both** $s$ and its own $s'$: the same system, before and after. Without that pair, "encode what truly happened" is undefined.
