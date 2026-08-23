@@ -53,6 +53,17 @@ class JEPAEncoder(nn.Module):
         Returns
         -------
         ``(B, M, embed_dim)`` contextualized embeddings (M = N if ``idx`` is None).
+        
+        
+        For the production geometry, imagine:
+        tokens.shape == (B, 50, 100)
+        idx.shape    == (B, 38)
+        where:
+
+        • B: batch size
+        • 50: all gene-group tokens in a cell
+        • 100: genes/features within each raw token
+        • 38: context tokens retained after masking
         """
         b, n, _ = tokens.shape
         if idx is None:

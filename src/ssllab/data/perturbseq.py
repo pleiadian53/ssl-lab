@@ -75,6 +75,25 @@ def make_gene_partition(n_hvg: int, n_tokens: int, seed: int) -> torch.Tensor:
     ``n_tokens`` the final positions are padded with ``-1`` (handled by
     :func:`tokenize_cells`). Deterministic in ``seed`` so processing and training
     agree on the partition.
+
+    Notes
+    -----
+    **HVG** = *highly variable gene*. Standard single-cell RNA-seq terminology, not
+    anything specific to Norman 2019 or Perturb-seq. An scRNA-seq assay measures tens
+    of thousands of genes per cell, but most are near-constant across cells, rarely
+    detected, or dominated by counting noise. HVG selection keeps the genes that vary
+    more across cells than their own mean expression would predict, since in sparse
+    count data a gene's variance rises with its mean and the comparison has to be made
+    against that trend. Here: scanpy's ``seurat_v3`` flavor on *raw counts*, top 5,000,
+    run once in ``00_process_norman.py`` before normalization.
+
+    Why it matters here. The panel is the model's entire input vocabulary. Restricting
+    to it raises the ratio of biological to technical variation and cuts ~19k genes to
+    5,000, which is what makes the 50 x 100 token geometry below fit. Selection happens
+    once over all cells, so HVG index ``j`` names the same gene in every cell and every
+    split, which is what lets a *fixed* partition and the encoder's learned positional
+    table mean anything. The cost is that it is lossy by construction: a perturbation
+    whose response lives outside the panel is invisible to everything downstream.
     """
     group_size = token_dim_for(n_hvg, n_tokens)
     g = torch.Generator().manual_seed(int(seed))
