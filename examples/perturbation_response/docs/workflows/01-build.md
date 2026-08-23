@@ -32,7 +32,7 @@ Read the fan-out at `encoder.pt`. Three different Stage-B designs and one decode
 
 ### `00` — the cache
 
-The one step that needs scanpy and pertpy, runs once, on CPU.
+The one step that needs scanpy and pertpy, runs once, on CPU. It has its own chapter, [Preparing a dataset](01a-preparing-a-dataset.md), covering the transformation chain, the `--n-hvg` / `--n-tokens` / `--source` knobs, and what a new cache invalidates downstream.
 
 ```bash
 python examples/perturbation_response/00_process_norman.py --artifact norman2019

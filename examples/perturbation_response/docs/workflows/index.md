@@ -13,8 +13,9 @@
 | | workflow | the question it answers | cost | scripts |
 |---|---|---|---|---|
 | 1 | **[Build](01-build.md)** | *produce an artifact something else depends on* | GPU, minutes to hours | `00` `01` `03` `04` `08` `13` `16` |
+| | ↳ **[Preparing a dataset](01a-preparing-a-dataset.md)** | *what `00` does to raw counts, and what a new cache invalidates* | CPU, once | `00` |
 | 2 | **[Score](02-score.md)** | *how good is this model on the standing benchmark?* | CPU, minutes | `05` `06` `09` `10` |
-| 3 | **[Diagnose](03-diagnose.md)** | *where is the loss, and is this stage even worth improving?* | CPU, minutes, **trains nothing** | `02` `11` `14` `15` |
+| 3 | **[Diagnose](03-diagnose.md)** | *where is the loss, and is this stage even worth improving?* | CPU, minutes, **trains nothing** | `00a` `02` `11` `14` `15` |
 | 4 | **[Decide](04-decide.md)** | *is this difference real, or am I reading noise?* | seconds | `12` `17` |
 | 5 | **[Vary](05-vary.md)** | *add an arm without breaking comparability* | orchestration | `run_*.sh`, the reuse flags |
 
@@ -26,6 +27,7 @@ The distinction that matters most is between **Build** and everything else. Buil
 - **"I have an idea for making the model better."** Go to [Diagnose](03-diagnose.md) *first*, not [Build](01-build.md). Measure whether the stage you are about to improve has any headroom. Three rounds of this project were spent improving a stage that had $0.03$ of room, and one afternoon of diagnosis would have said so. This is the single most expensive lesson in the repository.
 - **"I want to add a variant and compare it fairly."** [Vary](05-vary.md) for the mechanics, then [Score](02-score.md) for the grading, then [Decide](04-decide.md) for the verdict.
 - **"I have two numbers and I want to know if the difference is real."** [Decide](04-decide.md).
+- **"I want to use a different dataset, or more genes."** [Preparing a dataset](01a-preparing-a-dataset.md). Read the blast-radius section before you start: a new cache retrains the whole spine, not just the encoder.
 - **"Something upstream might be broken."** [Diagnose](03-diagnose.md), and specifically the acceptance-gate idea: every stage should assert something about its own output before the next stage consumes it.
 
 ## The whole map, script by script
@@ -34,7 +36,7 @@ Grouped by workflow rather than by number, which is the point.
 
 | script | workflow | what it produces | notes |
 |---|---|---|---|
-| `00_process_norman.py` | Build | the cache: HVG matrix, splits, `de_genes.json` | also owns the **scoring seam**; `--de-only` regenerates the gene list without touching splits |
+| `00_process_norman.py` | Build | the cache: HVG matrix, splits, `de_genes.json` | also owns the **scoring seam**; `--de-only` regenerates the gene list without touching splits. Knobs and blast radius: [1a](01a-preparing-a-dataset.md) |
 | `01_pretrain_stage_a.py` | Build | `encoder.pt` (frozen thereafter) | the JEPA encoder; masked prediction, no dynamics or decoding objective |
 | `03_train_count_decoder.py` | Build | `count_decoder.pt` | Stage C, trained on frozen latents |
 | `04_train_cond_flow.py` | Build | `cond_flow.pt` | Stage B, the conditional flow prior |
@@ -45,6 +47,7 @@ Grouped by workflow rather than by number, which is the point.
 | `06_eval_effect_size.py` | Score | `effect_size.json` | **the primary benchmark**; `--stage-b` selects which Stage B to grade |
 | `09_eval_cvae_baseline.py` | Score | `effect_size.json` for the baseline | same metric, same harness, different model |
 | `10_eval_calibration.py` | Score | `calibration_flow.json` | the distributional axis |
+| `00a_probe_hvg_coverage.py` | Diagnose | `hvg_coverage.json` | is the gene panel missing the responding genes? run before any `--n-hvg` rebuild |
 | `02_probe_cell_encoder.py` | Diagnose | `stage_a_probe.json` | linear probe: is the frozen encoder any good? |
 | `11_diagnose_variance.py` | Diagnose | `variance.json` | splits predicted spread into decoder versus latent |
 | `14_ceiling_analysis.py` | Diagnose | `ceiling.json` | **oracle substitution**: what is the best any Stage B could do? |
@@ -53,7 +56,7 @@ Grouped by workflow rather than by number, which is the point.
 | `17_eval_bracket_epistasis.py` | Decide | `bracket_epistasis.json` | a pre-committed structural endpoint with a permutation null |
 | `run_*.sh` | Vary | arms on a pod | one lever per arm; reuse everything else |
 
-There is no `07`. It was never written, and the gap is left rather than renumbered, because renumbering would invalidate every command in every note and ledger entry that references a script by number.
+`00a` is a companion to `00` rather than a new number in the sequence, for the same reason the docs use `1a`: it diagnoses the artifact `00` produces, and inserting it as a number would have implied it belongs in the build order. There is no `07`. It was never written, and the gap is left rather than renumbered, because renumbering would invalidate every command in every note and ledger entry that references a script by number.
 
 ## Three invariants that hold across all five
 
