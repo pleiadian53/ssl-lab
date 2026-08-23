@@ -58,9 +58,11 @@ which equals $A^2 + 2AB + B^2$ **only when** $AB = BA$. So the binomial theorem,
 
 $$[A, B] = 0 \quad \Longleftrightarrow \quad \exp(A)\exp(B) = \exp(A+B) \qquad \text{(for small } A, B\text{)}.$$
 
-This matters because it is exactly the regime our operators are built to live in. A zero-initialized generator starts at $M = 0$, and a least-action penalty on $\lVert M \rVert$ keeps it near there. The near-identity prior is not only an inductive bias about the world; it is also what makes the algebra behave.
+This matters because it is exactly the regime our operators are built to live in. A zero-initialized generator starts at $M = 0$, and a least-action penalty on $\lVert M \rVert$ keeps it near there. Near the identity the algebra behaves: BCH converges quickly, so the bracket is a small, readable correction rather than a wild one.
 
 > **The equivalence to carry forward.** For near-identity operators: *generators commute* $\iff$ *composition is additive*. Non-commutativity **is** the departure from additivity. That is not an analogy. It is what the group product computes.
+
+> **A scope condition, and an alternative route.** The near-identity regime is a real assumption about the data, so it is worth asking when it holds. For **incremental dynamics** it is natural: one step of a world model lands close to where it started, so $\lVert M \rVert$ stays small on its own. For a large **intervention** it is not automatic. A perturbation can be a big jump, and a prior that is honest in one coordinate system need not survive a nonlinear encoder. "A small shift on a large baseline" can be true of a raw measurement yet become a large rotation once encoded into a latent. When that happens a tension appears: fitting the response wants a large generator, while a readable bracket wants a small one, and one operator cannot always be both. The response is not to abandon the bracket but to make it *identifiable*. One route is a **shared low-rank basis** $\{B_i\}$, so every interaction is confined to the brackets $[B_i, B_j]$ of a few named directions instead of living in the vast space of a dense generator. Whether the bracket earns its keep as a model of interaction is then an empirical question, tested in the [perturbation-response series](../../examples/perturbation_response/docs/conditional-flow-jepa/results-ledger.md).
 
 ## 4. Baker–Campbell–Hausdorff: what composition costs when they don't commute
 
@@ -180,7 +182,7 @@ Three consequences carry into the rest of the corpus.
 
 **Composition is one clean object.** Repeating a single operator is $\exp(M)^k = \exp(kM)$, one matrix rather than $k$ stacked network calls, which is the gallery's point about rollout. Composing *different* operators is $\exp(M_2)\exp(M_1)$, and BCH says the generator is $M_1 + M_2$ plus bracket corrections. Summing the generators inside one exponential, $\exp(M_1 + M_2)$, is the **commutative approximation**: correct when the operators commute, and wrong by the bracket series when they do not. Any model that aggregates a sequence of interventions by summing their coefficients has silently assumed they all commute.
 
-**Non-commutativity is a modeling resource, not an obstacle.** The bracket is the one place an operator model can put an *interaction* between two interventions without adding a single parameter. It is a consequence of the two individual generators, not extra information fit from the pair.
+**Non-commutativity is a modeling resource, not an obstacle.** The bracket is the one place an operator model can put an *interaction* between two interventions without adding a single parameter. It is a consequence of the two individual generators, not extra information fit from the pair. Treat it as a *candidate* mechanism, though: it reads as a clean, small correction only while the operators stay near the identity (§3) and the bracket is identifiable from the data, so whether it predicts a real interaction is something to measure, not assume.
 
 **Symmetry decides what you can see.** A sequential experiment can observe the odd half. A simultaneous one cannot, and must be modeled with a swap-symmetric composition. Getting that right is not tidiness; it is the difference between a model that can be identified from your data and one that cannot.
 
