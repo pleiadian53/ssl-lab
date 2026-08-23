@@ -81,11 +81,11 @@ from ssllab.data.perturbseq import (
     SPLIT_TRAIN,
     load_cache,
     make_gene_partition,
-    tokenize_cells,
 )
 from ssllab.eval.effect_size import run_effect_size_eval
 from ssllab.experiment import experiment
 from ssllab.generative.perturb import load_count_decoder
+from ssllab.latents import encode_rows
 from ssllab.utils import get_device, set_seed
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-7s  %(message)s", datefmt="%H:%M:%S")
@@ -126,23 +126,6 @@ def _md5(path: Path) -> str:
         for chunk in iter(lambda: f.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
-
-
-@torch.no_grad()
-def encode_rows(jepa, feat: np.ndarray, partition: torch.Tensor, rows: np.ndarray,
-                device, batch_size: int) -> torch.Tensor:
-    """Frozen latents for an explicit set of cache rows, in encoder space (NOT standardized).
-
-    Stage C trains the decoder on `jepa.embed(tokens)` directly, and Stage B de-standardizes before
-    decoding, so encoder space is what the decoder expects. Indexing the cache by row (rather than
-    draining a dataloader) is what guarantees we encode *exactly* the cells the metric scores.
-    """
-    out = []
-    for i in range(0, len(rows), batch_size):
-        chunk = torch.from_numpy(np.ascontiguousarray(feat[rows[i:i + batch_size]]))
-        tokens = tokenize_cells(chunk, partition).to(device)
-        out.append(jepa.embed(tokens).cpu())
-    return torch.cat(out) if out else torch.empty(0)
 
 
 @torch.no_grad()
