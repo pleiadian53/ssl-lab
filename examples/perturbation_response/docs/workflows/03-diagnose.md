@@ -69,6 +69,28 @@ Because $\mathrm{GI}$ is a **norm**, it is unsigned: it says the additive model 
 
 This script exists to answer a question before an expensive round starts: **is there any signal here to fit?** If every pair were near-additive, a model predicting epistasis would have nothing to predict.
 
+## `00a` — HVG coverage: is the gene panel the bottleneck?
+
+The one Diagnose step that questions the *data* rather than a model. Every other script here takes the cache as given; this one asks whether the cache threw away the answer before training started.
+
+```bash
+python examples/perturbation_response/00a_probe_hvg_coverage.py --artifact norman2019
+```
+
+The cache's `de_genes.json` ranks differential expression **within** the panel, so by construction it cannot report what the panel excluded. The probe re-runs the identical DE procedure over the full gene set of the raw file and asks, per perturbation, what fraction of the true top-$k$ responding genes survived HVG selection.
+
+It reads QC thresholds, `top_k`, and the normalization from the cache's own manifest rather than re-specifying them, so the only difference between its DE run and the cached one is the gene space being ranked. It also imports `differential_expression` from `00` instead of reimplementing it, because a coverage number computed under a different ranking convention would not be comparable to the thing it is measuring.
+
+Three numbers come out, and the second is the one people skip.
+
+**Average coverage** answers the headline question. High coverage means a wider `--n-hvg` cannot help, because the genes the metric scores are already in the panel, and the multi-day rebuild described in [1a](01a-preparing-a-dataset.md) would buy nothing.
+
+**Coverage at rank** answers a sharper one. Coverage is reported at depths $10$, $20$, and $k$, and if it is *lower* at shallow ranks than deep ones, the panel is missing the **strongest** responders while keeping the weak ones. That is worse than a uniformly mediocre average, because the strongest genes dominate the effect-size metric, and an average alone hides it.
+
+**The union figure** turns a diagnosis into a cheaper option than the obvious one. It reports how many unique genes were missed across all perturbations, so a targeted panel, the HVG set unioned with the DE set, can be compared against simply doubling the panel width. Doubling is unsupervised and adds thousands of genes that are, by the selection method's own criterion, not variable; the union adds exactly the genes the metric will score.
+
+This is the same shape as `14`. Both are cheap, both run before the expensive thing, and both are capable of saying "do not build this."
+
 ## The pattern: a diagnostic must be unable to be right for the wrong reason
 
 Every script here has a structural guarantee, and the guarantee is what makes the number worth anything:
