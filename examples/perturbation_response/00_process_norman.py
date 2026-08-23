@@ -8,6 +8,13 @@ artifact the light loader (``ssllab.data.perturbseq``) reads at train time. Stag
 Dataset: Norman et al. 2019 (K562 CRISPRa, single + combinatorial genetic
 perturbations) — the scGen/CPA/GEARS lineage benchmark, graded on effect size.
 
+Requires the single-cell extra (this is the *only* script in the repo that does)::
+
+    pip install -e ".[perturb]"          # anndata, scanpy, scikit-misc, pertpy
+    # or, for the whole environment:  mamba env create -f environment.yml
+
+``pertpy`` is needed only for ``--source pertpy``; ``--source h5ad`` skips it.
+
 Usage
 -----
     # real run (multi-GB download, CPU, no pod); needs SSLLAB_DATA_ROOT for lake-staging
@@ -27,6 +34,7 @@ Output
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
 import logging
 import sys
@@ -88,14 +96,40 @@ def _detect_pert_col(obs_columns) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# Heavy dependencies.
+#
+# The single-cell stack is imported lazily, inside the functions that need it, so
+# that ``ssllab`` itself, the tests, and every training script stay light. The cost
+# of that choice is that a missing dependency surfaces at *run* time rather than at
+# install time, so each import carries the command that fixes it.
+# --------------------------------------------------------------------------- #
+INSTALL_HINT = (
+    'pip install -e ".[perturb]"   (or: mamba env create -f environment.yml)'
+)
+
+
+def require(module: str, why: str, pip_name: str | None = None):
+    """Import a processing-only dependency, or fail with the command that installs it."""
+    try:
+        return importlib.import_module(module)
+    except ImportError as exc:  # pragma: no cover - depends on the environment
+        pip_name = pip_name or module
+        raise ImportError(
+            f"{module!r} is required {why} but is not installed. It is a "
+            f"processing-time-only dependency of ssl-lab ({pip_name}):\n\n"
+            f"    {INSTALL_HINT}\n"
+        ) from exc
+
+
+# --------------------------------------------------------------------------- #
 # Acquisition.
 # --------------------------------------------------------------------------- #
 def load_adata(source: str, h5ad: str | None, pert_col: str | None, combo_sep: str | None):
     """Load an AnnData with raw counts in ``.X`` and a canonical ``obs['perturbation']``."""
-    import anndata as ad  # noqa: F401  (lazy heavy dep)
+    ad = require("anndata", "to read and write .h5ad artifacts")
 
     if source == "pertpy":
-        import pertpy as pt
+        pt = require("pertpy", "for --source pertpy (use --source h5ad to avoid it)")
 
         logger.info("fetching Norman 2019 via pertpy (first run downloads)...")
         adata = pt.data.norman_2019()
@@ -118,7 +152,10 @@ def load_adata(source: str, h5ad: str | None, pert_col: str | None, combo_sep: s
 # --------------------------------------------------------------------------- #
 def process(adata, args) -> dict:
     """Run QC -> HVG -> normalize -> DE -> splits and write the cache. Returns manifest."""
-    import scanpy as sc
+    sc = require("scanpy", "for QC, HVG selection, and differential expression")
+    # seurat_v3 needs the loess fit from scikit-misc, and only fails deep inside
+    # highly_variable_genes; check it up front so the error names the real cause.
+    require("skmisc", 'for the "seurat_v3" HVG flavor', pip_name="scikit-misc")
 
     # 0. Ensure raw integer counts live in .X (some sources put them in a layer).
     if "counts" in adata.layers:
@@ -383,7 +420,7 @@ def split_summary(perts, pert_names, split_combo, args) -> dict:
 # Synthetic smoke data (no network) — exercises the full pipeline in seconds.
 # --------------------------------------------------------------------------- #
 def synthetic_adata(n_cells=400, n_genes=80, seed=0):
-    import anndata as ad
+    ad = require("anndata", "to build the synthetic smoke artifact")
 
     rng = np.random.default_rng(seed)
     perts_pool = ["control", "GENE0", "GENE1", "GENE2", "GENE3", "GENE0+GENE1", "GENE2+GENE3"]
@@ -462,8 +499,8 @@ def rewrite_de_only(args) -> None:
     lives in its own file. So a bad DE selection can be corrected without re-deriving the splits
     (which would strand every trained checkpoint) or re-writing the multi-GB token cache.
     """
-    import anndata as ad
-    import scanpy as sc
+    ad = require("anndata", "to read the cached processed.h5ad")
+    sc = require("scanpy", "for differential expression")
 
     cache_dir = Path(args.data_dir) / args.artifact
     h5 = cache_dir / "processed.h5ad"
