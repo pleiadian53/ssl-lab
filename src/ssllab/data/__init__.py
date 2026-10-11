@@ -24,6 +24,8 @@ from ssllab.data.perturbseq import (
     tokenize_cells,
     write_cache,
 )
+from ssllab.data.ptbxl import get_ptbxl_dataloaders
+from ssllab.data.signal import SignalGeometry, patchify_1d, unpatchify_1d, zscore_per_lead
 
 __all__ = [
     # MNIST (image proxy)
@@ -47,4 +49,10 @@ __all__ = [
     "DEFAULT_N_HVG",
     "DEFAULT_N_TOKENS",
     "ARTIFACT_VERSION",
+    # PTB-XL (12-lead ECG) + generic 1D signal helpers
+    "get_ptbxl_dataloaders",
+    "SignalGeometry",
+    "patchify_1d",
+    "unpatchify_1d",
+    "zscore_per_lead",
 ]
