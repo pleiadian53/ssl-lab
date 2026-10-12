@@ -13,10 +13,13 @@ The comparison is built so that its answer can be trusted. The same encoder is t
 | Data layer | `00_process_ptbxl.py` | done |
 | Data card | `01_data_card.py` | done |
 | Reading real records | `01a_plot_records.py` | done |
-| Supervised baselines (AF pilot) | `02_train_supervised.py` | next |
-| Span-masked JEPA pretraining | `03_pretrain_jepa.py` | planned |
-| Label-efficiency comparison | `04_downstream.py`, `09_compare_arms.py` | planned |
-| Calibration, robustness, external shift, attribution | `05`–`08` | planned |
+| Saved labelled-patient subsets | `02_make_subsets.py` | done |
+| Span-masked JEPA pretraining | `03_pretrain_jepa.py` | pilot |
+| Downstream arms (scratch / fine-tune / probe) | `04_train_downstream.py` | pilot |
+| Learning-rate selection on validation | `05_select_lr.py` | pilot |
+| Paired patient-cluster bootstrap comparison | `06_compare_arms.py` | pilot |
+| Pilot report and grid estimate | `07_pilot_report.py` | pilot |
+| Calibration, robustness, external shift, attribution | later | planned |
 
 ## 0 · Acquire and process PTB-XL
 
@@ -97,3 +100,30 @@ train.meta              # geometry, leads, task, label names, budget, record cou
 - `none`: no labels, every record (for pretraining).
 
 `leads="II"` gives the single-lead input, with tokens of shape `(B, 40, 25)`. A geometry whose sampling rate does not match the cache is refused: rates are compared by retraining, never by feeding a 100 Hz model 500 Hz input.
+
+## 2 · Study v1: does pretraining help at a fixed label budget?
+
+The study was frozen in [`configs/study_v1.json`](configs/study_v1.json) before any model was evaluated, and that file stays byte-identical. One **validation-informed amendment**, made after the pilot, widens the shared learning-rate grid to {1e-4, 3e-4, 1e-3, 3e-3} for all arms: [`configs/study_v1_amend1.json`](configs/study_v1_amend1.json). It names its base by hash, may change only allow-listed fields, and pins every reused artifact (the saved patient subsets and the repeat-0 pretraining checkpoint) by SHA-256.
+
+Every artifact records hashes of the settings it depends on. Scripts reuse an artifact only when nothing relevant to it changed, record why, and stop on any unexplained incompatibility. Pretraining is not resumable (the checkpoint holds the student encoder and predictor only), so an interrupted run restarts from scratch; finished runs are skipped.
+
+| | |
+|---|---|
+| Core labels | SR, AFIB, STACH, SARRH, SBRAD (fixed across methods, budgets and repeats) |
+| Budgets | 5, 10, 25, 100% of all 15,023 training patients |
+| Model | one 12-output sigmoid head on a mean-pooled `JEPAEncoder` (40 tokens of 250 ms) |
+| Primary comparison | the same encoder trained from scratch vs. JEPA-pretrained and fully fine-tuned |
+| Secondary readout | frozen pretrained encoder with a trained linear head |
+| Repeats | five: each changes the labelled-patient subset (nested within the repeat), the downstream seed, and the JEPA pretraining run |
+| Headline metric | core macro AUROC at recording level; method differences with a paired patient-cluster bootstrap; repeat-to-repeat spread reported separately |
+| AF operating point | AFIB output on the primary AF cohort; threshold = highest with validation sensitivity ≥ 0.90, applied unchanged to test |
+
+Pretraining is inductive: it sees training-fold recordings only. A pilot (repeat 0, validation only; `run_ecg_pilot_pod.sh`, kept as the record) checked the pipeline and measured runtime. The amended search and the full grid then run as:
+
+```bash
+python examples/ops/ops_stage_data.py data/ptbxl100          # once, onto the pod's volume
+ssh <c> 'cd /runpod-volume/ssl-lab/data && mv cache100 ptbxl100'   # staging names the copy after the symlink target
+python examples/ops/ops_run_pipeline.py --execute --cluster <c> -- bash examples/ecg_rhythm/run_ecg_lrsearch_pod.sh   # amended grid search
+python examples/ops/ops_run_pipeline.py --execute --cluster <c> -- bash examples/ecg_rhythm/run_ecg_grid_pod.sh       # full grid
+python examples/ecg_rhythm/06_compare_arms.py --tag main --split test                                              # bootstrap, locally
+```

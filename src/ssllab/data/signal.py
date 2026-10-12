@@ -119,3 +119,53 @@ def unpatchify_1d(tokens: torch.Tensor, n_leads: int) -> torch.Tensor:
         raise ValueError(f"token_dim {D} is not divisible by n_leads {n_leads}")
     P = D // n_leads
     return tokens.reshape(B, N, n_leads, P).permute(0, 2, 1, 3).reshape(B, n_leads, N * P)
+
+
+class SignalBatcher:
+    """Device-resident batches of z-scored, patched signals (no per-item Python work).
+
+    Holds the selected recordings as one ``int16`` tensor on ``device`` and builds
+    each batch with a single gather, per-lead z-score and :func:`patchify_1d`. This
+    is the training fast path; :class:`torch.utils.data.DataLoader` remains the
+    general-purpose interface.
+
+    signals:
+        ``int16 (n, C, L)`` array (e.g. a memory-mapped cache).
+    rows:
+        Indices into ``signals`` to serve, in the order of ``labels``.
+    labels:
+        Optional ``(len(rows), K)`` float labels aligned with ``rows``.
+    """
+
+    def __init__(self, signals, rows, patch_len: int, device: torch.device | str = "cpu",
+                 lead_idx: list[int] | None = None, labels=None) -> None:
+        import numpy as np
+
+        rows = np.asarray(rows, dtype=np.int64)
+        x = np.asarray(signals[np.sort(rows)])          # one contiguous read
+        order = np.argsort(np.argsort(rows))             # back to the caller's order
+        x = x[order]
+        if lead_idx is not None:
+            x = x[:, lead_idx]
+        self.x = torch.from_numpy(np.ascontiguousarray(x)).to(device)
+        self.y = None if labels is None else torch.as_tensor(np.asarray(labels), dtype=torch.float32, device=device)
+        self.rows = rows
+        self.patch_len = patch_len
+        self.device = device
+
+    def __len__(self) -> int:
+        return self.x.shape[0]
+
+    def batch(self, idx: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor | None]:
+        sig = zscore_per_lead(self.x[idx].float())
+        tok = patchify_1d(sig, self.patch_len)
+        return tok, (None if self.y is None else self.y[idx])
+
+    def iterate(self, batch_size: int, shuffle: bool, generator: torch.Generator | None = None,
+                drop_last: bool = False):
+        n = len(self)
+        order = torch.randperm(n, generator=generator).to(self.x.device) if shuffle else torch.arange(n, device=self.x.device)
+        stop = n - (n % batch_size) if (drop_last and n > batch_size) else n
+        for s in range(0, stop, batch_size):
+            idx = order[s:s + batch_size]
+            yield (idx, *self.batch(idx))

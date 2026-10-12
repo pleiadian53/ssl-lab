@@ -21,7 +21,7 @@ import torch
 import torch.nn as nn
 
 from ssllab.jepa.ema import EMA
-from ssllab.jepa.masking import batched, sample_block_masks
+from ssllab.jepa.masking import batched, sample_block_masks, sample_span_masks
 from ssllab.models.encoder import JEPAEncoder
 from ssllab.models.predictor import JEPAPredictor
 from ssllab.objectives.jepa_loss import jepa_loss
@@ -42,6 +42,20 @@ class JEPAConfig:
     cov_coef: float = 0.04
     ema_base: float = 0.996
     ema_final: float = 1.0
+    # Masking. "random": n_target scattered positions (the MNIST/perturb-seq default).
+    # "span": n_spans contiguous spans of span_len tokens (ordered 1D sequences);
+    # n_target must equal span_len * n_spans. Defaults keep old checkpoints loadable.
+    mask_kind: str = "random"
+    span_len: int = 0
+    n_spans: int = 1
+
+    def __post_init__(self) -> None:
+        if self.mask_kind not in ("random", "span"):
+            raise ValueError(f"mask_kind must be 'random' or 'span', got {self.mask_kind!r}")
+        if self.mask_kind == "span" and self.span_len * self.n_spans != self.n_target:
+            raise ValueError(
+                f"span masking needs n_target == span_len * n_spans, got {self.n_target} != {self.span_len} * {self.n_spans}"
+            )
 
 
 class JEPA(nn.Module):
@@ -68,7 +82,10 @@ class JEPA(nn.Module):
         """One JEPA step on ``tokens`` ``(B, N, token_dim)`` -> ``(loss, components)``."""
         b = tokens.shape[0]
         cfg = self.cfg
-        ctx_1d, tgt_1d = sample_block_masks(cfg.n_tokens, cfg.n_target, device=tokens.device)
+        if cfg.mask_kind == "span":
+            ctx_1d, tgt_1d = sample_span_masks(cfg.n_tokens, cfg.span_len, cfg.n_spans, device=tokens.device)
+        else:
+            ctx_1d, tgt_1d = sample_block_masks(cfg.n_tokens, cfg.n_target, device=tokens.device)
         ctx_idx = batched(ctx_1d, b)
         tgt_idx = batched(tgt_1d, b)
 

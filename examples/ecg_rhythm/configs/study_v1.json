@@ -1,0 +1,76 @@
+{
+  "study": "ecg_rhythm_v1",
+  "frozen": "2026-10-11",
+  "note": "Fixed before any model was evaluated. The core labels and budgets were chosen from patient-level support in train/val and in the planned subsets; they are never revised from model performance or test results.",
+  "data": {
+    "artifact": "ptbxl100",
+    "fs": 100,
+    "duration_s": 10.0,
+    "patch_s": 0.25,
+    "leads": "all"
+  },
+  "labels": {
+    "task": "rhythm",
+    "core": ["SR", "AFIB", "STACH", "SARRH", "SBRAD"],
+    "masking_policy": "a label with zero positive training patients in a run's subset is masked out of the loss and marked unsupported for that run; aggregates that would include it are reported as incomplete"
+  },
+  "budgets": [0.05, 0.10, 0.25, 1.0],
+  "budget_denominator": "all training patients (folds 1-8)",
+  "repeats": {
+    "n": 5,
+    "budget_seed": "r",
+    "train_seed": "100 + r",
+    "pretrain_seed": "r",
+    "pretraining": "independent per repeat; each checkpoint reused across that repeat's budgets and by both pretrained arms"
+  },
+  "encoder": {
+    "embed_dim": 128,
+    "depth": 4,
+    "n_heads": 4
+  },
+  "pretrain": {
+    "folds": "train only (1-8), all recordings, labels unused",
+    "epochs": 100,
+    "batch_size": 128,
+    "lr": 0.0005,
+    "weight_decay": 0.05,
+    "warmup_epochs": 5,
+    "pred_depth": 2,
+    "mask_kind": "span",
+    "span_s": 1.0,
+    "n_spans": 2,
+    "reg_coef": 0.04,
+    "init": "student encoder"
+  },
+  "downstream": {
+    "arms": {
+      "scratch": "encoder randomly initialised, all weights trained (primary)",
+      "finetune": "encoder from the repeat's JEPA checkpoint, all weights trained (primary)",
+      "probe": "encoder from the repeat's JEPA checkpoint, frozen; head trained (secondary)"
+    },
+    "head": "mean pool -> linear (12 outputs)",
+    "loss": "BCE, no class weighting",
+    "optimizer": "AdamW",
+    "weight_decay": 0.05,
+    "schedule": "cosine over max_steps, 100-step warmup",
+    "batch_size": 64,
+    "max_steps": 4000,
+    "eval_every": 100,
+    "patience_evals": 10,
+    "selection_metric": "validation core macro AUROC",
+    "lr_grid": [0.0003, 0.001],
+    "lr_selection": "per arm, on validation, at repeat 0 and budget 0.10; then frozen"
+  },
+  "af_operating_point": {
+    "output": "AFIB from the main multi-label model",
+    "cohort": "primary: exclude unknown-rhythm records and any record carrying AFLT (incl. AFIB+AFLT)",
+    "threshold_rule": "highest threshold with validation sensitivity >= 0.90",
+    "target_sensitivity": 0.90,
+    "calibration": "none in study v1 (calibration evaluated separately, later)"
+  },
+  "evaluation": {
+    "headline": "core macro AUROC, recording level, full eligible rhythm-task cohort of test fold 10",
+    "bootstrap": "paired patient-cluster bootstrap, 2000 resamples; per repeat and for the repeat mean (shared patient resample); repeat-to-repeat spread reported separately",
+    "n_boot": 2000
+  }
+}
