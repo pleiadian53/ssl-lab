@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Pod entrypoint: ECG rhythm study v1, amendment 1 — expanded learning-rate search.
+# Pod entrypoint: ECG rhythm study v1 — learning-rate search for the protocol in force.
+# Trains only the rates the amendment adds ("new_rates"; all grid rates if undeclared); 05
+# then selects over the full grid, reusing compatible runs from the tags the amendment lists.
+# (Amendment 1 ran all four rates; amendment 2 adds 1e-2 only.)
 #
 # Every arm (scratch, finetune, probe) is trained at repeat 0, budget 10%, at every rate
 # of the amended shared grid {1e-4, 3e-4, 1e-3, 3e-3}; 05 then picks each arm's rate on
@@ -25,8 +28,8 @@ D=examples/ecg_rhythm
 mkdir -p "$OUT_ROOT/$EXP/logs"
 exec > >(tee -a "$OUT_ROOT/$EXP/logs/lrsearch.log") 2>&1
 TAG=$("$PY" -c 'import sys; sys.path.insert(0,"examples/ecg_rhythm"); import _study as S; print(S.selection_tag(S.load_study()))')
-GRID=$("$PY" -c 'import sys; sys.path.insert(0,"examples/ecg_rhythm"); import _study as S; print(" ".join(str(x) for x in S.load_study()["downstream"]["lr_grid"]))')
-echo "[lrsearch] exp=$EXP tag=$TAG grid=$GRID data=$DATA_DIR out=$OUT_ROOT smoke=$SMOKE $(date -u +%FT%TZ)"
+GRID=$("$PY" -c 'import sys; sys.path.insert(0,"examples/ecg_rhythm"); import _study as S; print(" ".join(str(x) for x in S.new_rates(S.load_study())))')
+echo "[lrsearch] exp=$EXP tag=$TAG new rates=$GRID data=$DATA_DIR out=$OUT_ROOT smoke=$SMOKE $(date -u +%FT%TZ)"
 
 # --- Preflight: every reused input verified before any training ------------------------
 "$PY" - "$OUT_ROOT" "$EXP" "$SMOKE" <<'PYEOF'

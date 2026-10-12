@@ -151,7 +151,7 @@ def main() -> None:
                 sub["unsupported_labels"], " [SHUFFLED LABELS]" if args.shuffle_labels else "")
     g = torch.Generator().manual_seed(sd["train_seed"])
     best = {"score": -1.0, "step": 0, "state": None}
-    curve, step, bad, t0 = [], 0, 0, time.time()
+    curve, step, bad, t0, diverged = [], 0, 0, time.time(), False
     model.train()
     while step < max_steps and bad < ds["patience_evals"]:
         for _, tok, y in train_b.iterate(ds["batch_size"], shuffle=True, generator=g, drop_last=True):
@@ -163,8 +163,17 @@ def main() -> None:
             torch.nn.utils.clip_grad_norm_(params, 1.0)
             opt.step()
             step += 1
+            if not torch.isfinite(loss):
+                diverged = True
+                logger.warning("non-finite training loss at step %d: run diverged", step)
+                break
             if step % eval_every == 0 or step == max_steps:
-                score, complete = macro_auroc(Yva, predict(model, val_b), core_idx)
+                Sv = predict(model, val_b)
+                if not np.isfinite(Sv).all():
+                    diverged = True
+                    logger.warning("non-finite validation predictions at step %d: run diverged", step)
+                    break
+                score, complete = macro_auroc(Yva, Sv, core_idx)
                 curve.append({"step": step, "train_loss": float(loss), "val_core_macro_auroc": score})
                 if complete and score > best["score"]:
                     best = {"score": score, "step": step, "state": copy.deepcopy(model.state_dict())}
@@ -173,13 +182,28 @@ def main() -> None:
                     bad += 1
             if step >= max_steps or bad >= ds["patience_evals"]:
                 break
+        if diverged:
+            break
     train_seconds = time.time() - t0
-    if best["state"] is None:
+    if best["state"] is None and not diverged:
         raise SystemExit("no evaluation produced a complete validation core macro AUROC")
-    model.load_state_dict(best["state"])
+    if best["state"] is not None:
+        model.load_state_dict(best["state"])
 
     # --- predictions + report -------------------------------------------------------------
     out.mkdir(parents=True, exist_ok=True)
+    if best["state"] is None:   # diverged before any finite evaluation: report only, never selectable
+        report = {**S.provenance(study), "reused": reused, "arm": args.arm, "repeat": args.repeat, "budget": args.budget,
+                  "lr": args.lr, "seeds": sd, "init": init, "tag": args.tag, "shuffle_labels": args.shuffle_labels,
+                  "eval_test": False, "diverged": True, "val_core_macro_auroc": float("nan"), "val_core_complete": False,
+                  "best_step": 0, "stopped_step": step, "max_steps": max_steps, "best_at_cap": False,
+                  "unsupported_labels": sub["unsupported_labels"], "train_seconds": round(train_seconds, 1),
+                  "steps_per_second": round(step / max(train_seconds, 1e-9), 1), "curve": curve,
+                  "smoke": bool(args.max_steps or args.eval_every)}
+        (out / "report.json.tmp").write_text(json.dumps(report, indent=2))
+        (out / "report.json.tmp").replace(out / "report.json")
+        logger.warning("diverged before any finite evaluation -> %s (recorded, never selectable)", out)
+        return
     Sva = predict(model, val_b)
     preds = {"labels": np.array(names), "val_rows": va_rows, "val_scores": Sva}
     if args.eval_test:
@@ -193,7 +217,7 @@ def main() -> None:
         "shuffle_labels": args.shuffle_labels, "eval_test": args.eval_test,
         "n_train_records": int(len(tr_rows)), "n_train_patients": sub["n_patients_eligible"],
         "n_val_records": int(len(va_rows)), "unsupported_labels": sub["unsupported_labels"],
-        "best_step": best["step"], "stopped_step": step, "max_steps": max_steps,
+        "diverged": diverged, "best_step": best["step"], "stopped_step": step, "max_steps": max_steps,
         "best_at_cap": best["step"] >= max_steps - eval_every,
         "val_core_macro_auroc": val_macro, "val_core_complete": val_complete,
         "val_per_label": per_label_metrics(Yva, Sva, names),

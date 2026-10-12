@@ -1,0 +1,41 @@
+{
+  "amendment": "study_v1_amend2",
+  "date": "2026-10-12",
+  "base": "study_v1.json",
+  "base_sha256_16": "fb5c061233a07024",
+  "supersedes": {"file": "study_v1_amend1.json", "sha256_16": "ff35d3a7a3dd78b5"},
+  "kind": "validation-informed protocol amendment (made after the amendment-1 search, not before it)",
+  "changes": {
+    "downstream.lr_grid": [0.0001, 0.0003, 0.001, 0.003, 0.01]
+  },
+  "new_rates": [0.01],
+  "final_grid": true,
+  "stop_rule": "This grid is final. If any arm selects 1e-2 (the new top edge), the edge is reported and the grid is not extended again. A run that diverges (non-finite predictions) is recorded as diverged and is never selectable.",
+  "reason": "Under amendment 1, scratch selected 3e-3, the top of the shared grid (validation core macro AUROC 0.7603 / 0.7630 / 0.7640 / 0.7686 from 1e-4 to 3e-3). The central question is pretraining versus scratch, so the baseline must not be under-tuned; one inexpensive extra rate makes the comparison more defensible. Added for all three arms; selection rule unchanged (validation core macro AUROC at repeat 0, budget 0.10). No test data was examined.",
+  "selection_tag": "lrsearch_a2",
+  "reuse_runs_from_tags": ["lrsearch_a1"],
+  "unchanged": "everything except the grid: core labels, budgets, repeats and seeds, subsets, encoder, pretraining, loss, optimiser, step budget, selection rule, AF threshold rule, evaluation plan",
+  "reuse": {
+    "subsets": {
+      "path": "subsets/subsets.json",
+      "sha256": "280c14bb0d6d2768308bdda41140a333d3c3824bc27839b84a9437fde28cb098",
+      "note": "saved patient ids, unchanged"
+    },
+    "pretrain_r0": {
+      "checkpoint": "checkpoints/jepa_r0.pt",
+      "checkpoint_sha256": "52446f39c20f21929738043bf11e542cfe76d497f0aea0110da77b9ab2a7907a",
+      "report": "reports/pretrain_r0.json",
+      "report_sha256": "14c6d102a1f6da07e638b42c701b1164fd2e76a0045e7e9fe0f41bf078f9b146",
+      "note": "complete, base protocol; pretraining settings unchanged"
+    },
+    "lrsearch_a1_runs": {
+      "path": "runs/lrsearch_a1/",
+      "note": "the 12 runs at rates 1e-4..3e-3 are reused for the amendment-2 selection after a per-run compatibility check (run-relevant settings unchanged; they reproduced the pilot exactly). Only the 3 runs at 1e-2 are new."
+    },
+    "pilot_runs": {
+      "path": "runs/pilot/ and lr_selection.json",
+      "lr_selection_sha256": "fe8473ac8db84eb9af55b47baf5d40885d607c8399e4177c00814e6a2f7c6de1",
+      "note": "preserved untouched as the pilot record"
+    }
+  }
+}

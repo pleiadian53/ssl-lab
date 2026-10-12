@@ -16,7 +16,7 @@ import _study as S  # noqa: E402
 
 @pytest.fixture()
 def cfg(tmp_path):
-    for f in ("study_v1.json", "study_v1_amend1.json"):
+    for f in ("study_v1.json", "study_v1_amend1.json", "study_v1_amend2.json"):
         shutil.copy(EX / "configs" / f, tmp_path / f)
     return tmp_path
 
@@ -71,3 +71,21 @@ def test_pinned_subsets_must_match_byte_for_byte(cfg, tmp_path):
     (root / "subsets" / "subsets.json").write_text(json.dumps({"study_sha256": "fb5c061233a07024"}))
     with pytest.raises(SystemExit, match="pinned"):
         S.load_subsets(s, tmp_path / "out", "exp")
+
+
+def test_amendment2_final_grid_supersedes_amendment1(cfg):
+    a2 = S.load_study(cfg / "study_v1_amend2.json")
+    assert a2["downstream"]["lr_grid"] == [0.0001, 0.0003, 0.001, 0.003, 0.01]
+    assert a2["_base_sha256"] == "fb5c061233a07024"
+    assert S.new_rates(a2) == [0.01] and S.reuse_tags(a2) == ["lrsearch_a1"]
+    assert a2["_amendment"]["final_grid"] is True
+    a1 = S.load_study(cfg / "study_v1_amend1.json")
+    assert S.relevant_sha(a2, "run") == S.relevant_sha(a1, "run")  # amendment-1 runs stay reusable
+    # A changed superseded amendment is detected.
+    (cfg / "study_v1_amend1.json").write_text((cfg / "study_v1_amend1.json").read_text() + " ")
+    with pytest.raises(SystemExit, match="supersedes"):
+        S.load_study(cfg / "study_v1_amend2.json")
+
+
+def test_default_protocol_is_amendment2():
+    assert S.STUDY_PATH.name == "study_v1_amend2.json"

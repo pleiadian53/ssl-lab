@@ -22,7 +22,7 @@ if str(_SRC) not in sys.path:
 from ssllab.data.ptbxl import SPLIT_NAMES, PTBXLCache  # noqa: E402
 
 CONFIGS = Path(__file__).resolve().parent / "configs"
-STUDY_PATH = CONFIGS / "study_v1_amend1.json"   # the protocol in force (base + amendment 1)
+STUDY_PATH = CONFIGS / "study_v1_amend2.json"   # the protocol in force (base + amendment 2, final grid)
 
 # An amendment may change only these fields: none of them affects the saved subsets,
 # pretraining, or how a single run is trained once its learning rate is given.
@@ -60,6 +60,11 @@ def load_study(path: str | Path | None = None) -> dict:
     base_sha = _sha16(base_p)
     if base_sha != doc["base_sha256_16"]:
         raise SystemExit(f"{base_p} has sha {base_sha}, but {p.name} amends {doc['base_sha256_16']}")
+    sup = doc.get("supersedes")
+    if sup:
+        got = _sha16(base_p, p.parent / sup["file"])
+        if got != sup["sha256_16"]:
+            raise SystemExit(f"{p.name} supersedes {sup['file']} at {sup['sha256_16']}, but that file now hashes to {got}")
     study = json.loads(base_p.read_text())
     for key, val in doc["changes"].items():
         if key not in AMENDABLE:
@@ -193,6 +198,17 @@ def selection_path(output_root, experiment, tag: str) -> Path:
 def selection_tag(study: dict) -> str:
     am = study["_amendment"]
     return am["selection_tag"] if am else "pilot"
+
+
+def reuse_tags(study: dict) -> list[str]:
+    """Run tags whose (compatible) runs an amendment declares reusable for its selection."""
+    return list((study["_amendment"] or {}).get("reuse_runs_from_tags", []))
+
+
+def new_rates(study: dict) -> list[float]:
+    """Rates an amendment adds (only these need new runs); the whole grid if undeclared."""
+    am = study["_amendment"] or {}
+    return list(am.get("new_rates", study["downstream"]["lr_grid"]))
 
 
 def budget_key(frac: float) -> str:

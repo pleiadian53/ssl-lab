@@ -45,13 +45,23 @@ def main() -> None:
     grid = study["downstream"]["lr_grid"]
     root = S.study_root(args.output_root, args.experiment)
     subsets = S.load_subsets(study, args.output_root, args.experiment)   # provenance check of the saved subsets
-    runs = [json.loads(f.read_text()) for f in sorted((root / "runs" / tag).glob("*/report.json"))]
-    smoke = [f"{r['arm']} lr={r['lr']:g}" for r in runs if r["smoke"]]
+    # Candidates: this tag's runs plus runs from tags the amendment declares reusable.
+    runs = []
+    for t in [tag] + S.reuse_tags(study):
+        for f in sorted((root / "runs" / t).glob("*/report.json")):
+            r = json.loads(f.read_text())
+            r["_source"] = t
+            runs.append(r)
+    smoke = [f"{r['_source']}/{r['arm']} lr={r['lr']:g}" for r in runs if r["smoke"]]
     if smoke:
-        raise SystemExit(f"tag {tag} contains smoke runs {smoke}; a selection tag must hold real runs only")
+        raise SystemExit(f"smoke runs among the candidates {smoke}; a selection must use real runs only")
     sel = {**S.provenance(study), "subsets_reuse_reason": None, "tag": tag, "budget": 0.1, "repeat": 0, "grid": grid,
            "rule": study["downstream"]["selection_metric"], "arms": {}}
     sel["subsets_reuse_reason"] = subsets["_reuse_reason"]
+    am = study["_amendment"] or {}
+    sel["reuse_runs_from_tags"] = S.reuse_tags(study)
+    sel["final_grid"] = bool(am.get("final_grid"))
+    sel["stop_rule"] = am.get("stop_rule")
     for arm in ("scratch", "finetune", "probe"):
         cand = [r for r in runs if r["arm"] == arm and not r["shuffle_labels"] and r["repeat"] == 0
                 and abs(r["budget"] - 0.1) < 1e-9]
@@ -60,18 +70,27 @@ def main() -> None:
         off = sorted({r["lr"] for r in cand} - set(grid))
         if off:
             raise SystemExit(f"tag {tag}: {arm} has runs at rates outside the protocol grid {grid}: {off}")
+        seen = {}
+        for r in cand:
+            if r["lr"] in seen:
+                raise SystemExit(f"{arm} lr={r['lr']:g} appears in both {seen[r['lr']]} and {r['_source']}; refusing to choose silently")
+            seen[r["lr"]] = r["_source"]
         for r in cand:
             r["_compat"] = S.check_compatible(r, study, "run", f"run {tag}/{arm} lr={r['lr']}")
         missing = sorted(set(grid) - {r["lr"] for r in cand})
         if missing:
             raise SystemExit(f"{arm}: grid incomplete, missing lr {missing}")
-        best = max(cand, key=lambda r: r["val_core_macro_auroc"])
+        score = lambda r: r["val_core_macro_auroc"] if (r["val_core_macro_auroc"] == r["val_core_macro_auroc"] and not r.get("diverged")) else float("-inf")  # noqa: E731
+        best = max(cand, key=score)
+        if score(best) == float("-inf"):
+            raise SystemExit(f"{arm}: every rate diverged or was incomplete")
         edge = "low" if best["lr"] == min(grid) else "high" if best["lr"] == max(grid) else None
         sel["arms"][arm] = {
             "lr": best["lr"],
             "val_core_macro_auroc": {f"{r['lr']:g}": r["val_core_macro_auroc"] for r in sorted(cand, key=lambda r: r["lr"])},
             "best_step": best["best_step"], "best_at_cap": best["best_at_cap"], "grid_edge": edge,
-            "runs": {f"{r['lr']:g}": {"compatibility": r["_compat"], "reused": r.get("reused", {})} for r in cand},
+            "runs": {f"{r['lr']:g}": {"source_tag": r["_source"], "compatibility": r["_compat"],
+                                     "diverged": bool(r.get("diverged")), "reused": r.get("reused", {})} for r in cand},
         }
         logger.info("%s: lr=%g (best step %d%s%s); by lr: %s", arm, best["lr"], best["best_step"],
                     ", AT STEP CAP" if best["best_at_cap"] else "", f", at {edge} grid edge" if edge else "",
