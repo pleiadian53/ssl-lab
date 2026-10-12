@@ -54,6 +54,24 @@ PAIRS = (("finetune", "scratch"), ("probe", "scratch"), ("finetune", "probe"))
 QUANTILES = (0.05, 0.25, 0.5, 0.75, 0.95)
 
 
+def _pair_task(task):
+    """One (pair, budget): per-repeat paired bootstraps, the repeat-mean bootstrap, the repeat spread."""
+    key, Y, clusters, A, B, common, core_idx, n_boot = task
+    metric = macro_auroc_metric(core_idx)
+    per_rep = {}
+    for i, r in enumerate(common):
+        bs = paired_cluster_bootstrap(metric, Y, A[i], B[i], clusters, n_boot=n_boot, seed=1000 + r)
+        per_rep[str(r)] = {"diff": bs.estimate, "ci95": [bs.ci_low, bs.ci_high], "n_valid": bs.n_valid}
+    diffs = np.array([v["diff"] for v in per_rep.values()])
+    res = {"repeats": common, "per_repeat": per_rep,
+           "repeat_spread": {"mean": float(diffs.mean()), "sd": float(diffs.std(ddof=1)) if len(diffs) > 1 else None,
+                             "min": float(diffs.min()), "max": float(diffs.max())}}
+    if len(common) > 1:
+        bs = paired_cluster_bootstrap(metric, Y, A, B, clusters, n_boot=n_boot, seed=999, repeats=True)
+        res["repeat_mean"] = {"diff": bs.estimate, "ci95_patients": [bs.ci_low, bs.ci_high], "n_valid": bs.n_valid}
+    return key, res
+
+
 def score_summary(y: np.ndarray, s: np.ndarray) -> dict:
     """Quantiles of the AF score among positives and among negatives, plus prevalence."""
     y = np.asarray(y).astype(bool)
@@ -72,6 +90,7 @@ def main() -> None:
     p.add_argument("--study", default=None)
     p.add_argument("--n-boot", type=int, default=None)
     p.add_argument("--selection-tag", default=None, help="frozen lr selection (default: the protocol's selection tag)")
+    p.add_argument("--jobs", type=int, default=1, help="parallel worker processes for the bootstrap (results identical)")
     p.add_argument("--allow-smoke", action="store_true", help="plumbing checks only: accept smoke runs (recorded in the output)")
     p.add_argument("--ignore-unselected", action="store_true",
                    help="skip runs at non-selected rates (recorded) instead of stopping; for mixed tags such as a search tag")
@@ -157,6 +176,9 @@ def main() -> None:
                                  "scores": score_summary(af_y[rows][tk], Sx[:, afi][tk])}
             out["af_operating_point"][key] = entry
 
+    # Assemble every (pair, budget) task first; the bootstraps are independent and seeded
+    # per repeat (1000 + r) and for the repeat mean (999), so results do not depend on --jobs.
+    tasks = []
     for a, b in PAIRS:
         for budget in sorted({bud for (_, bud) in runs}):
             ra, rb = runs.get((a, budget), {}), runs.get((b, budget), {})
@@ -168,21 +190,19 @@ def main() -> None:
                 for src in (ra, rb):
                     if not np.array_equal(src[r][1][f"{args.split}_rows"], rows):
                         raise SystemExit(f"row mismatch between runs at budget {budget}, repeat {r}")
-            Y, clusters = rl.y[rows], pid[rows]
             A = np.stack([ra[r][1][f"{args.split}_scores"] for r in common])
             B = np.stack([rb[r][1][f"{args.split}_scores"] for r in common])
-            per_rep = {}
-            for i, r in enumerate(common):
-                bs = paired_cluster_bootstrap(metric, Y, A[i], B[i], clusters, n_boot=n_boot, seed=1000 + r)
-                per_rep[str(r)] = {"diff": bs.estimate, "ci95": [bs.ci_low, bs.ci_high], "n_valid": bs.n_valid}
-            diffs = np.array([v["diff"] for v in per_rep.values()])
-            res = {"repeats": common, "per_repeat": per_rep,
-                   "repeat_spread": {"mean": float(diffs.mean()), "sd": float(diffs.std(ddof=1)) if len(diffs) > 1 else None,
-                                     "min": float(diffs.min()), "max": float(diffs.max())}}
-            if len(common) > 1:
-                bs = paired_cluster_bootstrap(metric, Y, A, B, clusters, n_boot=n_boot, seed=999, repeats=True)
-                res["repeat_mean"] = {"diff": bs.estimate, "ci95_patients": [bs.ci_low, bs.ci_high], "n_valid": bs.n_valid}
-            out["pairs"][f"{a}-{b}|{budget:g}"] = res
+            tasks.append((f"{a}-{b}|{budget:g}", rl.y[rows], pid[rows], A, B, common, core_idx, n_boot))
+    logger.info("%d bootstrap tasks (%d resamples each), jobs=%d", len(tasks), n_boot, args.jobs)
+    if args.jobs > 1:
+        from concurrent.futures import ProcessPoolExecutor
+
+        with ProcessPoolExecutor(max_workers=args.jobs) as ex:
+            results = list(ex.map(_pair_task, tasks))
+    else:
+        results = [_pair_task(t) for t in tasks]
+    for key, res in results:
+        out["pairs"][key] = res
 
     rp = root / "reports" / f"compare_{args.tag}_{args.split}.json"
     rp.parent.mkdir(parents=True, exist_ok=True)
