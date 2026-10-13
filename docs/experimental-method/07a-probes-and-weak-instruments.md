@@ -45,6 +45,8 @@ That is why the probe's weakness is the argument rather than a limitation of it.
 
 **It avoids the confound that destroys flexible probes.** Give the head enough capacity and it starts doing the *representation's* job. A sufficiently powerful decoder can recover the target from almost any injective encoding, including a random projection. At that point the score measures the probe rather than the encoder, and the measurement no longer discriminates between a good representation and a bad one. A diagnostic that returns a high number for every input has told you nothing.
 
+The same rule carries over from representations to dynamics, and Phase 0 of this project's co-adaptation program is a clean worked example. To ask whether perturbations act linearly on the frozen latents, it pits a weak arm, an affine map, against a flexible nonlinear arm, each fitted to carry the control cloud onto the perturbed cloud. A synthetic perturbed cloud that is affine by construction sets the floor, since any nonlinear advantage there is pure fitting noise, and an acceptance gate refuses to report from a subspace where that floor is too high. [Co-adaptation chapter 0](../../examples/perturbation_response/co-adaptation/docs/00-the-premise-as-a-number.md) builds it in full; it found the frozen latents close to affine.
+
 ## 3. Reading a probe without fooling yourself
 
 **Always read a probe against a floor, never in absolute terms.** The perturbation probe scores $5.2\%$. In isolation that number looks like a failure, and it is in fact a strong result: chance is $0.42\%$, so the latent is about twelve times better than guessing at a $237$-way problem. Absolute probe numbers are meaningless. Only the ratio to a floor carries information, and choosing that floor honestly is most of the work.
@@ -109,7 +111,7 @@ The first term is the readout's noise; the second is the generator actually doin
 
 **Check the model at initialization.** If a construction claims to start from a no-op, verify the no-op numerically before training anything. The action operator is built so that a zero-initialized policy gives $A = \exp(0) = I$, and the check is a one-line assertion that $\lVert A - I \rVert = 0$. It is trivial, it is fast, and it is the difference between a design property and an aspiration.
 
-**Shuffle the labels.** Train or fit the same probe against *permuted* targets. Performance should collapse to the floor. If it does not, you have a leak, and you have just found it for the price of one extra run. The same logic generalizes to a **permutation null** for any correlation you plan to claim, which is what the operator round's endpoint eval uses before reporting that a bracket predicts epistasis.
+**Shuffle the labels.** Train or fit the same probe against *permuted* targets. Performance should collapse to the floor. If it does not, you have a leak, and you have just found it for the price of one extra run. The same logic generalizes to a **permutation null** for any correlation you plan to claim, which is what the operator round's endpoint eval uses before reporting whether a bracket predicts epistasis. In Round 4 of the [results ledger](../../examples/perturbation_response/docs/conditional-flow-jepa/results-ledger.md), it did not.
 
 ## 5. Choosing an instrument
 

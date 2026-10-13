@@ -8,7 +8,7 @@ Every number in these chapters is real. They come from a small, reproducible sli
 
 ## The worked-example slice
 
-The full Norman 2019 dataset is ~111,255 cells across 287 perturbations — multi-gigabyte. To make the tutorial runnable and concrete, we subsampled it to a **10-perturbation slice** (`control` + 6 single-gene perturbations + 3 two-gene combinations), capped at ~400 cells each → **3,945 cells after quality control**, with a **2,000-gene** highly-variable panel. The slice is chosen so every combination's two constituent singles are *also* present — which is what makes the headline "predict an unseen combination" experiment possible.
+The full Norman 2019 dataset is ~111,255 cells, multi-gigabyte, and is often described as covering 287 perturbations; the copy this project processes labels its cells with 237 perturbation conditions. To make the tutorial runnable and concrete, we subsampled it to a **10-perturbation slice** (`control` + 6 single-gene perturbations + 3 two-gene combinations), capped at ~400 cells each → **3,945 cells after quality control**, with a **2,000-gene** highly-variable panel. The slice is chosen so every combination's two constituent singles are *also* present — which is what makes the headline "predict an unseen combination" experiment possible.
 
 Reproduce it (needs `pip install -e ".[perturb]"`):
 
@@ -19,7 +19,7 @@ python examples/perturbation_response/00_process_norman.py \
   --max-cells-per-pert 400 --val-frac 0.34 --test-frac 0.34
 ```
 
-The production run drops the subsample flags and uses `--n-hvg 5000` on all 287 perturbations.
+The production run drops the subsample flags and uses `--n-hvg 5000` on the full dataset. After quality control that leaves 109,737 cells in 237 perturbation classes: 105 single genes, 131 gene pairs, and the control.
 
 ## The four chapters
 
@@ -28,4 +28,4 @@ The production run drops the subsample flags and uses `--n-hvg 5000` on all 287 
 3. **[From a cell to tokens](03-tokenization.md)** — how a 2,000-gene expression vector becomes the `(n_tokens, token_dim)` tensor the JEPA encoder consumes, the gene-group partition, and why this is the gene-space analogue of image patches.
 4. **[Did the model get it right? — success metrics](04-success-metrics.md)** — effect size (the field's benchmark), differential expression, calibration, and data efficiency — what each measures and why effect size, not state reconstruction, is the one that matters.
 
-> **A note on scope.** This series reads and interprets the *data*. It does not train the model — that is the [generative-JEPA series](../../../../docs/generative_jepa/index.md) and the upcoming Stage A encoder. If single-cell vocabulary (counts, dropout, library size) is brand new, the [data-modalities primer](../../../../docs/generative_jepa/appendix-data-modalities.md) is a gentler two-minute on-ramp; this series goes deeper and grounds everything in the real slice.
+> **A note on scope.** This series reads and interprets the *data*. It does not train the model. That is the [generative-JEPA series](../../../../docs/generative_jepa/index.md) and the Stage A encoder, which is now built ([`01_pretrain_stage_a.py`](../../01_pretrain_stage_a.py)). If single-cell vocabulary (counts, dropout, library size) is brand new, the [data-modalities primer](../../../../docs/generative_jepa/appendix-data-modalities.md) is a gentler two-minute on-ramp; this series goes deeper and grounds everything in the real slice.

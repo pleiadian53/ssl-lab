@@ -41,7 +41,7 @@ JEPA is a *representation learner* — it learns by predicting the embeddings of
 
 **1. Generative JEPA — make the representation *sampleable*.** *(method built + de-risked; design space mapped; applications WIP)* Add a prior over the latent and a decoder back to data space. The unconditional slice is verified end to end — a rich, non-collapsed latent (strong linear-probe accuracy with no pretraining labels) and *genuinely novel* samples. A full **[Generative JEPA design-space survey](docs/generative_jepa/index.md)** then maps four routes for making JEPA generative — decode the latent, a variational posterior, conditioned diffusion, planning on top — plus the **conditional flow prior** that unifies them: generation *given an intervention*, with a decoder matched to the data's likelihood. The method is modality-agnostic, and the conditional `v(z, t, c)` path is de-risked as a method; the applications are where it earns its keep:
 
-- **Single-cell perturbation response** *(flagship, WIP)* — a staged "cell JEPA": intra-cell pretraining (Stage A) → variational / conditional-flow perturbation predictor (Stage B) → NB/ZINB count decoder (Stage C), on Norman-2019 Perturb-seq, graded on *effect size* (predicting unseen gene combinations) against a from-scratch CVAE baseline.
+- **Single-cell perturbation response** *(flagship, WIP)* — a staged "cell JEPA": intra-cell pretraining (Stage A) → variational / conditional-flow perturbation predictor (Stage B) → NB/ZINB count decoder (Stage C), on Norman-2019 Perturb-seq, graded on *effect size* (predicting unseen gene combinations) against a from-scratch CVAE baseline. An action-operator transition, an oracle ceiling, and an encoder co-adaptation program have since extended it; the from-scratch baseline still leads at full data, and the [results ledger](examples/perturbation_response/docs/conditional-flow-jepa/results-ledger.md) tracks why.
 - **Digital phenotyping** — e.g. diabetes monitoring and management, where the rollout becomes a *generative personal world model*: a fan of plausible future trajectories under an intervention (this is also where Direction 2's world model meets the generative line).
 - **Further modalities** — the core is a likelihood-matched conditional generator, so new domains drop in as data adapters; the [data-modalities primer](docs/generative_jepa/appendix-data-modalities.md) surveys single-cell counts, EHR codes, and wearable / CGM streams.
 
@@ -79,7 +79,8 @@ src/ssllab/
   jepa/        block masking, EMA target, the assembled JEPA module
   objectives/  prediction loss + VICReg collapse regularizer
   generative/  flow prior (unconditional + conditional w/ classifier-free guidance),
-               NB/ZINB count decoder, condition encoder, CVAE baseline
+               NB/ZINB count decoder, condition encoder, CVAE baseline,
+               perturbation action operator (+ operator algebra)
   action_operator/  context-conditioned latent operators — generator bases, exp(M)
   eval/        collapse diagnostics, linear probe, image-grid viz
   utils/       seeding, device selection
@@ -88,8 +89,10 @@ examples/
   generative_jepa/      03 decoder · 04 flow prior · 05 sample · 06 eval ·
                         07 conditional flow · 08 sample conditional   (image proxy)
   perturbation_response/  cell-JEPA perturbation pipeline (WIP): process Norman ->
-                        Stage A pretrain -> count decoder -> conditional flow ->
-                        sample -> effect-size eval  (+ CVAE baseline)
+                        Stage A pretrain -> count decoder -> conditional flow
+                        or action operator -> sample -> effect-size eval
+                        (+ CVAE baseline, ceiling analysis);
+                        co-adaptation/ unfreezes the encoder one stage at a time
 ```
 
 ## Setup

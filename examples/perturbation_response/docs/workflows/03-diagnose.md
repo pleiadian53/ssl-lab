@@ -1,6 +1,6 @@
 # 3. Diagnose: measuring without training
 
-*The cheapest workflow and the one that changed this project's direction most. Four scripts, none of which trains anything, all of which run on a laptop in minutes. They answer structural questions that no amount of Score results can: where the loss lives, whether a stage is worth improving, and whether a number you are about to trust means what you think.*
+*The cheapest workflow and the one that changed this project's direction most. Five scripts, none of which trains anything, all of which run on a laptop in minutes. They answer structural questions that no amount of Score results can: where the loss lives, whether a stage is worth improving, and whether a number you are about to trust means what you think.*
 
 ---
 

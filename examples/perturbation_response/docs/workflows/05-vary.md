@@ -18,7 +18,7 @@ Retrain **only** the lever. Everything upstream and downstream is reused, byte f
 
 **A round is cheap.** Stage B on this data is minutes on an A40, not hours, because Stages A and C are not retrained.
 
-**Arms stay comparable across rounds.** Round 4's operator can be read against Round 1's flow because both sit on the same frozen encoder and are graded through the same decoder and metric.
+**Arms from different rounds can be read side by side.** Round 4's operator and Round 1's flow sit on the same frozen encoder and are graded through the same decoder and metric, so placing them on one scoreboard is meaningful. Claiming a difference between them is another matter. Rounds are not run under identical conditions, so the [ledger](../conditional-flow-jepa/results-ledger.md) claims differences only within a round, and the one quantity it carries across rounds is the NB-VAE reference.
 
 ## How the reuse is expressed in the code
 
@@ -51,7 +51,7 @@ The related trap is subtler: **a lever aimed the wrong way is not a null, it is 
 
 ## Orchestration: the shell wrappers
 
-Each `run_*.sh` is one round's arms, and they share a shape worth copying:
+Each `run_*.sh` is one round's arms, and `sweep_action_weight_pod.sh` is a single-lever sweep in the same style, the least-action penalty swept for Round 4. They share a shape worth copying:
 
 ```bash
 ARMS="${ARMS:-operator operator_stoch}"   # env-overridable, so a subset can be re-run

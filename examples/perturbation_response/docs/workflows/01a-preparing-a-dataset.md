@@ -158,7 +158,7 @@ Everything hangs off `encoder.pt`. That is the [frozen-encoder invariant](01-bui
 
 So the honest summary is that the flow is the only stage whose *core architecture* survives a panel change, and no stage survives without retraining. A new cache is a new pipeline, not a new input to an existing one.
 
-**One gotcha that will bite.** All sixteen downstream scripts default `--artifact` to `norman2019`. A new cache means passing `--artifact norman2019_hvg10k` to *every* one of them, and forgetting it on a single evaluation script scores a new model against the old panel's DE genes. The failure is silent, since the shapes all match. Set it in a `run_*.sh` wrapper rather than typing it sixteen times.
+**One gotcha that will bite.** All sixteen numbered downstream scripts, and the co-adaptation probe `co-adaptation/01_koopman_linearity_probe.py`, default `--artifact` to `norman2019`. A new cache means passing `--artifact norman2019_hvg10k` to *every* one of them, and forgetting it on a single evaluation script scores a new model against the old panel's DE genes. The failure is silent, since the shapes all match. Set it in a `run_*.sh` wrapper rather than typing it seventeen times.
 
 ## The one change that invalidates nothing
 

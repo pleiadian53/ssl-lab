@@ -1,6 +1,6 @@
 # 2. Why the operator is linear
 
-*A cell's response to an intervention is a tangled nonlinear cascade, and we propose to model it with a matrix. That should bother you. The defence turns on an idea from 1931: you do not linearize the dynamics, you change what you are tracking until they are already linear. This chapter derives that carefully, shows a case where it is exact, and then states the premise it rests on, which our own encoder never satisfied.*
+*A cell's response to an intervention is a tangled nonlinear cascade, and we propose to model it with a matrix. That should bother you. The defence turns on an idea from 1931: you do not linearize the dynamics, you change what you are tracking until they are already linear. This chapter derives that carefully, shows a case where it is exact, and then states the premise it rests on, which our own encoder was never trained to satisfy, and which a later measurement found it approximately satisfies anyway.*
 
 > **Where this sits.** [Chapter 1](01-what-an-operator-is.md) established *what* the latent operator is and *what makes it mean anything*: the commuting square, which forces the built operator to be the faithful image of the real one. It left the operator's **form** open. This chapter closes that: why $f_\theta$ should be linear at all. The two turn out to be the same equation read twice, which is §6.
 
@@ -140,7 +140,7 @@ Two consequences worth carrying:
 
 **The error is a property of the encoder, not of the operator.** No amount of cleverness in choosing $A$ removes $r$, because $r$ lives in directions the span cannot represent. If your latent is badly non-invariant, a better matrix will not save you and a *nonlinear* latent operator is treating the symptom.
 
-**Errors compound under rollout.** One step costs $r$; $k$ steps of feeding the model's own output back in cost roughly $k$ accumulations of it, with no observation to re-anchor you. This is why the $T = 1$ setting of this series is forgiving and a long temporal rollout is not.
+**Errors compound under rollout.** One step costs $r$; $k$ steps of feeding the model's own output back in cost roughly $k$ accumulations of it, with no observation to re-anchor you. This is why the $T = 1$ setting of this series is forgiving and a long temporal rollout is not. It is also why the measurement reported in §10 says less than it might seem to: it bounds the one-step residual, at the level of populations, and nothing about how that residual would accumulate over many steps.
 
 ## 8. Control: a family of operators, one per intervention
 
@@ -152,7 +152,7 @@ $$z' = A(c) z .$$
 
 So what the model learns is a **family of Koopman operators indexed by the intervention**, which is exactly what a policy emitting coefficients from a condition produces. Two caveats belong here rather than in a footnote. The subspace must be invariant for *every* $c$ in the family, which is a stronger demand on the encoder than invariance for a single dynamics. And the theory for controlled Koopman systems is less clean than the autonomous case, so this is a well-motivated extension, not a theorem we are inheriting.
 
-## 9. The premise our own encoder never satisfied
+## 9. The premise our own encoder was never trained for
 
 Everything above is conditional. Strip the conditional away and the framework is exactly the crude approximation §1 accused it of being. So it matters a great deal *how* a project comes to have Koopman coordinates.
 
@@ -160,28 +160,30 @@ Methods built on this premise satisfy it **by construction**. Deep Koopman appro
 
 **Our encoder was never asked.** Stage A trains a JEPA encoder by masked prediction: infer the embedding of held-out gene groups from the groups you can see. It is a good objective and it produces a good representation, and **nothing in it mentions dynamics, interventions, or decoding**. There is no term rewarding a latent in which perturbation responses compose linearly. We then froze that encoder and attached an operator to it.
 
-> **The honest status.** We adopted the Koopman *form* without the Koopman *training*. The operator is linear because we made it linear, and the argument licensing that choice assumes a property of the encoder our pipeline never optimized for and never checked.
+> **The honest status.** We adopted the Koopman *form* without the Koopman *training*. The operator is linear because we made it linear, and the argument licensing that choice assumes a property of the encoder our pipeline never optimized for, and for months never checked.
 
-This is one of the two premises the [series index](index.md) warns can fail silently, and it failed silently here for months.
+This is one of the two premises the [series index](index.md) warns can fail silently, and here it went unchecked for months. When it was finally measured (§10), it largely held, by luck of the representation rather than by design. The geometric premise that actually failed was a different one, near-identity, which [Chapter 7, §5](07-the-application.md#5-the-finding-that-outlived-the-hypothesis) takes up. The lesson of this section survives that outcome: a premise nobody trained for is unearned *by construction*, and the only way to learn whether it holds anyway is to check.
 
 ## 10. How you would actually check it
 
-The premise is testable, and cheaply, which makes the omission worse rather than better.
+The premise is testable, and cheaply, which makes the long omission worse rather than better. The test below has since been run, as Phase 0 of the [co-adaptation program](../../co-adaptation/README.md), and its outcome closes this section.
 
 **Do not test it on the downstream benchmark.** We have direct evidence that the benchmark cannot answer this question: the linear operator tied a free nonlinear velocity field, which *looks* like evidence that the latent dynamics are close to linear. It is worth almost nothing, because a [ceiling analysis](../workflows/03-diagnose.md) later showed that stage had at most $0.03$ of headroom. A metric with three points of room cannot distinguish a linear transition from a nonlinear one, so the tie is equally consistent with "the coordinates are nearly invariant" and "this benchmark could not have noticed either way." That is a genuine confound and it should not be argued around.
 
-**Test it on the latent transition itself.** Fit a linear map from control latents to perturbed latents, fit a flexible nonlinear map on the same pairs, and compare how well each predicts $z'$ rather than how well each scores downstream. This is the probe logic applied to dynamics: the linear map is the weak instrument, the residual gap is an estimate of $\lVert r \rVert$, and neither answer can be manufactured by the readout.
+**Test it on the latent transition itself.** The obvious version would fit a linear map and a flexible nonlinear map on matched pairs $(z, z')$ and compare how well each predicts $z'$. Perturb-seq has no such pairs, because sequencing destroys the cell, so the version that works compares populations instead. For each perturbation, fit an affine map and a flexible nonlinear map to carry the control cloud of latents onto the perturbed cloud, and score each by the energy distance between the transported cloud and the real perturbed cells, on held-out cells. The gap between the two scores has to be read against a floor, so the same procedure is run on a synthetic perturbed cloud that is affine by construction, where any nonlinear advantage is pure fitting noise. This is the probe logic applied to dynamics: the affine map is the weak instrument, the calibrated gap is an estimate of $\lVert r \rVert$, and neither answer can be manufactured by the readout, because no readout is involved.
 
 - If the linear map does nearly as well, the coordinates are close to invariant and the operator's central assumption is **earned**.
 - If the nonlinear map wins decisively, the latent is not a Koopman embedding, the linearity really is the crude approximation of §1, and the honest fix is to train an encoder that makes it true rather than to add expressiveness downstream.
+
+The measurement came out in the first case. On the frozen encoder, a nonlinear map explains only about $1.5\%$ more of the measurable response than the best affine map, and among the strongest responders about $0.5\%$. That holds within the roughly twenty-component subspace that a few hundred cells per perturbation can resolve, which carries $17\%$ of the latent variance, and at the level of populations rather than individual cells. [Co-adaptation chapter 0](../../co-adaptation/docs/00-the-premise-as-a-number.md) builds the instrument and its guards, and [Round 5 of the results ledger](../conditional-flow-jepa/results-ledger.md#round-5--co-adaptation-phase-0-are-the-frozen-latents-already-linear) records the verdict.
 
 ## 11. What this chapter licenses, and what it does not
 
 **It licenses the form.** A linear latent operator is not a crude approximation of a nonlinear cascade. It is *exact* on a Koopman-invariant subspace, and the price of exactness is paid in coordinates rather than in fidelity. When such coordinates exist, "linear" costs nothing at all.
 
-**It does not license our instance.** The argument is conditional on an encoder that supplies those coordinates. Ours was trained by masked prediction, with no dynamical objective, and then frozen. The form is defensible; the instance is unearned, and unearned in a way that is measurable rather than merely arguable.
+**It does not license our instance.** The argument is conditional on an encoder that supplies those coordinates. Ours was trained by masked prediction, with no dynamical objective, and then frozen. The form is defensible; the instance was never trained to satisfy it. Measured afterward, as §10 reports, the instance turned out close to affine in the subspace the data can resolve, so the premise is approximately earned there, by the representation's luck rather than by construction.
 
-**And it says what to do about it.** By §6, the fix is not a vaguer hope for a better representation. Koopman names the objective: train the encoder so that the intervention's dynamics close linearly in its coordinates, which is the equivariance loss of Chapter 1 applied to the encoder rather than only to the operator.
+**And it says what to do when the premise is in doubt.** By §6, the fix is not a vaguer hope for a better representation. Koopman names the objective: train the encoder so that the intervention's dynamics close linearly in its coordinates, which is the equivariance loss of Chapter 1 applied to the encoder rather than only to the operator.
 
 ---
 

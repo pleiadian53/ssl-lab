@@ -61,7 +61,7 @@ Now the honesty. A random partition is **deliberately neutral, not biologically 
 - **Pathway / gene-program groups** — put genes from the same biological program (a signaling pathway, a regulon) in one token, so a token means something.
 - **Co-expression groups** — group genes that vary together across cells (data-driven modules).
 
-These could make masked prediction (next section) more meaningful, at the cost of baking in a prior. The series treats this as a Stage-A design choice, not a settled answer. The default gets us a runnable, reproducible contract today. The conditional-flow method series develops the full tradeoff in [Chapter 6a](../../conditional-flow-jepa/06a-the-tokenization-design-space.md): why random grouping is defensible, what pathway and co-expression alternatives would change, and how to test a swap without breaking the combo split.
+These could make masked prediction (next section) more meaningful, at the cost of baking in a prior. The series treats this as a Stage-A design choice, not a settled answer. The default gets us a runnable, reproducible contract today. The conditional-flow method series develops the full tradeoff in [Chapter 6a](../conditional-flow-jepa/06a-the-tokenization-design-space.md): why random grouping is defensible, what pathway and co-expression alternatives would change, and how to test a swap without breaking the combo split.
 
 > **Inverse exists.** Because the partition is a permutation of the gene indices, tokenization is exactly invertible: `detokenize_cells` scatters the token values back to a 2,000-gene vector. Nothing is lost in the regrouping — it is a reshaping, like `patchify`/`unpatchify` for images.
 
@@ -69,13 +69,13 @@ These could make masked prediction (next section) more meaningful, at the cost o
 
 ## 4. Why tokens at all — the self-supervised objective they enable
 
-You might ask: if it is just a regrouping, why not feed the encoder the flat 2,000-vector? Because tokens are what make JEPA's **masked-prediction** pretraining possible, and that is how the cell encoder (Stage A) will be trained.
+You might ask: if it is just a regrouping, why not feed the encoder the flat 2,000-vector? Because tokens are what make JEPA's **masked-prediction** pretraining possible, and that is how the cell encoder (Stage A) is trained.
 
 The intra-cell JEPA objective is: **hide some of a cell's gene-group tokens, and train the encoder–predictor to fill in the hidden groups' embeddings from the visible ones.** To "hide a gene group" you need gene groups to exist as discrete units — i.e. tokens. The cell learns a representation in which the visible part of its transcriptome predicts the rest, which is a strong, label-free way to learn what a cell *is*. (This mirrors I-JEPA hiding image patches; the [encoder chapter](../../../../docs/generative_jepa/01-the-jepa-encoder.md) has the full mechanism.)
 
 After pretraining, the encoder produces, for each cell, a single pooled **latent** $z$ (read "z") — the mean of its token embeddings, one vector per cell. That $z$ is the object the rest of the generative stack acts on: the baseline latent $z_b$ (Part 2) is the encoder's $z$ for a control cell, and the conditional flow prior generates perturbed-cell latents $z$ given the condition. **Tokens in, one latent per cell out** — and the whole generative model lives downstream of that latent.
 
-> **One caveat for Stage A.** The masking that decides *which* tokens to hide is, in the current MNIST code, tuned to a 2D image grid. Gene tokens have no grid, so Stage A will supply a gene-appropriate masking (e.g. hide random gene groups). That is encoder-training work, flagged in the [pipeline plan](../../README.md), not part of this data-tokenization step — the `(B, 50, 40)` contract is ready regardless.
+> **How Stage A chooses what to hide.** Gene tokens have no grid, so the masking cannot borrow the spatial blocks an image model uses. Stage A, [`01_pretrain_stage_a.py`](../../01_pretrain_stage_a.py), hides a random subset of each cell's gene-group tokens, $12$ of them by default (its `--n-target` flag), and predicts their embeddings from the rest. That is encoder-training work rather than part of this data-tokenization step, and the `(B, 50, 40)` contract is all it needs from here.
 
 ---
 

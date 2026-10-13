@@ -8,7 +8,7 @@ Chapter 1 laid out the shape of the method. A frozen representation gives us a l
 
 Before any of the generative machinery runs, a cell is turned into a latent by the Stage-A encoder. This is a joint-embedding predictive architecture (JEPA): it is trained by masking part of the input and predicting the representation of the masked part from the visible part, so the masking is modality-agnostic and the encoder learns structure without ever reconstructing raw counts. For our purposes the encoder is *frozen*. It exposes an `embed` call that maps one cell to a $256$-dimensional latent $z \in \mathbb{R}^{256}$, and every module in this chapter consumes those latents rather than the raw expression matrix. The JEPA is upstream of the whole pipeline: it is trained once, then held fixed while the flow and the decoder are fit on top of its latents.
 
-Two design consequences follow from the encoder being frozen. First, the flow and the decoder both operate purely on vectors, which keeps them simple and modality-agnostic. Second, the latent space is fixed, so the flow's job is to learn a distribution *over that space* rather than to co-adapt a representation with a generator.
+Two design consequences follow from the encoder being frozen. First, the flow and the decoder both operate purely on vectors, which keeps them simple and modality-agnostic. Second, the latent space is fixed, so the flow's job is to learn a distribution *over that space* rather than to co-adapt a representation with a generator. Relaxing that constraint, by training the encoder together with the stages that consume it, is the subject of the later [co-adaptation program](../../co-adaptation/README.md).
 
 ## G2: the count decoder
 
@@ -36,7 +36,7 @@ The NB needs a dispersion parameter. The decoder holds one learned scalar per ge
 
 $$\kappa = \mathrm{softplus}(\texttt{log\_kappa}) + 10^{-4}.$$
 
-Under this NB parameterization the variance is $\mu + \mu^2 / \kappa$, so a small $\kappa$ means heavy over-dispersion and a large $\kappa$ approaches Poisson. Making $\kappa$ per-gene and *not* a function of $z$ is the common scVI choice: dispersion is treated as a property of each gene's measurement, not of the individual cell.
+Under this NB parameterization the variance is $\mu + \mu^2 / \kappa$, so a small $\kappa$ means heavy over-dispersion and a large $\kappa$ approaches Poisson. Making $\kappa$ per-gene and *not* a function of $z$ is the common scVI choice: dispersion is treated as a property of each gene's measurement, not of the individual cell. That is the default. `CountDecoder` also accepts an opt-in `state_dispersion=True` (the `--state-dispersion` flag of `03_train_count_decoder.py`), which makes $\kappa$ a function of $z$ through a small head, and a companion `anchored_mean=True` (`--anchored-mean`) that models $\rho$ as a deviation from a baseline profile. Both are the decoder levers of [Chapter 8](08-modeling-the-readout-count-decoder.md), and both are off unless requested.
 
 ### The likelihood and its stable form
 

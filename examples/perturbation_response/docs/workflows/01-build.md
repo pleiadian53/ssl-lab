@@ -98,7 +98,7 @@ It shares the condition encoder deliberately, so the comparison isolates the gen
 
 This is the convention that makes the [ledger](../conditional-flow-jepa/results-ledger.md) coherent across rounds. Every Stage-B and Stage-C variant sits on the same frozen latents, so a difference between two arms is a difference in the thing that changed. Retrain the encoder inside an arm and you have silently changed two things, and the arm can no longer explain its own result.
 
-Relaxing it is a legitimate and probably necessary move, and it is the ledger's named fork. But it must be **declared**, because at that point the method stops being "a flow prior over frozen JEPA latents" and becomes something else that the standing scoreboard does not describe.
+Relaxing it is a legitimate and probably necessary move, and it is the ledger's named fork. But it must be **declared**, because at that point the method stops being "a flow prior over frozen JEPA latents" and the old ceiling no longer bounds it. The [co-adaptation program](../../co-adaptation/README.md) shows what declaring looks like: it relaxes the freeze one stage at a time, its rounds join the same ledger on the same benchmark, and each carries its own re-measured ceiling.
 
 ## Before you build
 

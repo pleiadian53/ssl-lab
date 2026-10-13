@@ -2,7 +2,7 @@
 
 *The runnable companion to [Chapter 3](conditional-flow-jepa/03-training-and-evaluation.md). Chapter 3 explains the three training stages as ideas; this page is the exact sequence of commands that produces them, what each one reads and writes, how the outputs add up to the numbers in [Chapter 4](conditional-flow-jepa/04-results.md), and the pattern we use to run a lever experiment. It is meant to be followed top to bottom the first time, then used as a reference and a recovery guide.*
 
-The whole point of writing this down is research velocity. Once the workflow is precise, changing one component and re-measuring becomes a mechanical, low-risk operation rather than a fresh archaeology each time. That is exactly what the lever-A (operator) and lever-B (decoder) experiments need.
+The whole point of writing this down is research velocity. Once the workflow is precise, changing one component and re-measuring becomes a mechanical, low-risk operation rather than a fresh archaeology each time. That is exactly what the lever-A (operator) and lever-B (decoder) experiments needed, and both have since been run on this workflow.
 
 > **This page is the route; [Workflows](workflows/index.md) is the map.** Follow this one to *reproduce* the result. Read that one when you have a question rather than a recipe: it groups all eighteen scripts into the five kinds of workflow they actually belong to (build, score, diagnose, decide, vary), and it covers the diagnostic and operator scripts (`13`–`17`) that postdate this page.
 
@@ -75,7 +75,7 @@ Acquires Norman 2019 (via pertpy, or `--source h5ad --h5ad <path>`), runs QC, se
 
 **The step gates itself.** Two guards are applied on top of the ranking, namely that a gene must be detected in at least 10% of the perturbation's cells and be significant at $p_{\text{adj}} < 0.05$. Stage 0 then asserts on the outcome and **raises rather than writing a cache** whose selected genes are effectively silent. Under $|z|$ ranking the guards reject almost nothing, which is the point: they hold the invariant so that a later change to the criterion fails loudly instead of failing silently.
 
-- **check**: the run logs `DE gene check: median detection X%, Y% significant`. Expect detection around 90% and significance at 100%. A low detection rate means the ranking criterion has drifted, and the numbers produced downstream will be meaningless rather than merely worse.
+- **check**: the run logs `DE gene check: median detection X%, Y% significant`. Expect a median detection around 90% and significance at 100%. The mean over the same pairs is lower, about 82%, because a minority of less-detected genes pull it down. That is why Chapters 3e and 4, which quote a mean over the scored genes, give a figure near 83% rather than 90%. The gap between the two figures is mostly mean versus median, not a disagreement about the genes. A low detection rate means the ranking criterion has drifted, and the numbers produced downstream will be meaningless rather than merely worse.
 - Weak perturbations legitimately yield fewer than 20 passing genes (about 11 of 236 in Norman). They are scored on the genes they have. The list is never padded back to 20, since padding is exactly how a silent gene gets back in.
 
 If only the gene selection needs to change, `--de-only` recomputes `de_genes.json` from the existing `processed.h5ad` and leaves `splits.json` and `tokens_meta.npz` alone. The DE list is a scoring seam and no stage trains on it, so this keeps every trained checkpoint valid and only the evaluators (`06`, `09`, `10`) need re-running.
@@ -132,7 +132,7 @@ python examples/perturbation_response/06_eval_effect_size.py --experiment norman
 python examples/perturbation_response/10_eval_calibration.py --experiment norman_flow_control --model flow --split combo --n 200
 ```
 
-Effect size generates a predicted population per perturbation, forms its differential expression relative to control, and correlates it against the true differential on the top-DE genes (the Δ-correlation of [Chapter 4](conditional-flow-jepa/04-results.md)). Calibration compares the generated population against the held-out real cells on spread, coverage, 1-Wasserstein, and joint energy. Both read the flow and the decoder from the experiment's checkpoint directory.
+Effect size generates a predicted population per perturbation, forms its differential expression relative to control, and correlates it against the true differential on the top-DE genes (the Δ-correlation of [Chapter 4](conditional-flow-jepa/04-results.md)). Calibration compares the generated population against the held-out real cells on spread, coverage, 1-Wasserstein, and joint energy. Both read the flow and the decoder from the experiment's checkpoint directory. Both also take `--stage-b {flow,operator,operator_algebra}`, which grades an action-operator checkpoint (from `13` or `16`) in place of the flow through the identical harness, so a transition model can be swapped without touching the scoring.
 
 - **reads**: `cond_flow.pt` + `count_decoder.pt` + cache
 - **writes**: `effect_size.json` (mean and median Δ-correlation, per-perturbation scores) and `calibration_flow.json`
@@ -148,7 +148,7 @@ When calibration looks wrong, this says *which component* is responsible. By the
 
 - **reads**: `cond_flow.pt` + `count_decoder.pt` + cache (or `cvae_baseline.pt` with `--model vae`)
 - **writes**: `variance_decomposition_<model>.json`
-- **check**: `spread_ratio` (predicted total over real) against 1.0, and `bio_fraction`, the latent's share of the predicted spread.
+- **check**: `spread_ratio` (predicted total over real) against 1.0, and `bio_fraction`, the latent's share of the predicted spread. Pass `--stage-b operator` to decompose an action-operator checkpoint instead of the flow.
 
 ### The baseline branch — the NB-VAE
 
@@ -162,7 +162,7 @@ The from-scratch conditional NB-VAE uses no JEPA and no flow. It trains end to e
 
 ## 4. Running it on a pod
 
-The stages are GPU work, and the shell wrappers in `examples/perturbation_response/run_*_pod.sh` bundle the right sequence of the commands above into one on-pod entrypoint. Each wrapper reuses whatever it can (a staged encoder, a trained flow) and retrains only what it must.
+The stages are GPU work, and the shell wrappers in `examples/perturbation_response/*_pod.sh` bundle the right sequence of the commands above into one on-pod entrypoint. Each wrapper reuses whatever it can (a staged encoder, a trained flow) and retrains only what it must.
 
 | wrapper | what it runs | writes to |
 |---|---|---|
@@ -173,6 +173,9 @@ The stages are GPU work, and the shell wrappers in `examples/perturbation_respon
 | `run_seed_sweep_pod.sh` | 04 -> 06 for 3 flow configs x 3 seeds | `norman_sweep_*` |
 | `run_decoder_ablation_pod.sh` | 03 -> 06 -> 10 for 4 decoder arms (lever B) | `norman_dec_*` |
 | `run_decoder_seed_sweep_pod.sh` | the above x seeds, with a paired-bootstrap collation | `norman_dec_*_s*` |
+| `run_operator_pod.sh` | 13 for the deterministic and stochastic operator arms x 3 seeds (lever A, ledger Round 3); grade locally with `06 --stage-b operator` | `norman_operator_s*`, `norman_operator_stoch_s*` |
+| `run_operator_algebra_pod.sh` | 16, the per-gene operator algebra (ledger Round 4); grade locally with `17` and `06 --stage-b operator_algebra` | `norman_operator_algebra_s0` |
+| `sweep_action_weight_pod.sh` | 16 at least-action weights $10^{-3}$, $10^{-2}$, $10^{-1}$, to find the near-identity regime Round 4 needed | `norman_opalg_aw*_s0` |
 
 The pod workflow itself is four steps, and it exists because the SkyPilot workdir upload excludes `/data` and `/output` (they are large or transient), so the cache and the reused checkpoints must be staged to the pod's persistent volume once, then read from there:
 
@@ -208,6 +211,10 @@ Every headline number traces to a `(script, split, report)`. This is the provena
 | calibration, flow variants | `10 --model flow` | combo | `calibration_flow.json` |
 | calibration, NB-VAE | `10 --model vae` | combo | `calibration_vae.json` |
 | predicted-spread decomposition | `11` | combo | `variance_decomposition_<model>.json` |
+| action operator (Round 3) | `13`, then `06 --stage-b operator` | combo, geneset | `effect_size.json` in `norman_operator_s*` |
+| ceiling (oracle Stage B, linear readout) | `14` | combo | `ceiling.json` (`norman_ceiling`) |
+| operator algebra (Round 4) | `16`, then `17` and `06 --stage-b operator_algebra` | combo | `bracket_epistasis.json`, `effect_size.json` (`norman_operator_algebra_s0`) |
+| Koopman linearity probe (Round 5) | `co-adaptation/01_koopman_linearity_probe.py` | frozen latents | `koopman_probe.json` (`norman_koopman_probe`) |
 
 Two subtleties to carry. Single-seed and seed-averaged numbers for the same configuration are both real and differ only in aggregation, so never compare one against the other (`norman_flow_*` is the single-seed A/B; `norman_sweep_*` is the seeded version). And the paired-bootstrap confidence intervals are recomputed after the fact from the per-combination scores saved inside the sweep `effect_size.json` reports, so they are a re-analysis rather than a separately saved report.
 
@@ -219,7 +226,7 @@ So each step above lists a **check**, and they are worth running as gates rather
 
 | stage | the gate | what a failure means |
 |---|---|---|
-| `00` cache | DE genes detected in ~90% of cells, 100% significant | the scoring seam is degenerate; **every downstream number is meaningless**, not merely worse |
+| `00` cache | median DE-gene detection ~90% of cells (mean ~82%), 100% significant | the scoring seam is degenerate; **every downstream number is meaningless**, not merely worse |
 | `01` Stage A | effective rank far above 1 (about 176 of 256) | the encoder collapsed; latents carry nothing |
 | `02` probe | accuracy many times the 0.42% chance rate | the representation has no perturbation signal to condition on |
 | `03` Stage C | NB NLL falling; control pre-pass logged a nonzero control count | the B1/B2 anchors silently no-op when no controls are found |
@@ -236,13 +243,13 @@ The gate at `00` is the one that earns its keep, because it is the furthest from
 - **`00` breaks the torch build.** Installing pertpy upgrades NumPy/scipy/sklearn and can shadow the pod's CUDA torch. The Stage-A wrapper captures and restores the base stack around `00`; if you run `00` by hand on a pod, isolate it or reinstall torch afterward. Best practice: build the cache once and stage it, so pods never install pertpy.
 - **"No control cells."** Stage B raises if the precomputed set has no controls (bump `--limit`); Stage C's B1/B2 anchors silently no-op if controls are absent. If a decoder ablation shows the levers doing nothing, check the control pre-pass logged a non-zero control count.
 - **A held-out combo scores near zero with the table condition.** The `table` condition cannot embed a combination it never saw. Use `--cond-type geneset` for any `combo`-split run.
-- **A single seed disagrees with an earlier run.** Seed-to-seed spread on the twenty-combo test set is small on the current gene selection (the NB-VAE's three seeds span 0.006, the Gaussian flow's about 0.012), but it was five times larger before the scoring seam was fixed, and most of what looked like seed noise was *metric* noise. A single seed is still directional only. Use the seed-sweep wrapper and the paired bootstrap before calling any difference real. See [Chapter 4a §3](conditional-flow-jepa/04a-reading-the-head-to-head.md).
+- **A single seed disagrees with an earlier run.** Seed-to-seed spread on the twenty-combo test set is small on the current gene selection for the NB-VAE (its three seeds span 0.006) and the Gaussian flow (about 0.012). It was five times larger before the scoring seam was fixed, and most of what looked like seed noise was *metric* noise. The transport flow still moves by about 0.05 across seeds, enough that two flow arms can trade places at a single seed, although the seed-averaged contrasts hold and no seed of any flow comes near the VAE. A single seed is still directional only. Use the seed-sweep wrapper and the paired bootstrap before calling any difference real. See [Chapter 4a §3](conditional-flow-jepa/04a-reading-the-head-to-head.md).
 
 ## 7. Running a lever experiment
 
 This is the payoff of the workflow being precise, and it is the same shape for both levers. The discipline has four parts.
 
-**Reuse everything the lever does not change.** A decoder experiment (lever B) reuses the frozen encoder *and* the trained transport flow, and retrains only Stage C. An operator experiment (lever A) will reuse the frozen encoder and, depending on the design, the decoder, and retrain only the transition. This is legitimate precisely because of the independence in Section 1, and it is what keeps an A/B to minutes of GPU rather than a full pipeline.
+**Reuse everything the lever does not change.** A decoder experiment (lever B) reuses the frozen encoder *and* the trained transport flow, and retrains only Stage C. The operator experiments (lever A) reused the frozen encoder and the decoder, and retrained only the transition: `13_train_operator.py` in ledger Round 3 and `16_train_operator_algebra.py` in Round 4. This is legitimate precisely because of the independence in Section 1, and it is what keeps an A/B to minutes of GPU rather than a full pipeline.
 
 **A/B against the same reference.** Every arm is measured with the same evaluators (`06`, `10`) against the same NB-VAE reference (`effect_size_cvae.json` and `calibration_vae.json` in `norman_combo`, with the current values in the [results ledger](conditional-flow-jepa/results-ledger.md)). The reference does not need retraining; it is fixed, and holding it fixed is what makes rounds comparable.
 
@@ -250,7 +257,7 @@ This is the payoff of the workflow being precise, and it is the same shape for b
 
 **Watch the axis the lever targets, and check its sign before you build it.** B1 (the mean head) targets effect size; B2 (the dispersion) targets calibration. A lever that improves its own axis while leaving the other flat is working as intended, and a lever that improves the training loss but not its target metric is a warning rather than a win. But the prior question is which *direction* the target axis is broken in, and that is what `11` answers. A dispersion lever built to narrow an over-dispersed decoder does the opposite of what is needed if the predicted spread was too narrow all along, so run the diagnosis before choosing the sign of the fix.
 
-The decoder ablation already exercises this whole loop end to end: it is the worked example, and its wrapper is the template to copy when lever A's operator experiment is wired in. When you reach for a design beyond the two planned levers, this same scaffold, reuse-what-you-can plus A/B against the fixed reference plus seeds-before-claims, is what will keep the comparison honest.
+The decoder ablation was the first to exercise this whole loop end to end, and its wrapper became the template: `run_operator_pod.sh` and `run_operator_algebra_pod.sh` follow the same shape, with a preflight, a reused encoder, and a retrained Stage B graded locally against the fixed reference. Both levers have now run, in Rounds 2 through 4 of the [results ledger](conditional-flow-jepa/results-ledger.md), and the [co-adaptation program](../co-adaptation/README.md) has begun relaxing the frozen encoder itself, starting with a read-only linearity probe. When you reach for a design beyond these, the same scaffold, reuse-what-you-can plus A/B against the fixed reference plus seeds-before-claims, is what will keep the comparison honest.
 
 ---
 

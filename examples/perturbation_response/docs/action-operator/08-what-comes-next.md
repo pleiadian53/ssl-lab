@@ -1,6 +1,6 @@
 # 8. What comes next
 
-*A theory series usually ends at the theory. This one ends at a list of experiments, because the diagnosis in [Chapter 7](07-the-application.md) was specific enough to name them, and because the most valuable thing a careful negative result produces is a short list of things worth trying that you would not have known to try otherwise. Everything here is grounded in a measured finding from the preceding chapters. None of it has been run.*
+*A theory series usually ends at the theory. This one ends at a list of experiments, because the diagnosis in [Chapter 7](07-the-application.md) was specific enough to name them, and because the most valuable thing a careful negative result produces is a short list of things worth trying that you would not have known to try otherwise. Everything here is grounded in a measured finding from the preceding chapters. When the chapter was written, none of it had been run. Since then the unfreeze of §2 has become the [co-adaptation program](../../co-adaptation/README.md), whose first step, the Phase 0 linearity diagnostic, has run; the rest of the list is still ahead.*
 
 > **Where this sits.** The forward-looking close. It turns the diagnoses of Chapters 4 through 7 into concrete next steps, in rough order of how directly each attacks a measured bottleneck, and it is honest about which are cheap tests and which are new methods.
 
@@ -14,7 +14,7 @@ There are two families of answer. Change the encoder, or change what is asked of
 
 ## 2. Unfreeze the encoder
 
-The frozen encoder is the assumption every round held fixed, and three separate findings now converge on relaxing it: the ceiling says the representation was never shaped for the decoder that consumes it, the baseline wins with an architecturally *identical* decoder so the difference is co-adaptation, and [Chapter 2](02-why-linear-koopman.md) says the operator's linearity is unearned without an encoder trained for it. Unfreezing is not one experiment. It is three, and they differ in which downstream objective is allowed to reshape the encoder.
+The frozen encoder is the assumption every round held fixed, and three separate findings now converge on relaxing it: the ceiling says the representation was never shaped for the decoder that consumes it, the baseline wins with an architecturally *identical* decoder so the difference is co-adaptation, and [Chapter 2](02-why-linear-koopman.md) says the operator's linearity is not guaranteed without an encoder trained for it. That third reason has since been measured. Phase 0 of the [co-adaptation program](../../co-adaptation/README.md) found that linearity approximately holds on the frozen latents anyway ([Round 5 of the results ledger](../conditional-flow-jepa/results-ledger.md#round-5--co-adaptation-phase-0-are-the-frozen-latents-already-linear)), so the third reason now concerns geometry, making perturbations small motions, rather than linearity. Unfreezing is not one experiment. It is three, and they differ in which downstream objective is allowed to reshape the encoder.
 
 ### (a) Co-adapt the encoder with the decoder
 
@@ -25,6 +25,8 @@ This is the cheapest unfreeze and the one that attacks the largest measured loss
 ### (b) Co-adapt the encoder with the operator
 
 Train the encoder jointly with the transition, under an objective that rewards a latent in which the intervention's dynamics close linearly. This is [Chapter 2](02-why-linear-koopman.md) §6 made operational: equivariance and Koopman invariance are the same equation, so training toward the equivariance loss *is* training toward Koopman coordinates. It is the direct fix for the geometry failure of [Chapter 7](07-the-application.md), the one that made the fitted operator a large rotation instead of a small motion.
+
+The co-adaptation program checked the linearization half of this case first, and found the frozen dynamics already close to affine in the subspace the data can resolve. So the case for (b) no longer rests on making the dynamics linear. It rests on re-coordinatization: reshaping the latent so that perturbations become small, well-conditioned motions, which is the regime where the near-identity prior and the bracket of [Chapter 5](05-composition.md) apply.
 
 It is also the most delicate, for the reason [Chapter 6](06-training.md) §6 named: once the encoder trains, the transition's target distribution moves, and the trivial escape is collapse. It needs a stop-gradient or exponential-moving-average target encoder and an anti-collapse anchor, which is machinery JEPA already carries. This is the highest-value direction conceptually and the one most likely to require real engineering care.
 
@@ -48,22 +50,22 @@ Two directions attack the [Chapter 7](07-the-application.md) failures without to
 
 ## 5. The premise that was never tested at all
 
-Every number in this project is a full-data number, and the self-supervised premise the whole approach rests on is not a full-data claim. It says a representation learned on abundant *unlabeled* cells pays off when *labeled* examples are scarce. Nothing here has tested that, because nothing here has varied the amount of labeled data.
+Every number in this project is a full-data number, and the self-supervised premise the whole approach rests on is not a full-data claim. It says a representation learned on abundant *unlabeled* cells pays off when *labeled* examples are scarce. Nothing here has tested that, because nothing here has varied the amount of labeled data, and as of the latest round of the [ledger](../conditional-flow-jepa/results-ledger.md) that is still true.
 
 The experiment is a subsampling ladder: shrink the labeled cells per perturbation, retrain the transition and the baseline at each rung, and plot effect-size correlation against the amount of data. If the pretrained stack degrades more gracefully than the from-scratch baseline as labels vanish, the method has a real and practically important niche even at full-data parity, and the frozen-encoder design is vindicated exactly where it was meant to matter. This is independent of everything above, it needs only a subsampling flag, and it is the one experiment that puts the founding premise on trial rather than a downstream lever.
 
 ## 6. Where the framework belongs
 
-The deepest next step is not on this dataset at all, and [Chapter 7](07-the-application.md) §6 said why. Perturbation response amputated three of the framework's assumptions: it is unpaired, so the objective is a surrogate; it is simultaneous, so half the algebra is unobservable; and its encoder is frozen, so the linearity premise is unearned. A temporal world model repairs all three at once. It is paired, so the equivariance loss computes and the operator recovers its meaning. It is sequential, so the swap-odd part of the algebra becomes observable and the order of a plan is a real quantity rather than a symmetrized shadow. And it trains the encoder jointly, so the Koopman coordinates are learned rather than hoped for.
+The deepest next step is not on this dataset at all, and [Chapter 7](07-the-application.md) §6 said why. Perturbation response amputated three of the framework's assumptions: it is unpaired, so the objective is a surrogate; it is simultaneous, so half the algebra is unobservable; and its encoder is frozen, so linearity is not trained for and the geometry is not shaped toward small motions. A later diagnostic found the linearity approximately present anyway; the small motions were not. A temporal world model repairs all three at once. It is paired, so the equivariance loss computes and the operator recovers its meaning. It is sequential, so the swap-odd part of the algebra becomes observable and the order of a plan is a real quantity rather than a symmetrized shadow. And it trains the encoder jointly, so Koopman coordinates in which interventions are small motions are learned rather than hoped for.
 
 The [operator world-models](../../../../docs/operator_world_models/index.md) series is where that setting is developed, and the [GRL project](https://github.com/pleiadian53/GRL) is where the reinforcement-learning objective it was built for lives. The honest summary of this whole series is that the operator was tested in the corner where its distinctive machinery is invisible, learned exactly what that corner could teach, and pointed clearly at the setting where the rest of it could finally be seen.
 
 ## 7. The list, in order
 
-- **First, and cheapest to decide:** the data-efficiency ladder (§5). It tests the founding premise and needs no new model.
-- **Highest measured leverage:** co-adapt the encoder with the decoder (§2a). It attacks the $0.17$ the ceiling attributed to the readout, and stays attributable.
+- **First, and cheapest to decide:** the data-efficiency ladder (§5). It tests the founding premise and needs no new model. It has still not been run.
+- **Highest measured leverage:** co-adapt the encoder with the decoder (§2a). It attacks the $0.17$ the ceiling attributed to the readout, and stays attributable. It is now Phase 1 of the [co-adaptation program](../../co-adaptation/README.md), and next.
 - **Cheap structural test:** the low-rank shared basis (§4). It attacks the identifiability failure without unfreezing anything.
-- **Highest conceptual value:** co-adapt the encoder with the operator under a Koopman objective (§2b). It is the direct fix for the geometry failure and the bridge to the temporal setting.
+- **Highest conceptual value:** co-adapt the encoder with the operator under a Koopman objective (§2b). It is the direct fix for the geometry failure and the bridge to the temporal setting. Phase 0 lowered its priority by finding the frozen dynamics already close to affine; it stays open for its re-coordinatization motive.
 - **The real destination:** the operator in a temporal world model (§6), where paired data, sequential composition, and joint training are all available and the framework can finally be tested whole.
 
 ---
