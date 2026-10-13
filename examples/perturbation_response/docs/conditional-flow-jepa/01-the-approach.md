@@ -11,7 +11,7 @@ We want to predict how a single cell's gene expression responds when we interven
 The subtlety is in how the field grades that prediction, and it decides everything downstream. Success is not measured by how well the model reconstructs the perturbed cell's absolute expression state. It is measured by the **effect size**: the change the intervention produces relative to unperturbed control. Concretely, take the mean expression of a population of perturbed cells and subtract the mean expression of control cells, gene by gene:
 
 $$
-\Delta = \operatorname{mean}(\text{perturbed}) - \operatorname{mean}(\text{control}).
+\Delta = \mathrm{mean}(\text{perturbed}) - \mathrm{mean}(\text{control}).
 $$
 
 $\Delta$ is a vector with one entry per gene, the *differential expression* of the perturbation. The score that matters is the agreement between the predicted $\Delta$ and the true $\Delta$, computed on the top differentially-expressed genes, the genes the intervention actually moved.

@@ -12,7 +12,7 @@
 
 ## 1. The idea in one line
 
-The metric grades the **change**, not the destination. A perturbation's score is the agreement between predicted and true $\Delta = \operatorname{mean}(\text{perturbed}) - \operatorname{mean}(\text{control})$, per gene, on the genes that actually moved. A method that models the *destination*, asking "what does a perturbed cell look like," and subtracts the baseline afterward is spending capacity in the wrong place, because the baseline dominates the destination and washes out of the difference.
+The metric grades the **change**, not the destination. A perturbation's score is the agreement between predicted and true $\Delta = \mathrm{mean}(\text{perturbed}) - \mathrm{mean}(\text{control})$, per gene, on the genes that actually moved. A method that models the *destination*, asking "what does a perturbed cell look like," and subtracts the baseline afterward is spending capacity in the wrong place, because the baseline dominates the destination and washes out of the difference.
 
 An **action operator** flips this. Instead of modeling where the cell lands, it models the *transformation* that carries control to perturbed, and the effect falls straight out as the operator's departure from doing nothing. Modeling the transformation *is* modeling the change.
 
@@ -100,7 +100,7 @@ $$
 
 Spelling it out: the left term encodes the *actually transformed* state $s' = \hat O_\theta(s)$, the ground truth of where the cell went. The right term is the operator's *prediction* of that landing point, computed in latent space without redoing the biology. The squared norm $\lVert\cdot\rVert^2$ is the sum of squared coordinate differences between the two $256$-vectors. Driving this to zero forces $A_\theta$ (and $b_\theta$) to become whatever matrix *is* "activate gene X" in latent coordinates.
 
-In practice the left term is a **stop-gradient** target, written $\operatorname{sg}(\cdot)$, so no gradient flows back through it. This is the same anti-collapse device as the EMA target encoder in the JEPA pretraining: the goalpost must not chase the predictor. The paired-regime reference implementation, [`context_operator.py`](../../../../src/ssllab/action_operator/context_operator.py), implements exactly this loss (`conditioned_jepa_loss`, with `z_target.detach()`). The operator actually trained on Perturb-seq lives elsewhere, in [`operator_perturb.py`](../../../../src/ssllab/generative/operator_perturb.py), and for the reason the next section gives it cannot use this loss.
+In practice the left term is a **stop-gradient** target, written $\mathrm{sg}(\cdot)$, so no gradient flows back through it. This is the same anti-collapse device as the EMA target encoder in the JEPA pretraining: the goalpost must not chase the predictor. The paired-regime reference implementation, [`context_operator.py`](../../../../src/ssllab/action_operator/context_operator.py), implements exactly this loss (`conditioned_jepa_loss`, with `z_target.detach()`). The operator actually trained on Perturb-seq lives elsewhere, in [`operator_perturb.py`](../../../../src/ssllab/generative/operator_perturb.py), and for the reason the next section gives it cannot use this loss.
 
 > **Key insight.** Equivariance is not decoration. It is the *precise condition* that makes $f_\theta$ mean anything as a stand-in for the real transformation. Without the commuting square, the operator is an arbitrary matrix.
 

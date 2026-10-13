@@ -104,10 +104,10 @@ Code: [`effect_size.py`](../../../../src/ssllab/eval/effect_size.py), the functi
 For a perturbation, the effect is its differential expression, the vector
 
 $$
-\Delta = \operatorname{mean}(\text{predicted}) - \operatorname{mean}(\text{control}),
+\Delta = \mathrm{mean}(\text{predicted}) - \mathrm{mean}(\text{control}),
 $$
 
-where $\operatorname{mean}(\text{predicted})$ is the per-gene mean over a generated response population and $\operatorname{mean}(\text{control})$ is the per-gene mean over control cells. The score is the Pearson correlation $r$ between the predicted $\Delta$ and the true $\Delta$, computed only on the perturbation's top differentially-expressed genes, the genes the intervention actually moved. Each entry of these vectors is one gene's mean normalized expression, on the log1p-CP10K scale. This is the metric scGen, CPA, and scPPDM report, and the number the method must reproduce.
+where $\mathrm{mean}(\text{predicted})$ is the per-gene mean over a generated response population and $\mathrm{mean}(\text{control})$ is the per-gene mean over control cells. The score is the Pearson correlation $r$ between the predicted $\Delta$ and the true $\Delta$, computed only on the perturbation's top differentially-expressed genes, the genes the intervention actually moved. Each entry of these vectors is one gene's mean normalized expression, on the log1p-CP10K scale. This is the metric scGen, CPA, and scPPDM report, and the number the method must reproduce.
 
 Which genes make that list is a design decision rather than a detail, and it is more consequential than it looks: it is the support the entire benchmark is computed on, and a badly-chosen list yields metrics that are well-formed and meaningless rather than merely noisy. The selection ranks by the Wilcoxon $z$ statistic, deliberately not by fold change, and Stage 0 gates itself on the result. [Chapter 3e](3e-the-genes-the-metric-scores.md) is the companion that works through why.
 

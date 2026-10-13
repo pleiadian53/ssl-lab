@@ -49,7 +49,7 @@ This is the metric worth slowing down on.
 
 **Computed** (`interval_coverage`, with `lo=0.1`, `hi=0.9`): for each top-DE gene, look at the **predicted** population and find its central 80% band, the 10th and 90th percentiles of the predicted expression, $[q_{10}^{\text{pred}}, q_{90}^{\text{pred}}]$. Now take the **real** cells for that gene and count what fraction fall inside that predicted band. Average that fraction over the genes,
 
-$$\text{coverage} = \operatorname{mean}_{g}\Big(\text{fraction of true cells with } q_{10}^{\text{pred}} \le x_g^{\text{true}} \le q_{90}^{\text{pred}}\Big),$$
+$$\text{coverage} = \mathrm{mean}_{g}\Big(\text{fraction of true cells with } q_{10}^{\text{pred}} \le x_g^{\text{true}} \le q_{90}^{\text{pred}}\Big),$$
 
 where $x_g^{\text{true}}$ is the observed expression of gene $g$ in one real held-out cell.
 

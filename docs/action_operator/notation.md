@@ -66,7 +66,7 @@ The encoder is written $E$ here (and $\varphi_\psi$ in the GRL literature — th
 | $\lVert v \rVert^2$ | squared **Euclidean ($\ell_2$) norm** — measures magnitude / distance |
 | $\exp(M)$ | the **matrix exponential** $I + M + \tfrac{1}{2}M^2 + \cdots$ (matrix powers, not elementwise) |
 | $\circ$ | **function composition**: $(\hat O_2 \circ \hat O_1)(s) = \hat O_2(\hat O_1(s))$ — apply $\hat O_1$, then $\hat O_2$ |
-| $\operatorname{Re}(\lambda)$ | the **real part of an eigenvalue** of $M_\theta$ — positive in any mode flags locally growing dynamics |
+| $\mathrm{Re}(\lambda)$ | the **real part of an eigenvalue** of $M_\theta$ — positive in any mode flags locally growing dynamics |
 | $\approx$ | "approximately equals" — holds up to a small learned error |
 | $\sim$ | "is distributed as" / "is sampled from" |
 
