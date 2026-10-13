@@ -20,6 +20,8 @@ Three findings do survive and are worth keeping. Transporting from a real contro
 
 Every model remains badly **under-dispersed**: coverage sits at $0.33$ to $0.38$ against a nominal $0.80$, so predicted populations are far too narrow.
 
+**Round 5 opened the co-adaptation program with a diagnostic, not a model.** It asked whether the frozen latents already respond affinely to perturbations, and they largely do: a nonlinear map explains only about $1.5\%$ more of the measurable response than the best affine map. Round 4's large generators were large rather than curved, so what failed there was the near-identity assumption, not linearity. No new $\Delta r$ was produced, and the scoreboard below is unchanged.
+
 ---
 
 ## Two rules of this ledger
@@ -170,6 +172,33 @@ That indicts a premise this series has leaned on since [Chapter 7](07-modeling-t
 
 ---
 
+## Round 5 — co-adaptation, Phase 0: are the frozen latents already linear?
+
+**What changed.** Nothing was trained. Round 5 opens the [co-adaptation program](../../co-adaptation/README.md), which relaxes the frozen encoder one stage at a time, and its first step is a diagnostic. Round 4 found that fitting the response demanded generators of norm about $12.4$, far from the identity. That has two readings with different consequences. Either the response is *large but affine*, in which case the encoder already supplies Koopman coordinates and only the near-identity assumption failed, or it is *genuinely nonlinear*, in which case retraining the encoder together with the operator (Phase 2 of the program) is justified. [Chapter 2, §10](../action-operator/02-why-linear-koopman.md#10-how-you-would-actually-check-it) of the action-operator series specifies the test that separates them.
+
+**The pre-committed endpoint was NOT $\Delta r$.** The ceiling bounds the transition stage at $0.03$ of effect size, which cannot distinguish a linear transition from a nonlinear one, so the test lives entirely in latent space. For each perturbation, an affine map $z \mapsto Az + b$ and a residual MLP $z \mapsto z + h(z)$ are fitted to carry the control cloud onto the perturbed cloud by energy distance, since the data is unpaired, and scored on held-out cells. The endpoint is the **calibrated nonlinear gap** $g_{\mathrm{excess}}$: the fraction of the measurable response, $E_{\mathrm{id}} - E_{\mathrm{floor}}$, that the nonlinear map explains beyond the affine one, minus the same quantity measured on a synthetic cloud that is exactly affine by construction. The rule, on the 103 single-gene perturbations: $g_{\mathrm{excess}} \geq 0.10$ with an interval excluding zero justifies Phase 2; below $0.03$ with an interval including zero does not; anything between is inconclusive. Phase 0 gates Phase 2 only. [Co-adaptation chapter 0](../../co-adaptation/docs/00-the-premise-as-a-number.md) builds the instrument and its three guards in full.
+
+**Verdict: inconclusive by the letter, close to affine in substance.** Three seeds, CPU, frozen `norman_stage_a` encoder, top $20$ principal components of the latent, acceptance gate passed (median synthetic-null gap $0.008$ against a tolerance of $0.05$).
+
+| stratum | $n$ | median $g_{\mathrm{excess}}$ | 95% interval |
+|---|---|---|---|
+| **singles** (primary) | 103 | $\mathbf{0.015}$ | $[0.003, 0.032]$ |
+| training combinations | 76 | $0.004$ | $[-0.002, 0.012]$ |
+| validation combinations | 18 | $0.010$ | $[-0.003, 0.028]$ |
+| held-out combinations | 15 | $0.010$ | $[-0.011, 0.023]$ |
+
+The singles interval excludes zero, so the nonlinear advantage is detectable, but its median is less than a sixth of the bar. At $32$ components the median is $0.021$, interval $[0.010, 0.044]$; at $48$ the acceptance gate fails, so no larger subspace can be trusted with this many cells.
+
+**Where the large per-perturbation values come from (exploratory, after the rule was applied).** A quarter of the singles individually exceed $0.10$, but they are almost all weak responders. Among the half of the singles with the largest measurable response, the median $g_{\mathrm{excess}}$ is $0.005$ and only $2$ of $52$ exceed the bar. In the weaker half, the affine fit does worse than doing nothing in $29\%$ of cases, because there is almost no response to fit, while the zero-initialized MLP stays near the identity; dividing by a near-zero response magnifies the difference. The tail measures a failing fit, not curvature.
+
+**What it means.** Round 4's generators were large because the response really is a large transformation in these coordinates, and that transformation is close to affine. The Koopman *linearity* premise is largely earned in the measurable subspace; the *near-identity* premise is what failed, consistent with round 4's diagnosis that it was imported from expression space. Phase 2 loses its linearization motive. Its other motive, re-coordinatizing the encoder so that perturbations become small, well-conditioned motions, is untested here and stays open. **Phase 1, co-adapting the encoder with the decoder, is next**, because it targets the $0.173$ the ceiling attributed to the readout and keeps the transition frozen.
+
+**Limits.** Twenty components hold $17\%$ of the latent variance, so the conclusion is bounded to the subspace a few hundred cells can measure, which is also the subspace any operator fitted on these cells can use. Unpaired data shows distributions, not cells, so "affine" means an affine map is sufficient at the population level. And every number is conditional on the frozen encoder.
+
+**Script and report.** [`co-adaptation/01_koopman_linearity_probe.py`](../../co-adaptation/01_koopman_linearity_probe.py), run with `--pca-dim 20 --seeds 3 --steps 300`, writes `output/norman_koopman_probe/reports/koopman_probe.json`.
+
+---
+
 ## Open, and what comes next
 
 Three structural levers have now been built and measured, and none closes a gap of $0.12$. The ceiling explains why two of them never could: the transition they targeted had at most $0.03$ of headroom. That is worth stating plainly rather than softening, because it changes what the remaining questions are, and it retires some of them.
@@ -178,7 +207,7 @@ Three structural levers have now been built and measured, and none closes a gap 
 
 1. **The readout is where the loss actually is, and it is the one lever never aimed correctly.** The linear rung of the ceiling scores $0.852$ on the frozen latents, above the baseline's $0.766$, while the trained decoder scores $0.679$ on the identical latents. That $0.173$ is the largest single term in the loss budget, it is six times the transition's, and round 2 aimed at the decoder's *dispersion* rather than at this. An un-attenuated mean head is the only route on the table that could plausibly beat the baseline on $\Delta r$. Note the honest caveat: the linear rung is a diagnostic, not a model, since it is handed real latents and emits no distribution.
 2. **Data efficiency is still the one premise never tested.** Self-supervised pretraining does not claim to win at full data. It claims that a representation learned on abundant *unlabeled* cells pays off when *labeled* examples are scarce. Every number in this ledger is a full-data number, so not one of them tests the actual claim. The experiment is a subsampling ladder: shrink the training cells per perturbation, retrain the flow and the VAE at each rung, and plot $\Delta$-correlation against cells. It needs only a subsampling flag, and it is independent of everything above.
-3. **The frozen, condition-blind encoder** remains the deepest structural constraint, and three separate findings now converge on it. The ceiling says the representation was never shaped for the decoder that consumes it. The baseline's advantage survives with an architecturally *identical* decoder, which leaves co-adaptation as the difference. And [Chapter 9](09-why-the-operator-is-linear-koopman.md) says the operator's linearity is licensed only by an encoder trained to supply Koopman coordinates, which ours was not. Relaxing it is the biggest swing still available, and it is the point at which the method stops being "a flow prior over frozen JEPA latents" and becomes something else.
+3. **The frozen, condition-blind encoder** remains the deepest structural constraint, and three separate findings now converge on it. The ceiling says the representation was never shaped for the decoder that consumes it. The baseline's advantage survives with an architecturally *identical* decoder, which leaves co-adaptation as the difference. And [Chapter 9](09-why-the-operator-is-linear-koopman.md) says the operator's linearity is licensed only by an encoder trained to supply Koopman coordinates, which ours was not. Relaxing it is the biggest swing still available, and it is the point at which the method stops being "a flow prior over frozen JEPA latents" and becomes something else. That relaxation is now under way as the [co-adaptation program](../../co-adaptation/README.md). Its first measurement, round 5, found the frozen latents already close to affine, which points the program at the decoder first.
 4. **If the generator identifiability of round 4 is ever revisited**, the diagnosis names the fix: constrain the generators to a shared low-rank basis, $M_g = \sum_i \beta_{g,i} B_i$, so a bracket lives in the span of $[B_i, B_j]$ rather than in $65{,}536$ directions the marginal-matching loss never touched. This is a hypothesis with a named mechanism, not a rescue of the refuted claim, and it should be pre-registered like any other round.
 5. **Or accept the negative result.** "A frozen self-supervised representation plus a learned conditional prior does not beat a from-scratch conditional VAE at Perturb-seq effect size; here is the ceiling that says why the transition never could; here are three structural levers that failed; and here is the metric-selection trap that nearly hid all of it" is a real contribution, and more useful to the field than a fifth lever that also fails.
 
