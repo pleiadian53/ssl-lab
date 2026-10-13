@@ -12,7 +12,7 @@ Take a population of identical cells. Leave some alone (the **controls**). In th
 
 That is Perturb-seq: **a genetic perturbation, read out by single-cell RNA sequencing.** "Perturb" = change one gene's activity on purpose; "seq" = measure the whole transcriptome (all genes' expression) of each individual cell afterward. The result is a giant table — one row per cell, one column per gene, each entry a count of how many messenger-RNA molecules of that gene were captured in that cell — annotated with *which* perturbation each cell received.
 
-Norman et al. (2019) ran exactly this on **K562 cells** (a human leukemia cell line, a workhorse of functional genomics) using **CRISPR activation**, across what is often summarized as **287 perturbations**. About 111,000 cells in total. The copy this project processes labels those cells with **237 conditions**: 105 single genes, 131 gene *pairs*, and the unperturbed control. Our tutorial slice is a 10-perturbation, 3,945-cell corner of it.
+Norman et al. (2019) ran exactly this on **K562 cells** (a human leukemia cell line, a workhorse of functional genomics) using **CRISPR activation**, across **287 perturbations** as the paper counts them, in about 111,000 cells. Each cell carries a vector with two guide slots, and many single genes were delivered in both slots, each time paired with a non-targeting guide; the paper counts those two orientations as separate conditions. Merging them, as the labels this project trains on do, gives **237 conditions**: 105 single genes, 131 gene *pairs*, and the unperturbed control. Our tutorial slice is a 10-perturbation, 3,945-cell corner of it.
 
 ```mermaid
 flowchart LR
@@ -94,7 +94,7 @@ But the interesting biology is the *rest* of the cascade — the genes that move
 
 ## 6. Recap, and where next
 
-- **Perturb-seq** = activate specific genes in otherwise-identical cells, then read every cell's whole-transcriptome counts. Norman 2019: K562 cells, CRISPR *activation*, often quoted as 287 single + paired gene perturbations; the processed cache this project trains on holds 237 perturbation classes (105 singles, 131 pairs, and the control).
+- **Perturb-seq** = activate specific genes in otherwise-identical cells, then read every cell's whole-transcriptome counts. Norman 2019: K562 cells, CRISPR *activation*, 287 perturbations as the paper counts guide constructs, which merge to 237 perturbation classes once a gene's two guide orientations are treated as one: 105 singles, 131 pairs, and the control.
 - The **intervention** is "drive gene X (and maybe Y) up." It shows up first as X's own expression rising, then as a coordinated downstream cascade — the thing worth predicting.
 - **Identical cells, variable responses** is why the model must predict a *distribution* (Gap G1), not a point.
 - **Combinations** exist to measure **genetic interaction** — the emergent, non-additive response a pair produces — and "predict an unseen combination" is the dataset's sharpest generalization test. In our slice, combinations are roughly half emergent.

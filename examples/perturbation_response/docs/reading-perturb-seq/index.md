@@ -8,7 +8,7 @@ Every number in these chapters is real. They come from a small, reproducible sli
 
 ## The worked-example slice
 
-The full Norman 2019 dataset is ~111,255 cells, multi-gigabyte, and is often described as covering 287 perturbations; the copy this project processes labels its cells with 237 perturbation conditions. To make the tutorial runnable and concrete, we subsampled it to a **10-perturbation slice** (`control` + 6 single-gene perturbations + 3 two-gene combinations), capped at ~400 cells each → **3,945 cells after quality control**, with a **2,000-gene** highly-variable panel. The slice is chosen so every combination's two constituent singles are *also* present — which is what makes the headline "predict an unseen combination" experiment possible.
+The full Norman 2019 dataset is ~111,255 cells, multi-gigabyte, and and the paper reports 287 perturbations. That count is at the level of guide constructs: each cell carries a two-slot guide vector, and many single genes were delivered in both slots, each paired with a non-targeting guide, which the paper counts as separate conditions. The labels this project trains on merge those orientations, which leaves 237 perturbation conditions. To make the tutorial runnable and concrete, we subsampled it to a **10-perturbation slice** (`control` + 6 single-gene perturbations + 3 two-gene combinations), capped at ~400 cells each → **3,945 cells after quality control**, with a **2,000-gene** highly-variable panel. The slice is chosen so every combination's two constituent singles are *also* present — which is what makes the headline "predict an unseen combination" experiment possible.
 
 Reproduce it (needs `pip install -e ".[perturb]"`):
 
