@@ -6,6 +6,10 @@ The comparison is built so that its answer can be trusted. The same encoder is t
 
 **Dataset:** [PTB-XL v1.0.3](https://physionet.org/content/ptb-xl/1.0.3/) (Wagner et al. 2020, *Scientific Data*; PhysioNet, CC BY 4.0). It holds 21,799 ten-second, 12-lead clinical ECGs from 18,869 patients, with 500 Hz signals and an official 100 Hz copy. Patient-confined stratified folds ship with the data: folds 1–8 train, 9 validation, 10 test.
 
+## Result (study v1)
+
+Span-masked JEPA pretraining helps most when labels are scarce. With labels for 5% of training patients, the fine-tuned pretrained encoder beats the same encoder trained from scratch by +0.078 core macro AUROC (95% interval over test patients +0.064 to +0.091; all five repeats agree), and the advantage shrinks to a tie when every patient is labelled. A frozen pretrained encoder with only a linear readout does best of all at 5 to 10% but stalls as labels grow. Full figures, tables, uncertainty and caveats: [**results/**](results/README.md).
+
 ## Status
 
 | Stage | Script | State |
@@ -14,11 +18,12 @@ The comparison is built so that its answer can be trusted. The same encoder is t
 | Data card | `01_data_card.py` | done |
 | Reading real records | `01a_plot_records.py` | done |
 | Saved labelled-patient subsets | `02_make_subsets.py` | done |
-| Span-masked JEPA pretraining | `03_pretrain_jepa.py` | pilot |
-| Downstream arms (scratch / fine-tune / probe) | `04_train_downstream.py` | pilot |
-| Learning-rate selection on validation | `05_select_lr.py` | pilot |
-| Paired patient-cluster bootstrap comparison | `06_compare_arms.py` | pilot |
-| Pilot report and grid estimate | `07_pilot_report.py` | pilot |
+| Span-masked JEPA pretraining | `03_pretrain_jepa.py` | done (5 repeats) |
+| Downstream arms (scratch / fine-tune / probe) | `04_train_downstream.py` | done (60 runs) |
+| Learning-rate selection on validation | `05_select_lr.py` | done |
+| Paired patient-cluster bootstrap comparison | `06_compare_arms.py` | done |
+| Pilot report and grid estimate | `07_pilot_report.py` | done |
+| Results page | `08_make_results.py` → [`results/`](results/README.md) | done |
 | Calibration, robustness, external shift, attribution | later | planned |
 
 ## 0 · Acquire and process PTB-XL

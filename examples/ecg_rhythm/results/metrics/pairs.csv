@@ -1,0 +1,73 @@
+pair,budget,repeat,diff,ci95_low,ci95_high,interval
+finetune-probe,0.05,0,-0.019818,-0.039133,-0.001347,test patients
+finetune-probe,0.05,1,-0.017265,-0.036853,0.001415,test patients
+finetune-probe,0.05,2,-0.052648,-0.071035,-0.034869,test patients
+finetune-probe,0.05,3,-0.009633,-0.02952,0.011284,test patients
+finetune-probe,0.05,4,-0.010182,-0.028931,0.009149,test patients
+finetune-probe,0.05,mean,-0.021909,-0.031536,-0.012241,test patients; repeat SD 0.017742
+finetune-probe,0.1,0,-0.005906,-0.023435,0.010762,test patients
+finetune-probe,0.1,1,-0.005247,-0.021829,0.010025,test patients
+finetune-probe,0.1,2,-0.023021,-0.040528,-0.004955,test patients
+finetune-probe,0.1,3,-0.023257,-0.04099,-0.004265,test patients
+finetune-probe,0.1,4,-0.015308,-0.033971,0.002707,test patients
+finetune-probe,0.1,mean,-0.014548,-0.024219,-0.004122,test patients; repeat SD 0.008795
+finetune-probe,0.25,0,0.032481,0.015689,0.048533,test patients
+finetune-probe,0.25,1,0.016876,0.002745,0.030158,test patients
+finetune-probe,0.25,2,0.001665,-0.01409,0.018271,test patients
+finetune-probe,0.25,3,-0.019406,-0.03866,-1.7e-05,test patients
+finetune-probe,0.25,4,0.022678,0.004367,0.0409,test patients
+finetune-probe,0.25,mean,0.010859,0.000886,0.020907,test patients; repeat SD 0.020273
+finetune-probe,1,0,0.039508,0.020785,0.056975,test patients
+finetune-probe,1,1,0.044075,0.030125,0.058029,test patients
+finetune-probe,1,2,0.03005,0.01211,0.048992,test patients
+finetune-probe,1,3,0.045428,0.029482,0.061791,test patients
+finetune-probe,1,4,0.038619,0.019189,0.057715,test patients
+finetune-probe,1,mean,0.039536,0.027541,0.051759,test patients; repeat SD 0.006045
+finetune-scratch,0.05,0,0.078884,0.053061,0.104832,test patients
+finetune-scratch,0.05,1,0.101918,0.077988,0.126104,test patients
+finetune-scratch,0.05,2,0.05722,0.027846,0.087356,test patients
+finetune-scratch,0.05,3,0.052631,0.029477,0.075659,test patients
+finetune-scratch,0.05,4,0.098252,0.070841,0.126857,test patients
+finetune-scratch,0.05,mean,0.077781,0.06411,0.091065,test patients; repeat SD 0.022684
+finetune-scratch,0.1,0,0.060002,0.038416,0.081982,test patients
+finetune-scratch,0.1,1,0.066488,0.042968,0.089897,test patients
+finetune-scratch,0.1,2,0.082089,0.057484,0.10736,test patients
+finetune-scratch,0.1,3,0.052407,0.026356,0.07586,test patients
+finetune-scratch,0.1,4,0.04054,0.017039,0.065894,test patients
+finetune-scratch,0.1,mean,0.060305,0.047946,0.0728,test patients; repeat SD 0.015540
+finetune-scratch,0.25,0,0.038323,0.01884,0.058182,test patients
+finetune-scratch,0.25,1,0.020124,0.005637,0.035289,test patients
+finetune-scratch,0.25,2,0.031343,0.011636,0.051761,test patients
+finetune-scratch,0.25,3,0.018724,-0.005504,0.043504,test patients
+finetune-scratch,0.25,4,0.030944,0.008548,0.054739,test patients
+finetune-scratch,0.25,mean,0.027892,0.017822,0.038567,test patients; repeat SD 0.008283
+finetune-scratch,1,0,-0.001393,-0.017025,0.012951,test patients
+finetune-scratch,1,1,0.007984,-0.005484,0.021749,test patients
+finetune-scratch,1,2,0.007963,-0.009448,0.025907,test patients
+finetune-scratch,1,3,0.010782,-0.002631,0.023375,test patients
+finetune-scratch,1,4,-0.003158,-0.017016,0.011221,test patients
+finetune-scratch,1,mean,0.004436,-0.005341,0.013461,test patients; repeat SD 0.006264
+probe-scratch,0.05,0,0.098701,0.071245,0.126939,test patients
+probe-scratch,0.05,1,0.119183,0.094117,0.1445,test patients
+probe-scratch,0.05,2,0.109868,0.082121,0.137948,test patients
+probe-scratch,0.05,3,0.062263,0.037537,0.086263,test patients
+probe-scratch,0.05,4,0.108434,0.080856,0.137549,test patients
+probe-scratch,0.05,mean,0.09969,0.084645,0.113835,test patients; repeat SD 0.022146
+probe-scratch,0.1,0,0.065908,0.04173,0.090824,test patients
+probe-scratch,0.1,1,0.071735,0.048177,0.096225,test patients
+probe-scratch,0.1,2,0.10511,0.078835,0.130937,test patients
+probe-scratch,0.1,3,0.075664,0.049175,0.100575,test patients
+probe-scratch,0.1,4,0.055848,0.032165,0.081549,test patients
+probe-scratch,0.1,mean,0.074853,0.061206,0.088038,test patients; repeat SD 0.018487
+probe-scratch,0.25,0,0.005842,-0.015461,0.027232,test patients
+probe-scratch,0.25,1,0.003249,-0.013777,0.020967,test patients
+probe-scratch,0.25,2,0.029678,0.010384,0.048592,test patients
+probe-scratch,0.25,3,0.03813,0.01396,0.062529,test patients
+probe-scratch,0.25,4,0.008267,-0.014473,0.031466,test patients
+probe-scratch,0.25,mean,0.017033,0.004538,0.029506,test patients; repeat SD 0.015788
+probe-scratch,1,0,-0.040901,-0.059599,-0.023822,test patients
+probe-scratch,1,1,-0.036091,-0.050321,-0.02135,test patients
+probe-scratch,1,2,-0.022087,-0.039011,-0.006933,test patients
+probe-scratch,1,3,-0.034646,-0.051009,-0.019304,test patients
+probe-scratch,1,4,-0.041777,-0.059199,-0.023407,test patients
+probe-scratch,1,mean,-0.0351,-0.04653,-0.023651,test patients; repeat SD 0.007886
