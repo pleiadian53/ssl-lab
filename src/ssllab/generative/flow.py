@@ -6,10 +6,21 @@ Condensed from genai-lab's ``flow_matching/`` (VelocityMLP + linear interpolant
 + CFM loss + Euler sampler), specialized to flat vector latents.
 
 Conventions (rectified flow / linear interpolant):
-    z_t = (1 - t) * z0 + t * z1        with z0 ~ N(0, I), z1 = data latent
+    z_t = (1 - t) * z0 + t * z1        z0 = source sample, z1 = data latent
     u_t = z1 - z0                      (the target velocity, constant in t)
     loss = || v_theta(z_t, t [, c]) - u_t ||^2
-Sampling integrates dz/dt = v_theta(z, t [, c]) from t=0 (noise) to t=1 (data).
+Sampling integrates dz/dt = v_theta(z, t [, c]) from t=0 (source) to t=1 (data).
+
+Two choices of source, same loss and sampler (``z0=None`` selects the first):
+    noise base:   z0 ~ N(0, I). A generative prior noise -> data.
+    data base:    z0 ~ a real source population (e.g. control-cell latents).
+                  A distribution-to-distribution transport source -> data.
+Either way the regressed field is E[z1 - z0 | z_t, c], whose ODE carries the
+source marginal onto the data marginal for *any* coupling of (z0, z1) with those
+marginals. In the data base the pairing is a modeling choice, not an observed
+correspondence: independent pairing, or ``ot_couple`` for a least-action pairing.
+So ``u_t`` is a per-pair displacement only under that chosen coupling; what is
+identified is the population-level transport.
 
 Conditioning (the Part 9 step).
     Pass ``cond_dim > 0`` to make the field *conditional*: it takes an extra
