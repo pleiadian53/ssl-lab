@@ -52,7 +52,7 @@ BCH is a series, and series have radii of convergence. This matters far more tha
 
 The composite itself always exists: $\exp(M_A)\exp(M_B)$ is a perfectly good invertible matrix for any generators whatsoever. What breaks down is the claim that its **interaction term is a bracket**.
 
-Here is the measurement ([`verify_bch_radius.py`](../../../../dev/planning/action_operator/verify_bch_radius.py)). For random generators at a given norm, compare the true interaction, $\log(\text{composite}) - (M_A + M_B)$, against the second-order bracket prediction:
+Here is the measurement ([`checks/verify_bch_radius.py`](checks/verify_bch_radius.py)). For random generators at a given norm, compare the true interaction, $\log(\text{composite}) - (M_A + M_B)$, against the second-order bracket prediction:
 
 | $\lVert M \rVert$ | interaction, as a fraction of the composite | error after the bracket correction | improvement |
 |---|---|---|---|

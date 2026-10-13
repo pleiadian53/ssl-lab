@@ -73,7 +73,7 @@ Calibration is checked by comparing the *generated population* against the *real
 
 ## 5. The third axis: data efficiency (did JEPA earn its keep?)
 
-The last axis is methodological, and it is the experiment the whole approach hangs on. The generative JEPA conditions on a **JEPA-pretrained** cell latent. That pretraining is a *hypothesis*, not a given: the hypothesis that a self-supervised representation helps. So the discipline ([the verdict §7.2](../../../../dev/generative_jepa/QA/verdict-which-route-to-build-first.md)) is:
+The last axis is methodological, and it is the experiment the whole approach hangs on. The generative JEPA conditions on a **JEPA-pretrained** cell latent. That pretraining is a *hypothesis*, not a given: the hypothesis that a self-supervised representation helps. So the discipline, set out in the build order of [choosing a route](../../../../docs/generative_jepa/13-choosing-a-route.md) §4, is:
 
 > **Beat a from-scratch baseline, or the pretraining bought nothing.** Train a plain conditional model (a from-scratch count-VAE, no JEPA) and a JEPA-pretrained one, and compare on effect size, calibration, **and data efficiency**. Does JEPA win *with less labeled perturbation data?* If the JEPA model cannot beat the baseline, you learned that the pretraining was an expensive initialization and nothing more, which is worth knowing early.
 

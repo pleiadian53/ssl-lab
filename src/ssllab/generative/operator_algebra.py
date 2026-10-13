@@ -4,7 +4,8 @@ Round 3's action operator (:mod:`ssllab.generative.operator_perturb`) tied the f
 replace, and the reason was structural: it applied ``exp`` exactly once, to a single generator, and it
 composed two genes in the *additive gene-set embedding* (the same object the NB-VAE uses), never in the
 operator algebra. The matrix exponential was a reparameterization, not a capability. See
-``dev/planning/action_operator/03-the-operator-algebra-composition-and-epistasis.md``.
+``docs/action_operator/03-the-algebra-of-composition.md`` and chapter 5 of the action-operator series
+(``examples/perturbation_response/docs/action-operator/05-composition.md``).
 
 This module gives the operator its algebra back. Each single gene ``g`` owns a generator ``M_g``, a
 ``D x D`` matrix, and its operator is ``A_g = exp(M_g)``. A combination composes *in the group*:
@@ -12,7 +13,8 @@ This module gives the operator its algebra back. Each single gene ``g`` owns a g
     A_{A+B} = exp(M_A / 2) exp(M_B) exp(M_A / 2)          (symmetric / Strang product)
 
 read against a canonical gene ordering so it is deterministic. Two facts about this product carry the
-whole idea, and both are proved in ``dev/planning/action_operator/verify_bch.py``.
+whole idea, and both are checked numerically in
+``examples/perturbation_response/docs/action-operator/checks/verify_bch.py``.
 
 **Commuting generators compose additively.** If ``[M_A, M_B] = M_A M_B - M_B M_A = 0`` then the product
 collapses to ``exp(M_A + M_B)``: the double is exactly the sum of the singles, i.e. *no interaction*. So

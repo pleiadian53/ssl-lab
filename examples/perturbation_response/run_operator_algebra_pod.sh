@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The operator-ALGEBRA round — one generator per gene, combinations compose in the group so the
 # Lie bracket [M_A, M_B] carries epistasis. See:
-#   dev/planning/action_operator/03-the-operator-algebra-composition-and-epistasis.md
+#   docs/action_operator/03-the-algebra-of-composition.md
 #
 # This entrypoint only TRAINS (16). The evals are run locally after fetch, against the current DE
 # selection, exactly as round 3 did: the DE list is an eval-time scoring seam, and grading locally

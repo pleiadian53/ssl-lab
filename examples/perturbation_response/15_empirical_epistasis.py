@@ -1,6 +1,6 @@
 r"""Empirical epistasis — the data-side target for the operator-algebra round.
 
-The operator-algebra design (`dev/planning/action_operator/03-...`) rests on one claim: in a model
+The operator-algebra design (`docs/action_operator/03-the-algebra-of-composition.md`) rests on one claim: in a model
 where each single gene has its own generator M_g, the *non-commutativity* of two generators,
 ||[M_A, M_B]||, tracks the *genetic interaction* of the pair. That claim needs a data-side quantity
 to correlate against, and it needs that quantity to actually VARY across pairs. If every held-out

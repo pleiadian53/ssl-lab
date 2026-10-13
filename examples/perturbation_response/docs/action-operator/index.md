@@ -54,7 +54,7 @@ The application is perturbation response: what a cell does when you activate a g
 
 Stated here rather than buried, because a reader deserves to know what they are being taught before they invest in it.
 
-**The mathematics is sound and is not in question.** That commuting generators compose additively, that $\exp$ is the time-one map of a linear flow, that BCH produces only brackets: these are theorems, and where this series makes such a claim it is [checked numerically](../../../../dev/planning/action_operator/verify_bch.py).
+**The mathematics is sound and is not in question.** That commuting generators compose additively, that $\exp$ is the time-one map of a linear flow, that BCH produces only brackets: these are theorems, and where this series makes such a claim it is [checked numerically](checks/verify_bch.py).
 
 **The framework's central empirical claim, in this domain, was refuted.** We built an operator whose non-commutativity should have predicted genetic interaction, and it did not, across four tests and every variant we tried. The [results ledger](../conditional-flow-jepa/results-ledger.md) records it as Round 4.
 

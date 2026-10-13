@@ -14,4 +14,3 @@ This series records what happens when that freeze is relaxed. Each phase unfreez
 - **1. Co-adapting the encoder with the decoder.** Phase 1 attacks the 0.173 that the ceiling analysis attributed to the readout, with the transition frozen so the result stays attributable. *(planned)*
 - **2. Co-adapting the encoder with the operator.** Phase 2 covers the Koopman objective, the moving-target problem, and the machinery that keeps the encoder from collapsing. Phase 0 lowered its priority as a linearization project, but its other motive, making perturbations small and well-conditioned motions, remains open. *(planned)*
 
-*Public docs present the best accurate version; drafting fixes are narrated in `dev/`, not here.*

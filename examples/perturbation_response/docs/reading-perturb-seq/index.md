@@ -2,7 +2,7 @@
 
 *A four-part tutorial on the data that feeds the generative model: what a single-cell perturbation experiment measures, what the "intervention" actually is biologically, how a cell becomes tokens the JEPA encoder can read, and how we know whether a model got the answer right.*
 
-> **Why this series exists.** Before training anything, you should be able to look at the raw dataset and say *what every number means, what the model is being asked to predict, and how success is scored.* The [generative-JEPA design-space series](../../../../docs/generative_jepa/index.md) decided **what** to build (a conditional flow prior over JEPA latents, with a count decoder) and **why** ([the verdict](../../../../dev/generative_jepa/QA/verdict-which-route-to-build-first.md)). This series is the companion that grounds that decision in the actual data: Norman et al. 2019, the benchmark the whole perturbation-biology field is scored on.
+> **Why this series exists.** Before training anything, you should be able to look at the raw dataset and say *what every number means, what the model is being asked to predict, and how success is scored.* The [generative-JEPA design-space series](../../../../docs/generative_jepa/index.md) decided **what** to build (a conditional flow prior over JEPA latents, with a count decoder) and **why** ([choosing a route](../../../../docs/generative_jepa/13-choosing-a-route.md)). This series is the companion that grounds that decision in the actual data: Norman et al. 2019, the benchmark the whole perturbation-biology field is scored on.
 
 Every number in these chapters is real. They come from a small, reproducible slice of Norman 2019 that we processed with the pipeline in this folder, so you can run the same commands and see the same things.
 

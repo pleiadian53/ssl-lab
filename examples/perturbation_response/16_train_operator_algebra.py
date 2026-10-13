@@ -5,7 +5,7 @@ genes in the additive embedding, so it tied the flow. This variant gives each si
 generator ``M_g`` and composes a combination *in the group*, ``A_{A+B} = exp(M_A/2) exp(M_B) exp(M_A/2)``,
 so the departure from additive composition is the Lie bracket ``[M_A, M_B]`` and the bracket is
 epistasis. See `src/ssllab/generative/operator_algebra.py` and the design spec
-`dev/planning/action_operator/03-the-operator-algebra-composition-and-epistasis.md`.
+`docs/action_operator/03-the-algebra-of-composition.md`.
 
 Training is identical in spirit to round 3: cells are unpaired, so each step pushes a control cloud
 through a perturbation's operator and matches the marginal with an energy distance. The one thing that

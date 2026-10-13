@@ -110,7 +110,7 @@ Look at the two descriptions side by side. Here we write the conditioned predict
 > | **policy that chooses the action** | (the CEM search of §2) | $\pi_\psi(z, c_t)$ |
 > | **next latent** | $z'$ | $z_{t+1}$ |
 >
-> The trap is the first two rows: **$f_\theta$ is the *encoder* here, but the *operator* there** — opposite meanings of the same symbol. This series writes the encoder $f_\theta$ and the predictor $g_\phi$; the operator series writes the encoder $E$ and the operator $f_\theta$. (The same reconciliation, from the operator side, is in `dev/operator_world_models/QA/action-operator-vs-conditioning-and-priors.md`.)
+> The trap is the first two rows: **$f_\theta$ is the *encoder* here, but the *operator* there** — opposite meanings of the same symbol. This series writes the encoder $f_\theta$ and the predictor $g_\phi$; the operator series writes the encoder $E$ and the operator $f_\theta$. (The operator series' [notation page](../operator_world_models/notation.md) defines its side of these symbols.)
 
 What the operator world model *adds* on top of Route D's bare planner is structure and learning machinery: the $\exp(M)$ form (so interventions compose and the dynamics' stability is readable from eigenvalues), a learned **policy** $\pi_\psi$ that emits the action instead of a CEM search, and the full treatment of when the conditioned dynamics are merely *associational* versus genuinely *causal*. Route D is the planning idea in its simplest, search-based form; the [Operator World Models](../operator_world_models/index.md) series — in particular [conditioning JEPA on actions](../operator_world_models/03-conditioning-jepa-on-actions.md) and the [diabetes worked example](../operator_world_models/05-worked-example-diabetes.md) — is the deep dive.
 
