@@ -24,7 +24,7 @@ The score is the **core macro AUROC**: the AUROC averaged over the five core rhy
 
 $$\overline{\mathrm{AUROC}} = \frac{1}{5} \sum_{c \in \mathcal{C}} \mathrm{AUROC}_c ,$$
 
-where $\mathcal{C}$ = {SR, AFIB, STACH, SARRH, SBRAD} (sinus rhythm, atrial fibrillation, sinus tachycardia, sinus arrhythmia, sinus bradycardia) and $\mathrm{AUROC}_c$ is the area under the ROC curve for label $c$, computed over the recordings of the test fold. An AUROC of 0.5 is chance and 1.0 is perfect ranking.
+where $\mathcal{C}$ = {SR, AFIB, STACH, SARRH, SBRAD} (sinus rhythm, atrial fibrillation, sinus tachycardia, sinus arrhythmia, sinus bradycardia) and $\mathrm{AUROC}_c$ is the area under the ROC curve for label $c$, computed over the 2,098 test-fold recordings that carry at least one rhythm statement. An AUROC of 0.5 is chance and 1.0 is perfect ranking.
 
 Mean ± standard deviation over the five repeats:
 
@@ -69,7 +69,7 @@ At 5%, 10% and 25%, the interval excludes zero and every one of the five repeats
 
 Brackets are 95% intervals over test patients, as above.
 
-With 5% and 10% of patients labelled, simply training a linear layer on the frozen pretrained features beats fine-tuning the whole encoder. Above that, the probe flattens out near 0.846 and ends below scratch training at 100%. The pretrained representation already separates the rhythms well enough for a linear readout, but a frozen encoder cannot adapt further when more labels arrive.
+With 5% and 10% of patients labelled, simply training a linear layer on the frozen pretrained features beats fine-tuning the whole encoder under this training procedure: one shared learning rate selected at the 10% budget, no layer-wise rates, no gradual unfreezing. A different fine-tuning recipe might close that gap. From 25% upward, the probe flattens out near 0.846 and ends below scratch training at 100%. The pretrained representation already separates the rhythms well enough for a linear readout, but a frozen encoder cannot adapt further when more labels arrive.
 
 The probe's early advantage is consistent with fine-tuning overfitting a small labelled set. During learning-rate selection, fine-tuning reached its best validation score within about 200 optimisation steps and declined afterwards. That is an observation about training curves, not a tested explanation. The probe's best step also often fell at the 4,000-step limit, but its validation score had stopped improving by then: it rose by 0.0003 over the last 1,000 steps in the selection run.
 
@@ -87,13 +87,21 @@ Mean test AUROC over the five repeats, written as scratch / fine-tune / frozen p
 | SARRH | 0.547 / 0.567 / 0.579 | 0.544 / 0.560 / 0.597 | 0.577 / 0.613 / 0.620 | 0.668 / 0.678 / 0.639 |
 | SBRAD | 0.741 / 0.875 / 0.890 | 0.755 / 0.874 / 0.910 | 0.876 / 0.905 / 0.917 | 0.938 / 0.933 / 0.923 |
 
-The largest gains come from sinus tachycardia and sinus bradycardia. At 5% of patients, pretraining lifts STACH from 0.807 to 0.920 and SBRAD from 0.741 to 0.875. Both labels are defined largely by heart rate, which a model predicting hidden stretches of ECG has every reason to learn, since it must anticipate when the next beat falls. Atrial fibrillation gains less: +0.043 at 5%, +0.028 at 10%, and nothing at 100%. Sinus arrhythmia stays close to chance for every method at every budget; it is a subtle, breathing-driven variation that clinicians themselves grade inconsistently. It stays in the average because the label set was fixed before any model was evaluated. No per-label intervals were computed, so these per-label differences are descriptive.
+The largest gains come from sinus tachycardia and sinus bradycardia. At 5% of patients, pretraining lifts STACH from 0.807 to 0.920 and SBRAD from 0.741 to 0.875. Both labels are defined largely by heart rate, so one plausible hypothesis is that span-masked pretraining makes the representation sensitive to heart rate. The study does not test that mechanism. Checking it would take, for example, a probe that predicts heart rate or RR intervals from the frozen embeddings.
+
+Atrial fibrillation gains less: +0.043 at 5%, +0.028 at 10%, and nothing at 100%.
+
+Sinus arrhythmia (SARRH) is the weakest core label for every method at every budget. Its discrimination is limited at low budgets, with AUROC between 0.54 and 0.62 from 5% to 25%, and modest even with every patient labelled: 0.668 for scratch, 0.678 for fine-tune and 0.639 for the frozen probe. This study does not explain the gap. The label stays in the average because the label set was fixed before any model was evaluated.
+
+No per-label intervals were computed, so all per-label differences here are descriptive.
 
 ### AF at a fixed operating point
 
 ![AF sensitivity, specificity and PPV at the validation-set threshold](figures/af_operating_point.png)
 
-A deployed classifier makes yes/no calls, not rankings. For the AF output, a threshold was chosen on the validation fold by a rule fixed in advance: the highest threshold that keeps validation sensitivity at or above 0.90. That threshold was then applied unchanged to the test fold. The test cohort excludes recordings with no rhythm statement and any recording carrying atrial flutter, leaving 150 AF and 1,941 non-AF recordings, a prevalence of 7.2%. "Non-AF" means an ECG without AF from a hospital population, not a healthy control.
+A deployed classifier makes yes/no calls, not rankings. For the AF output, a threshold was chosen on the validation fold by a rule fixed in advance: the highest threshold that keeps validation sensitivity at or above 0.90. That threshold was then applied unchanged to the test fold.
+
+The AF cohort differs slightly from the cohort behind the five-label average. That average uses all 2,098 test recordings with at least one rhythm statement. The AF operating point additionally removes the 7 recordings carrying atrial flutter, leaving 2,091: 150 AF and 1,941 non-AF, a prevalence of 7.2%. "Non-AF" means an ECG without AF from a hospital population, not a healthy control.
 
 | method | budget | sensitivity | specificity | PPV | NPV |
 |---|---|---|---|---|---|
@@ -107,7 +115,11 @@ A deployed classifier makes yes/no calls, not rankings. For the AF output, a thr
 | JEPA + frozen probe | 25% | 0.893 | 0.661 | 0.170 | 0.988 |
 | JEPA + frozen probe | 100% | 0.889 | 0.676 | 0.178 | 0.987 |
 
-All budgets, including 10%, are in [`metrics/af_operating_point.csv`](metrics/af_operating_point.csv). Test sensitivity lands close to the 0.90 validation target, slightly below it on average. At the same sensitivity, the fine-tuned model is more specific than scratch at small budgets, so it raises fewer false alarms; with all patients labelled, the two match. The frozen probe's specificity stalls near 0.68. Positive predictive value stays low at small budgets because AF is rare in this cohort: even a specific detector's alarms are mostly false when only 7% of recordings are positive. These operating-point figures are means over repeats, without bootstrap intervals, and they say nothing about calibration, which has not yet been assessed.
+All budgets, including 10%, are in [`metrics/af_operating_point.csv`](metrics/af_operating_point.csv). The validation-selected thresholds give roughly the intended test sensitivity, mostly just below 0.90. Specificity improves as more patients are labelled. At the same sensitivity, the fine-tuned model is more specific than scratch at small budgets, so it raises fewer false alarms; with all patients labelled, the two match. The frozen probe's specificity stalls near 0.68.
+
+Positive predictive value is low at small budgets for two reasons acting together: AF is uncommon in this cohort, and specificity there is low. At 5%, a specificity near 0.55 means about 45% of non-AF recordings are flagged positive, roughly six to eight false alarms for every AF recording correctly detected. PPV climbs as specificity climbs.
+
+These AF results are promising but they are not deployment evidence. They are means over repeats without bootstrap intervals, they come from a retrospective benchmark of ten-second clinical recordings, and they say nothing about calibration, which has not yet been assessed.
 
 ## What this study does not show
 
