@@ -136,7 +136,7 @@ At sampling time, `euler_sample` with `guidance` not equal to $1$ blends the two
 
 $$v = v_\eta(z, t, \varnothing) + w \cdot \big(v_\eta(z, t, c) - v_\eta(z, t, \varnothing)\big),$$
 
-where $\varnothing$ denotes the `null_cond` token and $w$ is the `--guidance` scale. This extrapolates away from the unconditional velocity to sharpen the effect of the condition. Setting $w = 1$ recovers plain conditional sampling and leaves the null token inert. The full derivation and the design-space reasoning behind CFG are in the companion note [09b — classifier-free guidance](../../../../docs/generative_jepa/09b-classifier-free-guidance.md).
+where $\varnothing$ denotes the `null_cond` token and $w$ is the `--guidance` scale. This extrapolates away from the unconditional velocity to sharpen the effect of the condition. Setting $w = 1$ recovers plain conditional sampling and leaves the null token inert. The full derivation and the design-space reasoning behind CFG are in the companion note [09b: classifier-free guidance](../../../../docs/generative_jepa/09b-classifier-free-guidance.md).
 
 ## Two axes that parameterize the flow
 
@@ -166,4 +166,4 @@ The split between the two readouts mirrors the two things Chapter 4 measures: ef
 
 We now have every module in hand: a frozen JEPA encoder producing latents, a conditional velocity field that samples latents given a condition, two ways to build that condition, classifier-free guidance layered on top, and a count decoder that turns latents into gene counts with a proper NB likelihood. The next chapter puts them in motion: the three training stages, the data and the combination-holdout split that tests generalization, and the evaluation harness that turns generated populations into the effect-size and calibration numbers.
 
-*Previous: [Chapter 1 — The approach](01-the-approach.md). Up: [the method series](index.md). Next: [Chapter 3 — Training and evaluation](03-training-and-evaluation.md).*
+*Previous: [Chapter 1: The approach](01-the-approach.md). Up: [the method series](index.md). Next: [Chapter 3: Training and evaluation](03-training-and-evaluation.md).*

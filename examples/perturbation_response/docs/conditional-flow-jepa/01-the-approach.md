@@ -18,17 +18,17 @@ $\Delta$ is a vector with one entry per gene, the *differential expression* of t
 
 This grading is not a technicality. A cell's absolute state is dominated by a large, intervention-independent baseline that the cell already carried before we touched it. The effect of a single-gene activation is a comparatively small shift riding on top of that baseline. A model can reproduce the after-state beautifully by nailing the baseline and still get the change badly wrong, which is exactly the part the benchmark cares about. The [design-space survey calls this baseline dominance](../../../../docs/generative_jepa/05-two-gaps-four-routes.md), and it is why reconstructing absolute state is not enough. The field grades the change, so the method must be built to recover the change.
 
-## 2. Why a plain JEPA is not enough — two gaps
+## 2. Why a plain JEPA is not enough: two gaps
 
 JEPA gives us a strong encoder. Trained self-supervised on cell states, it maps a cell to a latent that is semantically organized and robust. That is a genuinely good starting substrate. But an encoder is not a generative model, and for this task it leaves two distinct things undone. The [design-space survey](../../../../docs/generative_jepa/05-two-gaps-four-routes.md) names them G1 and G2, and the important point is that they are independent: closing one does nothing for the other.
 
-> **Gap G1 — a point latent, but the answer is a distribution.** A JEPA encoder, and the deterministic predictor bolted on top of it, returns exactly one latent per input. One cell in, one latent out. But a perturbation does not produce one outcome. Identical cells given the identical intervention respond differently, and the responding population is sometimes multimodal, splitting into two distinct cell fates. What we need is not a single predicted latent but a *distribution* over outcome latents, a whole cloud we can draw a population from. We need a generative model over latents, not a point.
+> **Gap G1: a point latent, but the answer is a distribution.** A JEPA encoder, and the deterministic predictor bolted on top of it, returns exactly one latent per input. One cell in, one latent out. But a perturbation does not produce one outcome. Identical cells given the identical intervention respond differently, and the responding population is sometimes multimodal, splitting into two distinct cell fates. What we need is not a single predicted latent but a *distribution* over outcome latents, a whole cloud we can draw a population from. We need a generative model over latents, not a point.
 
-> **Gap G2 — a latent is not data.** JEPA's loss lives entirely in latent space: it predicts an embedding and matches it to a target embedding. There is no map from a latent back to gene counts. And effect size lives in gene counts. You cannot subtract two latents and read a differential-expression vector off the result in units the benchmark understands. To recover $\Delta$ we need a *decoder* that turns a latent into an expression profile.
+> **Gap G2: a latent is not data.** JEPA's loss lives entirely in latent space: it predicts an embedding and matches it to a target embedding. There is no map from a latent back to gene counts. And effect size lives in gene counts. You cannot subtract two latents and read a differential-expression vector off the result in units the benchmark understands. To recover $\Delta$ we need a *decoder* that turns a latent into an expression profile.
 
 A worked contrast makes the independence concrete. Suppose we close only G2, bolting a decoder onto the single predicted latent. We get one expression profile per intervention, a point estimate wearing a generative model's clothes, with no population to compute a proper $\Delta$ from. Now suppose we close only G1, learning a distribution over latents. We can sample many plausible cell-state latents, but none of them is data, so there is still no gene-count number to score. A usable method has to close both.
 
-## 3. The answer — a G1/G2 decomposition
+## 3. The answer: a G1/G2 decomposition
 
 The approach is exactly this pair of closures, one mechanism for each gap.
 
@@ -64,11 +64,11 @@ It has **near-straight sampling paths**. Rectified flow's training targets are s
 
 The decomposition dictates the build. Three components are trained, and the order follows the G1/G2 story rather than a strict data-flow order.
 
-**Stage A — pretrain the JEPA encoder.** Train the encoder self-supervised on cell states alone, with no knowledge of any intervention, then *freeze* it. From that point on it only produces latents. It is never touched again by a generative gradient.
+**Stage A: pretrain the JEPA encoder.** Train the encoder self-supervised on cell states alone, with no knowledge of any intervention, then *freeze* it. From that point on it only produces latents. It is never touched again by a generative gradient.
 
-**Stage C — train the negative-binomial decoder.** On the frozen latents, fit the count decoder that maps a latent back to gene counts. This closes G2.
+**Stage C: train the negative-binomial decoder.** On the frozen latents, fit the count decoder that maps a latent back to gene counts. This closes G2.
 
-**Stage B — train the conditional flow.** Also on the frozen latents, fit the velocity field $v_\eta(z, t, c)$ so that integrating noise under condition $c$ lands on the distribution of perturbed-cell latents for that baseline and intervention. This closes G1.
+**Stage B: train the conditional flow.** Also on the frozen latents, fit the velocity field $v_\eta(z, t, c)$ so that integrating noise under condition $c$ lands on the distribution of perturbed-cell latents for that baseline and intervention. This closes G1.
 
 Freezing the encoder is a deliberate design choice, not a shortcut. It keeps the representation a pure, reusable, modular substrate that no generative gradient can disturb, so the decoder and the flow are both trained against a fixed target. The [design-space survey discusses the freeze-versus-joint dial](../../../../docs/generative_jepa/09-conditional-flow-prior.md) and where giving that up might pay off. This series starts from the frozen, decoupled end.
 
@@ -76,4 +76,4 @@ One naming note, flagged once so it does not confuse you later. The A/B/C letter
 
 ---
 
-*Up: [the method series](index.md). Next: [Chapter 2 — Implementation](02-implementation.md).*
+*Up: [the method series](index.md). Next: [Chapter 2: Implementation](02-implementation.md).*

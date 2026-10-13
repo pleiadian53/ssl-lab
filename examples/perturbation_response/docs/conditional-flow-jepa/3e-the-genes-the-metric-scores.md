@@ -80,4 +80,4 @@ And a top-$20$ list is still a marginal, per-gene view of a response that is joi
 
 ---
 
-*Up: [the method series](index.md). Parent: [Chapter 3 — Training and evaluation](03-training-and-evaluation.md). Related: [Chapter 3b — Reading the calibration metrics](3b-reading-the-calibration-metrics.md), [Running the pipeline](../running-the-pipeline.md).*
+*Up: [the method series](index.md). Parent: [Chapter 3: Training and evaluation](03-training-and-evaluation.md). Related: [Chapter 3b: Reading the calibration metrics](3b-reading-the-calibration-metrics.md), [Running the pipeline](../running-the-pipeline.md).*

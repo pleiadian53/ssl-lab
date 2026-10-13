@@ -4,7 +4,7 @@
 
 ---
 
-## `12` — comparing arms
+## `12`: comparing arms
 
 ```bash
 python examples/perturbation_response/12_compare_arms.py \
@@ -20,7 +20,7 @@ It reads the per-perturbation vectors out of existing reports and does three thi
 
 **It reports max-$t$ simultaneous intervals.** Testing a family of contrasts at $95\%$ each does not give $95\%$ confidence in the family. The max-$t$ adjustment widens the intervals to cover the whole family at once, which here moved the critical value from $1.96$ to roughly $2.95$. That is a large penalty and it is the honest price of asking several questions of one dataset.
 
-## `17` — a pre-committed structural endpoint
+## `17`: a pre-committed structural endpoint
 
 ```bash
 python examples/perturbation_response/17_eval_bracket_epistasis.py --experiment norman_operator_algebra_s0

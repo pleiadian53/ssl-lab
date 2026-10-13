@@ -10,7 +10,7 @@ A Diagnose step **fits nothing, or fits something in closed form**. No optimizer
 
 It is also what makes these steps *free enough to run first*, which is the recurring lesson: **the expensive scripts in this repository confirmed what the cheap ones had already implied.**
 
-## `14` — the ceiling: is this stage worth improving?
+## `14`, the ceiling: is this stage worth improving?
 
 The most consequential script here. Stage B's job is to produce the perturbed latents, so hand the pipeline the **real** ones and score the result through the same decoder and the same metric. That is a Stage B which is perfect by construction, and whatever it scores is the ceiling.
 
@@ -31,7 +31,7 @@ What it found here, and why the project changed course: the oracle scores $0.679
 
 Three rounds of work went into the stage with $0.03$ of headroom. **Run this before you build a lever, not after.** The general form of the technique, and how to build the equivalent rung for a retrieval pipeline, an agent, or an RL policy, is [Chapter 7 of the methodology series](../../../../docs/experimental-method/07-the-ceiling.md).
 
-## `02` — the probe: is the frozen encoder any good?
+## `02`, the probe: is the frozen encoder any good?
 
 A logistic regression from a frozen latent to the perturbation label, $237$ classes.
 
@@ -43,7 +43,7 @@ Run it immediately after Stage A, as a gate. It is the same instrument as the ce
 
 **Always read a probe against a floor.** $5.2\%$ looks like failure until you notice chance is $0.42\%$, which makes it roughly twelve times chance on a $237$-way problem. Absolute probe numbers carry no information; only the ratio to a floor does. The reasoning behind weak instruments, and the rest of the diagnostic family, is [Chapter 7a](../../../../docs/experimental-method/07a-probes-and-weak-instruments.md).
 
-## `11` — the variance decomposition: whose spread is wrong?
+## `11`, the variance decomposition: whose spread is wrong?
 
 When a model's predicted population is too narrow, the law of total variance says *which part* is too narrow:
 
@@ -55,7 +55,7 @@ python examples/perturbation_response/11_diagnose_variance.py --experiment norma
 
 This turned "calibration is bad" into a fork with **opposite consequences**: coverage can be fixed by growing either term, but growing $\sigma^2_{\text{dec}}$ makes the generator *less* visible while growing $\sigma^2_{\text{bio}}$ makes it more so. A single coverage number could never have said that, and the fork is now the spine of two method chapters.
 
-## `15` — empirical epistasis: a model-free target
+## `15`, empirical epistasis: a model-free target
 
 Computes, straight from the cache with no model involved, how far each double perturbation departs from the sum of its singles:
 
@@ -69,7 +69,7 @@ Because $\mathrm{GI}$ is a **norm**, it is unsigned: it says the additive model 
 
 This script exists to answer a question before an expensive round starts: **is there any signal here to fit?** If every pair were near-additive, a model predicting epistasis would have nothing to predict.
 
-## `00a` — HVG coverage: is the gene panel the bottleneck?
+## `00a`, HVG coverage: is the gene panel the bottleneck?
 
 The one Diagnose step that questions the *data* rather than a model. Every other script here takes the cache as given; this one asks whether the cache threw away the answer before training started.
 

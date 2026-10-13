@@ -43,13 +43,13 @@ Second, **both share the negative-binomial decoder.** Because the readout from l
 
 This is also why the VAE is the *right* control and not a straw man. It is the simplest standard thing that solves the same task. If the elaborate stack cannot beat it, the elaboration is not, on this metric, earning its place, and that is a conclusion worth being able to state cleanly.
 
-## 4. How the comparison is run — a controlled A/B
+## 4. How the comparison is run: a controlled A/B
 
 To attribute any difference in score to a single design choice, you hold everything else fixed and change only that choice. The Gaussian-versus-transport comparison is run exactly this way, by [`run_flow_compare_pod.sh`](../../run_flow_compare_pod.sh): both arms reuse the same frozen JEPA encoder, the same negative-binomial decoder, the same `combo` split, the same gene-set condition, the same number of epochs, and the same evaluation. The *only* variable that changes is the flow's source, `--flow-base gaussian` versus `--flow-base control`. Because nothing else moves, any gap in the resulting $\Delta$-correlation is attributable to the source choice alone. That is what makes it a controlled A/B test rather than two loosely comparable runs.
 
 Run that way at one fixed random seed, the transport flow scores $0.636$ and the Gaussian flow $0.609$ on the held-out combinations, the cleanest isolation of what the reformulation buys. Averaged over three training seeds, the same two configurations score $0.648$ and $0.612$. But a single seed is only the start of the story, which is where the statistics come in.
 
-## 5. Reading a small-sample comparison — the statistical background
+## 5. Reading a small-sample comparison: the statistical background
 
 The results rest on twenty held-out combinations, and that is a small sample. A few ideas, stated here in the abstract, are what let [Chapter 4a](04a-reading-the-head-to-head.md)'s tables be read at a glance.
 
@@ -69,4 +69,4 @@ Three models, then, on one metric and one shared decoder. The two flow variants 
 
 ---
 
-*Previous: [Chapter 3 — Training and evaluation](03-training-and-evaluation.md). Up: [the method series](index.md). Next: [Chapter 3b — Reading the calibration metrics](3b-reading-the-calibration-metrics.md).*
+*Previous: [Chapter 3: Training and evaluation](03-training-and-evaluation.md). Up: [the method series](index.md). Next: [Chapter 3b: Reading the calibration metrics](3b-reading-the-calibration-metrics.md).*

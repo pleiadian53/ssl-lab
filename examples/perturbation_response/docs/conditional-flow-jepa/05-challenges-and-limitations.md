@@ -92,4 +92,4 @@ And the metrics we can compute reward the mean and the marginals, which are the 
 
 ---
 
-*Previous: [Chapter 4 — Results](04-results.md). Up: [the method series](index.md). Next: [Chapter 6 — Beyond the current limit](06-beyond-the-current-limit.md). The audit: [Chapter 4a](04a-reading-the-head-to-head.md).*
+*Previous: [Chapter 4: Results](04-results.md). Up: [the method series](index.md). Next: [Chapter 6: Beyond the current limit](06-beyond-the-current-limit.md). The audit: [Chapter 4a](04a-reading-the-head-to-head.md).*

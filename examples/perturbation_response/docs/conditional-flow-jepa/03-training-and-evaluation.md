@@ -128,4 +128,4 @@ One measurement subtlety governs all four and is easy to get wrong. Measuring sp
 
 ---
 
-*Previous: [Chapter 2 — Implementation](02-implementation.md). Up: [the method series](index.md). Next: [Chapter 4 — Results](04-results.md).*
+*Previous: [Chapter 2: Implementation](02-implementation.md). Up: [the method series](index.md). Next: [Chapter 4: Results](04-results.md).*

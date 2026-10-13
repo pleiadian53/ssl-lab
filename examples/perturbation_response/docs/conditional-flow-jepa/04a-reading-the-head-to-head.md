@@ -196,4 +196,4 @@ On the one pre-committed endpoint, tested at a bar that holds simultaneously acr
 
 ---
 
-*Previous: [Chapter 4 — Results](04-results.md). Up: [the method series](index.md). Next: [Chapter 5 — Challenges and limitations](05-challenges-and-limitations.md). Background on the models and the small-sample reasoning: [Chapter 3a](3a-the-models-in-the-head-to-head.md). The calibration metrics: [Chapter 3b](3b-reading-the-calibration-metrics.md). The gene selection: [Chapter 3e](3e-the-genes-the-metric-scores.md). Current state of play across all rounds: [the results ledger](results-ledger.md).*
+*Previous: [Chapter 4: Results](04-results.md). Up: [the method series](index.md). Next: [Chapter 5: Challenges and limitations](05-challenges-and-limitations.md). Background on the models and the small-sample reasoning: [Chapter 3a](3a-the-models-in-the-head-to-head.md). The calibration metrics: [Chapter 3b](3b-reading-the-calibration-metrics.md). The gene selection: [Chapter 3e](3e-the-genes-the-metric-scores.md). Current state of play across all rounds: [the results ledger](results-ledger.md).*

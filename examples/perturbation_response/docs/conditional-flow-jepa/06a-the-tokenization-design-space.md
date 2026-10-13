@@ -128,4 +128,4 @@ The experiment is cheap relative to the operator route or joint training: swap `
 
 ---
 
-*Previous: [Chapter 6 — Beyond the current limit](06-beyond-the-current-limit.md). Up: [the method series](index.md). Related: [Reading Perturb-seq, Part 3](../reading-perturb-seq/03-tokenization.md) · [Chapter 3 §2 — tokenization](03-training-and-evaluation.md) · [Chapter 3c — VICReg](3c-the-vicreg-collapse-guard.md).*
+*Previous: [Chapter 6: Beyond the current limit](06-beyond-the-current-limit.md). Up: [the method series](index.md). Related: [Reading Perturb-seq, Part 3](../reading-perturb-seq/03-tokenization.md) · [Chapter 3 §2: tokenization](03-training-and-evaluation.md) · [Chapter 3c: VICReg](3c-the-vicreg-collapse-guard.md).*

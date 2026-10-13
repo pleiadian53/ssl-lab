@@ -88,4 +88,4 @@ These directions are not equally likely to pay off, and it is worth being explic
 
 ---
 
-*Previous: [Chapter 5 — Challenges and limitations](05-challenges-and-limitations.md). Up: [the method series](index.md). Related: [Chapter 6a — The tokenization design space](06a-the-tokenization-design-space.md).*
+*Previous: [Chapter 5: Challenges and limitations](05-challenges-and-limitations.md). Up: [the method series](index.md). Related: [Chapter 6a: The tokenization design space](06a-the-tokenization-design-space.md).*

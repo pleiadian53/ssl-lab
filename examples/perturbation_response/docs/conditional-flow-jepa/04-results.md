@@ -111,4 +111,4 @@ Two caveats bound everything above. The evaluation rests on a single dataset and
 
 ---
 
-*Previous: [Chapter 3 — Training and evaluation](03-training-and-evaluation.md). Up: [the method series](index.md). Next: [Chapter 5 — Challenges and limitations](05-challenges-and-limitations.md). The audit: [Chapter 4a](04a-reading-the-head-to-head.md). The gene selection: [Chapter 3e](3e-the-genes-the-metric-scores.md). Current state of play across all rounds: [the results ledger](results-ledger.md).*
+*Previous: [Chapter 3: Training and evaluation](03-training-and-evaluation.md). Up: [the method series](index.md). Next: [Chapter 5: Challenges and limitations](05-challenges-and-limitations.md). The audit: [Chapter 4a](04a-reading-the-head-to-head.md). The gene selection: [Chapter 3e](3e-the-genes-the-metric-scores.md). Current state of play across all rounds: [the results ledger](results-ledger.md).*

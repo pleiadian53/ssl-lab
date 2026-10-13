@@ -27,7 +27,7 @@ Then average each metric over all evaluable perturbations.
 
 ## 3. The four metrics
 
-### Spread correlation — *which* genes vary
+### Spread correlation: *which* genes vary
 
 **Question:** does the model know which genes vary a lot in the response, and which vary little?
 
@@ -41,7 +41,7 @@ where $\mathrm{std}_g[\cdot]$ is the standard deviation of gene $g$'s expression
 
 **What Chapter 4 shows.** Every model lands positive, from $0.205$ for the Gaussian flow to $0.522$ for the NB-VAE, with the transport flow at $0.234$. So all of them do track which genes vary, and the VAE tracks it substantially better than any flow variant. Since a positive spread correlation says nothing about the *size* of the spread, this is entirely compatible with the coverage reading below, where every model turns out to be too narrow. Knowing which genes vary most and knowing how much they vary are separate skills, and the metrics are built to grade them separately.
 
-### Central-interval coverage — is the spread the *right size*
+### Central-interval coverage: is the spread the *right size*
 
 This is the metric worth slowing down on.
 
@@ -86,7 +86,7 @@ Both models under-produce total spread, the VAE the more severely of the two, an
 
 > **A coverage of exactly 1.00 is not a decoder reading. It is a gene-list reading.** This is the trap worth internalizing, because it survives this dataset. Suppose the genes being scored are effectively silent, so that every real held-out cell is exactly zero on them. Then *any* predicted interval that contains zero contains 100% of the real cells, and coverage is forced to $1.00$ no matter what the decoder does. The number is stable, it sits in $[0, 1]$, and it is meaningless. Worse, it *mimics* an over-dispersed decoder perfectly, so the natural response is to go tighten a dispersion that was never the cause, and coverage will not move. The rule to keep: **if you ever see coverage pinned at exactly $1.00$, audit the gene selection before you conclude anything about dispersion.** The companion [Chapter 3e](3e-the-genes-the-metric-scores.md) works through why the top-DE list must be ranked by the Wilcoxon $z$ statistic, which cannot blow up on a silent gene, rather than by fold change, whose ratio explodes precisely on genes that are barely expressed. A real dispersion signal, of the kind reported just above, looks nothing like saturation: it is a graded number strictly between $0$ and $1$ that responds when you change the decoder.
 
-### Mean 1-Wasserstein — the holistic per-gene distance
+### Mean 1-Wasserstein: the holistic per-gene distance
 
 **Question:** overall, how far is each predicted per-gene distribution from the true one?
 
@@ -96,7 +96,7 @@ Both models under-produce total spread, the VAE the more severely of the two, an
 
 **What Chapter 4 shows.** The four models fall in a narrow band, from $0.956$ for the NB-VAE to $1.013$ for the Gaussian flow, with the transport flow at $0.982$. The ordering matches the spread correlation, and the margins are small enough that this metric mostly confirms the others rather than adding a separate verdict.
 
-### Energy distance — the *joint* metric
+### Energy distance: the *joint* metric
 
 **Question:** does the predicted population match the true one in its *joint* structure, meaning the correlations between genes and any multimodality, and not merely gene by gene?
 
@@ -129,4 +129,4 @@ Four numbers, all comparing a **sampled** predicted population to the real held-
 
 ---
 
-*Previous: [Chapter 3a — The models in the head-to-head](3a-the-models-in-the-head-to-head.md). Up: [the method series](index.md). Next: [Chapter 3c — The VICReg collapse guard](3c-the-vicreg-collapse-guard.md).*
+*Previous: [Chapter 3a: The models in the head-to-head](3a-the-models-in-the-head-to-head.md). Up: [the method series](index.md). Next: [Chapter 3c: The VICReg collapse guard](3c-the-vicreg-collapse-guard.md).*

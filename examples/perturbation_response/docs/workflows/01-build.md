@@ -30,7 +30,7 @@ Read the fan-out at `encoder.pt`. Three different Stage-B designs and one decode
 
 ## The steps
 
-### `00` — the cache
+### `00`: the cache
 
 The one step that needs scanpy and pertpy, runs once, on CPU. It has its own chapter, [Preparing a dataset](01a-preparing-a-dataset.md), covering the transformation chain, the `--n-hvg` / `--n-tokens` / `--source` knobs, and what a new cache invalidates downstream.
 
@@ -46,7 +46,7 @@ python examples/perturbation_response/00_process_norman.py --de-only
 
 regenerates it while leaving `splits.json` and `tokens_meta.npz` alone. **Every trained checkpoint stays valid**; only the evaluators need re-running. This seam is important enough to have its own chapter ([3e](../conditional-flow-jepa/3e-the-genes-the-metric-scores.md)) and its own acceptance gate, because a bad gene list once made the entire benchmark score models on a matrix of zeros.
 
-### `01` — the encoder, then `02` to gate it
+### `01`: the encoder, then `02` to gate it
 
 Stage A trains the intra-cell JEPA encoder by masked prediction, with a VICReg collapse guard.
 
@@ -57,7 +57,7 @@ python examples/perturbation_response/02_probe_cell_encoder.py --experiment norm
 
 Always run the probe. It is a [Diagnose](03-diagnose.md) step, it takes a minute, and it is the only thing standing between you and building three more stages on a collapsed representation.
 
-### `03` — the decoder
+### `03`: the decoder
 
 Maps a frozen latent to gene counts by NB likelihood.
 
@@ -67,7 +67,7 @@ python examples/perturbation_response/03_train_count_decoder.py --experiment nor
 
 Two opt-in levers live here: `--anchored-mean` (an identity-anchored mean head) and `--state-dispersion --anchor-weight 0.1` (per-cell dispersion with a moment-matching anchor). Both default off, and with both off you get a standard scVI-style decoder.
 
-### `04` — the flow
+### `04`: the flow
 
 Two knobs carry the method's entire design.
 
@@ -78,11 +78,11 @@ python examples/perturbation_response/04_train_cond_flow.py --experiment norman_
 
 `--flow-base` picks the source: `gaussian` transports noise to the outcome, `control` transports a real control latent so the field models the *displacement*. `--cond-type` picks the perturbation embedding: `table` is a per-perturbation lookup that only works in distribution, `geneset` composes a combination from its single-gene parts. **For held-out combos you need `geneset`**, because a lookup table has no row for a combination it never saw.
 
-### `13` and `16` — the Stage-B variants
+### `13` and `16`: the Stage-B variants
 
 Same slot as `04`, different design. They reuse the frozen encoder and retrain only Stage B, which is the [Vary](05-vary.md) pattern.
 
-### `08` — the baseline
+### `08`: the baseline
 
 A from-scratch conditional NB-VAE with no JEPA and no flow, trained end to end on the same compositional condition.
 

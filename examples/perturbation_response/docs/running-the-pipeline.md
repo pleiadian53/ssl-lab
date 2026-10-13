@@ -58,7 +58,7 @@ The heavy steps run on a pod, but every script is a plain Python entry point you
 
 Each step below gives the direct command (what runs on the machine that has the cache and, for the trainers, a GPU). Section 4 shows how the pod wrappers automate the same commands. Inputs are what the step reads; outputs are the checkpoint and the report it writes.
 
-### Step 0 — build the cache (data prep), and fix the genes the metric will score
+### Step 0: build the cache (data prep), and fix the genes the metric will score
 
 ```bash
 python examples/perturbation_response/00_process_norman.py --artifact norman2019
@@ -80,7 +80,7 @@ Acquires Norman 2019 (via pertpy, or `--source h5ad --h5ad <path>`), runs QC, se
 
 If only the gene selection needs to change, `--de-only` recomputes `de_genes.json` from the existing `processed.h5ad` and leaves `splits.json` and `tokens_meta.npz` alone. The DE list is a scoring seam and no stage trains on it, so this keeps every trained checkpoint valid and only the evaluators (`06`, `09`, `10`) need re-running.
 
-### Step 1 — pretrain the encoder (Stage A) and gate it (probe)
+### Step 1: pretrain the encoder (Stage A) and gate it (probe)
 
 ```bash
 python examples/perturbation_response/01_pretrain_stage_a.py --experiment norman_stage_a --split combo --epochs 50
@@ -93,7 +93,7 @@ Stage A trains the intra-cell JEPA encoder self-supervised (mask gene-group toke
 - **writes**: `output/norman_stage_a/checkpoints/encoder.pt`; reports `stage_a_train.json` (effective rank, feature std) and `stage_a_probe.json` (probe accuracy, chance, effective rank)
 - **check**: effective rank well above 1 (about 176 of 256 on full data), probe accuracy many times the chance rate.
 
-### Step 2 — train the count decoder (Stage C)
+### Step 2: train the count decoder (Stage C)
 
 ```bash
 python examples/perturbation_response/03_train_count_decoder.py --experiment norman_stage_a --split cells --epochs 30
@@ -105,7 +105,7 @@ Fits the negative-binomial count decoder that maps a frozen latent to gene count
 - **writes**: `output/norman_stage_a/checkpoints/count_decoder.pt`; report `stage_c_decoder.json` (final NB NLL, the flags used)
 - **check**: NB NLL decreasing across epochs; the report records `anchored_mean`/`state_dispersion` so a later loader rebuilds the right architecture.
 
-### Step 3 — train the conditional flow (Stage B)
+### Step 3: train the conditional flow (Stage B)
 
 ```bash
 # in-distribution (cells split, table condition):
@@ -121,7 +121,7 @@ Fits the flow-matching velocity field over the frozen latents. Two knobs carry t
 - **writes**: `output/<exp>/checkpoints/cond_flow.pt`; report `stage_b_flow.json` (final flow-matching loss, `flow_base`, `cond_type`, `coupling`)
 - **check**: a non-empty control pool (bump `--limit` if it raises "no control cells"); the report records the flow configuration.
 
-### Step 4 — sample and evaluate
+### Step 4: sample and evaluate
 
 ```bash
 # generate a population for one perturbation (optional, for inspection):
@@ -138,7 +138,7 @@ Effect size generates a predicted population per perturbation, forms its differe
 - **writes**: `effect_size.json` (mean and median Δ-correlation, per-perturbation scores) and `calibration_flow.json`
 - **check**: `mean_delta_r` in the report. For calibration, read `mean_coverage` against the nominal 0.80 and note *which side* it falls on, because the sign is the whole diagnosis: below 0.80 the predicted population is too narrow (over-confident), above it is too wide (over-dispersed). A coverage of exactly 1.00 is not a decoder reading at all, it is the signature of a degenerate gene list (Step 0), so check `de_genes.json` before concluding anything about the decoder. See [Chapter 3b](conditional-flow-jepa/3b-reading-the-calibration-metrics.md) and [Chapter 3e](conditional-flow-jepa/3e-the-genes-the-metric-scores.md).
 
-### Step 5 — diagnose the predicted spread (optional, read-only)
+### Step 5: diagnose the predicted spread (optional, read-only)
 
 ```bash
 python examples/perturbation_response/11_diagnose_variance.py --experiment norman_flow_control --model flow --split combo
@@ -150,7 +150,7 @@ When calibration looks wrong, this says *which component* is responsible. By the
 - **writes**: `variance_decomposition_<model>.json`
 - **check**: `spread_ratio` (predicted total over real) against 1.0, and `bio_fraction`, the latent's share of the predicted spread. Pass `--stage-b operator` to decompose an action-operator checkpoint instead of the flow.
 
-### The baseline branch — the NB-VAE
+### The baseline branch: the NB-VAE
 
 ```bash
 python examples/perturbation_response/08_train_cvae_baseline.py --experiment norman_combo --split combo --epochs 60
@@ -261,4 +261,4 @@ The decoder ablation was the first to exercise this whole loop end to end, and i
 
 ---
 
-*Up: [the perturbation-response docs](index.md). Concepts behind these stages: [Chapter 3 — Training and evaluation](conditional-flow-jepa/03-training-and-evaluation.md). The numbers this workflow produces: [Chapter 4 — Results](conditional-flow-jepa/04-results.md).*
+*Up: [the perturbation-response docs](index.md). Concepts behind these stages: [Chapter 3: Training and evaluation](conditional-flow-jepa/03-training-and-evaluation.md). The numbers this workflow produces: [Chapter 4: Results](conditional-flow-jepa/04-results.md).*
