@@ -8,7 +8,7 @@
 
 This project ran two linear probes without ever noticing they were the same tool.
 
-The first has been in the pipeline since Stage A. [`02_probe_cell_encoder.py`](../../examples/perturbation_response/02_probe_cell_encoder.py) freezes the encoder and fits a logistic regression from a cell's latent $z$ to the identity of the perturbation applied to it, one of $237$ classes. It scores $5.2\%$.
+The first has been in the pipeline since Stage A. [`02_probe_cell_encoder.py`](https://github.com/pleiadian53/ssl-lab/blob/main/examples/perturbation_response/02_probe_cell_encoder.py) freezes the encoder and fits a logistic regression from a cell's latent $z$ to the identity of the perturbation applied to it, one of $237$ classes. It scores $5.2\%$.
 
 The second is the `linear` arm of the ceiling. It freezes the same encoder and fits a ridge regression from the same $z$ to the cell's $5000$-gene expression vector. It scores $0.852$ in $\Delta$-correlation.
 
@@ -45,7 +45,7 @@ That is why the probe's weakness is the argument rather than a limitation of it.
 
 **It avoids the confound that destroys flexible probes.** Give the head enough capacity and it starts doing the *representation's* job. A sufficiently powerful decoder can recover the target from almost any injective encoding, including a random projection. At that point the score measures the probe rather than the encoder, and the measurement no longer discriminates between a good representation and a bad one. A diagnostic that returns a high number for every input has told you nothing.
 
-The same rule carries over from representations to dynamics, and Phase 0 of this project's co-adaptation program is a clean worked example. To ask whether perturbations act linearly on the frozen latents, it pits a weak arm, an affine map, against a flexible nonlinear arm, each fitted to carry the control cloud onto the perturbed cloud. A synthetic perturbed cloud that is affine by construction sets the floor, since any nonlinear advantage there is pure fitting noise, and an acceptance gate refuses to report from a subspace where that floor is too high. [Co-adaptation chapter 0](../../examples/perturbation_response/co-adaptation/docs/00-the-premise-as-a-number.md) builds it in full; it found the frozen latents close to affine.
+The same rule carries over from representations to dynamics, and Phase 0 of this project's co-adaptation program is a clean worked example. To ask whether perturbations act linearly on the frozen latents, it pits a weak arm, an affine map, against a flexible nonlinear arm, each fitted to carry the control cloud onto the perturbed cloud. A synthetic perturbed cloud that is affine by construction sets the floor, since any nonlinear advantage there is pure fitting noise, and an acceptance gate refuses to report from a subspace where that floor is too high. [Co-adaptation chapter 0](https://github.com/pleiadian53/ssl-lab/blob/main/examples/perturbation_response/co-adaptation/docs/00-the-premise-as-a-number.md) builds it in full; it found the frozen latents close to affine.
 
 ## 3. Reading a probe without fooling yourself
 
@@ -75,7 +75,7 @@ $$\mathrm{erank} = \exp\left(-\sum_{i=1}^{D} p_i \log p_i\right).$$
 
 A representation of nominal width $256$ whose variance lives in $10$ directions has an effective rank near $10$, and it will disappoint every downstream stage no matter how they are built. This project tracks it, and the value near $176$ to $213$ against a nominal $256$ is what says Stage A did not collapse. The instrument cannot be faked because it reads the spectrum directly and never consults a label.
 
-**Feature variance and covariance.** The cheap continuous cousin of effective rank, and the basis of the [collapse guard](../../examples/perturbation_response/docs/conditional-flow-jepa/3c-the-vicreg-collapse-guard.md) already in Stage A. Per-dimension standard deviation catches a representation shrinking toward a constant; off-diagonal covariance catches dimensions duplicating each other. Both are computable every epoch for nearly nothing, which makes them a monitor rather than a post-mortem.
+**Feature variance and covariance.** The cheap continuous cousin of effective rank, and the basis of the [collapse guard](https://github.com/pleiadian53/ssl-lab/blob/main/examples/perturbation_response/docs/conditional-flow-jepa/3c-the-vicreg-collapse-guard.md) already in Stage A. Per-dimension standard deviation catches a representation shrinking toward a constant; off-diagonal covariance catches dimensions duplicating each other. Both are computable every epoch for nearly nothing, which makes them a monitor rather than a post-mortem.
 
 **Representational similarity, via CKA or RSA.** Compare two representations to each other rather than to a label. Useful for questions of the form "did this fine-tuning change anything?" or "are these two encoders learning the same thing?" Centered kernel alignment is the common modern choice.
 
@@ -101,7 +101,7 @@ This group is specific to generative models, and the failures it catches are inv
 
 $$\mathrm{Var}[x_g] = \underbrace{\mathbb{E}_z[\mathrm{Var}(x_g \mid z)]}_{\sigma^2_{\text{dec}}} + \underbrace{\mathrm{Var}_z[\mathbb{E}(x_g \mid z)]}_{\sigma^2_{\text{bio}}}.$$
 
-The first term is the readout's noise; the second is the generator actually doing its job. This project's [`11_diagnose_variance.py`](../../examples/perturbation_response/11_diagnose_variance.py) computes exactly this, and the split turned a vague "calibration is bad" into a sharp claim: coverage can be fixed by growing either term, but growing $\sigma^2_{\text{dec}}$ makes the generator *less* visible while growing $\sigma^2_{\text{bio}}$ makes it more so. A single coverage number could never have said that.
+The first term is the readout's noise; the second is the generator actually doing its job. This project's [`11_diagnose_variance.py`](https://github.com/pleiadian53/ssl-lab/blob/main/examples/perturbation_response/11_diagnose_variance.py) computes exactly this, and the split turned a vague "calibration is bad" into a sharp claim: coverage can be fixed by growing either term, but growing $\sigma^2_{\text{dec}}$ makes the generator *less* visible while growing $\sigma^2_{\text{bio}}$ makes it more so. A single coverage number could never have said that.
 
 **Calibration and coverage.** Does the model's claimed uncertainty match reality? Form a central interval at nominal level and count how much real data falls inside. Read [Chapter 2](02-the-scoring-seam.md) before trusting it, since coverage is the metric that was pinned at exactly $1.00$ by a broken gene list for months.
 
@@ -111,7 +111,7 @@ The first term is the readout's noise; the second is the generator actually doin
 
 **Check the model at initialization.** If a construction claims to start from a no-op, verify the no-op numerically before training anything. The action operator is built so that a zero-initialized policy gives $A = \exp(0) = I$, and the check is a one-line assertion that $\lVert A - I \rVert = 0$. It is trivial, it is fast, and it is the difference between a design property and an aspiration.
 
-**Shuffle the labels.** Train or fit the same probe against *permuted* targets. Performance should collapse to the floor. If it does not, you have a leak, and you have just found it for the price of one extra run. The same logic generalizes to a **permutation null** for any correlation you plan to claim, which is what the operator round's endpoint eval uses before reporting whether a bracket predicts epistasis. In Round 4 of the [results ledger](../../examples/perturbation_response/docs/conditional-flow-jepa/results-ledger.md), it did not.
+**Shuffle the labels.** Train or fit the same probe against *permuted* targets. Performance should collapse to the floor. If it does not, you have a leak, and you have just found it for the price of one extra run. The same logic generalizes to a **permutation null** for any correlation you plan to claim, which is what the operator round's endpoint eval uses before reporting whether a bracket predicts epistasis. In Round 4 of the [results ledger](https://github.com/pleiadian53/ssl-lab/blob/main/examples/perturbation_response/docs/conditional-flow-jepa/results-ledger.md), it did not.
 
 ## 5. Choosing an instrument
 

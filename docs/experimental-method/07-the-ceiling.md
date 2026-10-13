@@ -6,7 +6,7 @@
 
 ## 1. Three rounds of the wrong question
 
-The flow-based generative JEPA we developed for capturing cell perturbation responses (see the [conditional-flow + JEPA](../../examples/perturbation_response/docs/conditional-flow-jepa/index.md) method series) had a pipeline in three stages. An encoder turns a cell into a latent vector. A middle stage, call it the transition, turns a perturbation into a cloud of predicted latents. A decoder turns each latent into predicted gene counts. The benchmark scores the transition: given a perturbation the model has never seen, how well does its predicted response correlate with the real one.
+The flow-based generative JEPA we developed for capturing cell perturbation responses (see the [conditional-flow + JEPA](https://github.com/pleiadian53/ssl-lab/blob/main/examples/perturbation_response/docs/conditional-flow-jepa/index.md) method series) had a pipeline in three stages. An encoder turns a cell into a latent vector. A middle stage, call it the transition, turns a perturbation into a cloud of predicted latents. A decoder turns each latent into predicted gene counts. The benchmark scores the transition: given a perturbation the model has never seen, how well does its predicted response correlate with the real one.
 
 The transition was improved three times. First a generator that mapped noise to outcome, scoring $0.612$. Then a reformulation that transported a real control cell to its perturbed state, $0.648$. Then an action operator with a carefully chosen inductive bias, $0.645$. Each round compared the new transition to the previous one and to a from-scratch baseline that scored $0.766$, and each round asked the same question: is this transition better than the last transition?
 
@@ -110,4 +110,4 @@ So the practice, stated as a practice:
 
 ---
 
-*Previous: [Failure modes](06-failure-modes.md). Up: [Running an experiment you can trust](index.md). The project this is drawn from: [perturbation response](../../examples/perturbation_response/docs/index.md), whose [results ledger](../../examples/perturbation_response/docs/conditional-flow-jepa/results-ledger.md) records the ceiling as the diagnostic that saturated the transition and relocated the problem to the decoder.*
+*Previous: [Failure modes](06-failure-modes.md). Up: [Running an experiment you can trust](index.md). The project this is drawn from: [perturbation response](https://github.com/pleiadian53/ssl-lab/blob/main/examples/perturbation_response/docs/index.md), whose [results ledger](https://github.com/pleiadian53/ssl-lab/blob/main/examples/perturbation_response/docs/conditional-flow-jepa/results-ledger.md) records the ceiling as the diagnostic that saturated the transition and relocated the problem to the decoder.*

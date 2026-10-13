@@ -185,4 +185,4 @@ And there is one more thing, which no amount of statistics will fix. **The boots
 
 *Previous: [Chapter 4, Ablations and controls](04-ablations-and-controls.md). Next: [Chapter 6, Failure modes](06-failure-modes.md). Up: [Running an experiment you can trust](index.md).*
 
-*The implementation of everything in this chapter is a single script, [`12_compare_arms.py`](../../examples/perturbation_response/12_compare_arms.py), which loads each arm's per-item reports, seed-averages them, intersects the arms onto a common support, draws one shared resample, and prints the primary family with simultaneous intervals and the secondary family without verdicts.*
+*The implementation of everything in this chapter is a single script, [`12_compare_arms.py`](https://github.com/pleiadian53/ssl-lab/blob/main/examples/perturbation_response/12_compare_arms.py), which loads each arm's per-item reports, seed-averages them, intersects the arms onto a common support, draws one shared resample, and prints the primary family with simultaneous intervals and the secondary family without verdicts.*

@@ -10,7 +10,7 @@ Every principle here is illustrated on a single real project, warts included: an
 
 That makes it a better teaching example than a success would. A win hides your methodology, because nobody audits a result they like. A loss forces you to ask, repeatedly, *is this real, or did I measure it wrong?* Over the course of that project the answer was "measured it wrong" more than once, and each time the mistake was invisible from downstream. The series is organized around those mistakes.
 
-The full method series lives at [conditional-flow + JEPA](../../examples/perturbation_response/docs/conditional-flow-jepa/index.md), and its running scoreboard is the [results ledger](../../examples/perturbation_response/docs/conditional-flow-jepa/results-ledger.md). You do not need either to read this series. Where a number appears here, it appears to make a methodological point, not a biological one.
+The full method series lives at [conditional-flow + JEPA](https://github.com/pleiadian53/ssl-lab/blob/main/examples/perturbation_response/docs/conditional-flow-jepa/index.md), and its running scoreboard is the [results ledger](https://github.com/pleiadian53/ssl-lab/blob/main/examples/perturbation_response/docs/conditional-flow-jepa/results-ledger.md). You do not need either to read this series. Where a number appears here, it appears to make a methodological point, not a biological one.
 
 ## The chapters
 
@@ -31,4 +31,4 @@ And if you take a second thing, take it from the last chapter: **before you impr
 
 ---
 
-*Part of [ssl-lab](../index.md). The project this is drawn from: [perturbation response](../../examples/perturbation_response/docs/index.md).*
+*Part of [ssl-lab](../index.md). The project this is drawn from: [perturbation response](https://github.com/pleiadian53/ssl-lab/blob/main/examples/perturbation_response/docs/index.md).*

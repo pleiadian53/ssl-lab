@@ -120,4 +120,4 @@ That is the whole discipline, and it fits in a sentence. **Make each stage the l
 
 *Previous: [Chapter 5, From a difference to a verdict](05-from-difference-to-verdict.md). Up: [Running an experiment you can trust](index.md). Next: [The ceiling](07-the-ceiling.md).*
 
-*The project these failures are drawn from is written up in full at [conditional-flow + JEPA](../../examples/perturbation_response/docs/conditional-flow-jepa/index.md), and its running scoreboard, including the standing negative result, is the [results ledger](../../examples/perturbation_response/docs/conditional-flow-jepa/results-ledger.md).*
+*The project these failures are drawn from is written up in full at [conditional-flow + JEPA](https://github.com/pleiadian53/ssl-lab/blob/main/examples/perturbation_response/docs/conditional-flow-jepa/index.md), and its running scoreboard, including the standing negative result, is the [results ledger](https://github.com/pleiadian53/ssl-lab/blob/main/examples/perturbation_response/docs/conditional-flow-jepa/results-ledger.md).*
