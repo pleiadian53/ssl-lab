@@ -35,7 +35,49 @@ The baseline is a different kind of generative model, and the contrast is the po
 | where the flexibility lives | in the latent: the flow can bend its starting distribution into an arbitrary shape, multimodal and correlated, before anything is decoded | in the decoder: the latent is a plain Gaussian, so any multimodal or correlated structure in the output has to be built by the decoder's nonlinearity |
 | density | implicit, no closed form | an explicit lower bound |
 
-The fourth row is easy to overstate, so it is worth being precise about it. A Gaussian prior does **not** force the VAE's generated expression to be Gaussian or unimodal. For a fixed condition, the VAE's output distribution is the decoder's output averaged over every latent the prior can produce, and a nonlinear decoder can make that average multimodal. A decoder that sends one half of the latent space toward one cell fate and the other half toward another turns a single Gaussian into two fates; in general, almost any distribution can be produced by pushing a Gaussian through a suitable map, which is exactly how GANs and normalizing flows generate data. Gene-to-gene correlation arises the same way: the negative-binomial counts are independent across genes for a *fixed* latent, but the latent varies from cell to cell, and genes that respond to the same latent direction move together. Nor is each cell's Gaussian posterior the same thing as the population. Averaged over all cells, those posteriors form a mixture of Gaussians, the *aggregate posterior*. It is not Gaussian in general, though it can be, and training pushes it toward the standard-normal prior. In a linear-Gaussian model it equals that prior exactly, even though each cell's own posterior is informative. What the Gaussian prior changes is therefore *where* the flexibility has to live, not *what* can be represented. With a simple prior, every sharp boundary between fates must be learned by the decoder, and smooth, weight-decayed networks are biased against sharp boundaries. A flow moves that work into the latent. That is a difference in inductive bias, not a hard limit, and it is the precise sense in which the flow carries a theoretical promise here.
+The fourth row (where the flexibility lives) is easy to overstate, so it is worth being precise about it. A Gaussian prior does **not** force the VAE's generated expression to be Gaussian or unimodal. For a fixed condition $c$, the VAE generates a cell in two steps, drawing a latent from the prior and then an expression profile from the decoder, so its output distribution is the decoder's distribution averaged over every latent the prior can produce:
+
+$$
+p(x \mid c) = \int p(x \mid z, c) \mathcal{N}(z; 0, I) \mathrm{d}z .
+$$
+
+Here $\mathcal{N}(z; 0, I)$ is the standard-normal density at $z$. The integral is a continuous mixture: one decoder distribution for every latent, weighted by how likely the prior makes that latent. A mixture can be multimodal even when its weights come from a single bell curve, as long as different latents send the decoder to different places.
+
+**One Gaussian, two fates.** A one-dimensional example makes this concrete. Let the latent be a single number, $z \sim \mathcal{N}(0, 1)$, and let the decoder produce an expression level $x$ that is Gaussian around a mean $f(z)$ with a small spread $s$, that is $x \mid z \sim \mathcal{N}\big(f(z), s^2\big)$. Choose the mean so that it switches between two fates, a low expression level $m_1$ and a high one $m_2$:
+
+$$
+f(z) = m_1 + (m_2 - m_1) \sigma(z / \tau), \qquad \sigma(u) = \frac{1}{1 + e^{-u}} .
+$$
+
+The logistic function $\sigma$ rises from $0$ to $1$, and the temperature $\tau$ sets how sharply. With a small $\tau$, $f$ is nearly a step: every latent below zero lands near $m_1$, and every latent above zero lands near $m_2$. Each half of the prior carries probability one half, so the output is close to an equal mixture of two bumps,
+
+$$
+p(x) \approx \tfrac{1}{2} \mathcal{N}(x; m_1, s^2) + \tfrac{1}{2} \mathcal{N}(x; m_2, s^2),
+$$
+
+which is two fates from one Gaussian. The figure computes the output exactly for $m_1 = -2$, $m_2 = 2$, $s = 0.45$ and $\tau = 0.08$. It has a mode at each fate, and midway between them the density falls to under a tenth of its peak.
+
+![One Gaussian, two fates. Panel 1: a standard-normal prior over a one-dimensional latent, its left half shaded blue and its right half orange. Panel 2: a sharp decoder mean that steps from -2 to +2 at zero, and a smooth one that rises gradually. Panel 3: the output distribution, with two separated modes at -2 and +2 under the sharp decoder and a single broad mode at 0 under the smooth one.](assets/one-gaussian-two-fates.svg)
+
+*The prior's left half (blue) and right half (orange) are carried by a sharp decoder to the two fates, so the output in panel 3 has two separated modes. A smooth decoder with $\tau = 1.2$, dashed, maps the same prior almost linearly, and the two fates blur into one broad mode between them.*
+
+The dashed curves are the point of the comparison. The prior is the same and the decoder has the same form; only its sharpness differs. Producing two fates requires the decoder to learn a sharp boundary in latent space, and a smooth, weight-decayed network learns such boundaries reluctantly, so in practice the fates tend to blur. That is the inductive-bias argument this section closes on, in a single picture.
+
+**"Almost any distribution," made precise.** In one dimension there is an exact recipe. Let $\Phi$ be the standard-normal cumulative distribution function and $F$ the cumulative distribution function of any continuous target distribution. Then
+
+$$
+x = F^{-1}\big(\Phi(z)\big), \qquad z \sim \mathcal{N}(0, 1),
+$$
+
+has exactly the distribution $F$. The reason is that $\Phi(z)$ is uniform on the interval from $0$ to $1$, and passing a uniform number through $F^{-1}$ is the standard inverse-transform method for sampling from $F$. In higher dimensions there is no single formula, but the principle is the same, and generative models learn the map $g$ in $x = g(z)$ instead of writing it down. A GAN trains $g$ against a discriminator and never evaluates a density. A normalizing flow keeps $g$ invertible, so the output density $p_x$ follows from the prior density $p_z$ by the change-of-variables formula,
+
+$$
+p_x(x) = p_z\big(g^{-1}(x)\big) \left| \det \frac{\partial g^{-1}(x)}{\partial x} \right| ,
+$$
+
+where the determinant of the Jacobian measures how much $g$ stretches or compresses volume near $x$. Where $g$ stretches a region, density thins out; where it compresses one, density piles up. That is how a single bell curve is reshaped into several peaks, and the VAE's decoder plays the role of $g$, with sampling noise added on top.
+
+Gene-to-gene correlation arises the same way: the negative-binomial counts are independent across genes for a *fixed* latent, but the latent varies from cell to cell, and genes that respond to the same latent direction move together. Nor is each cell's Gaussian posterior the same thing as the population. Averaged over all cells, those posteriors form a mixture of Gaussians, the *aggregate posterior*. It is not Gaussian in general, though it can be, and training pushes it toward the standard-normal prior. In a linear-Gaussian model it equals that prior exactly, even though each cell's own posterior is informative. What the Gaussian prior changes is therefore *where* the flexibility has to live, not *what* can be represented. With a simple prior, every sharp boundary between fates must be learned by the decoder, and smooth, weight-decayed networks are biased against sharp boundaries. A flow moves that work into the latent. That is a difference in inductive bias, not a hard limit, and it is the precise sense in which the flow carries a theoretical promise here.
 
 Two facts specific to this project turn that generic contrast into the exact comparison Chapter 4 runs.
 
