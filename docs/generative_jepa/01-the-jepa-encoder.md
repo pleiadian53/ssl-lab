@@ -2,11 +2,11 @@
 
 *Stage 1 of the [pipeline](index.md): learn a representation by predicting embeddings, then freeze it.*
 
-If generative modeling or JEPA is new to you, [Part 0](00-generative-models-and-why-jepa.md) sets the stage — what a generative model is, the latent-variable recipe, and why JEPA is the substrate. Everything downstream — the prior, the decoder, the samples — depends on one object: a frozen encoder $f_\theta$ that maps an observation to a latent where *meaning* is organized. This chapter is how JEPA learns that encoder without labels and without ever reconstructing a pixel, and how we check that it learned something real.
+If generative modeling or JEPA is new to you, [Part 0](00-generative-models-and-why-jepa.md) sets the stage: what a generative model is, the latent-variable recipe, and why JEPA is the substrate. Everything downstream, from the prior to the decoder to the samples, depends on one object: a frozen encoder $f_\theta$ that maps an observation to a latent where *meaning* is organized. This chapter is how JEPA learns that encoder without labels and without ever reconstructing a pixel, and how we check that it learned something real.
 
 ## Predict the representation, not the input
 
-Self-supervised learning hides part of the input and asks the model to fill it back in. The families differ in *what* gets predicted. A masked autoencoder predicts the missing **pixels** — and so spends capacity modeling texture and noise that are fundamentally unpredictable. JEPA predicts the missing **embedding**: it asks "what is the *representation* of the hidden region?" A representation is free to ignore the unpredictable surface detail and keep only what is structurally meaningful. That is the whole bet, and it is why JEPA encoders tend to be semantically strong per unit of compute.
+Self-supervised learning hides part of the input and asks the model to fill it back in. The families differ in *what* gets predicted. A masked autoencoder predicts the missing **pixels**, and so it spends capacity modeling texture and noise that are fundamentally unpredictable. JEPA predicts the missing **embedding**: it asks "what is the *representation* of the hidden region?" A representation is free to ignore the unpredictable surface detail and keep only what is structurally meaningful. That is the whole bet, and it is why JEPA encoders tend to be semantically strong per unit of compute.
 
 Concretely, an image $x$ is cut into patch tokens. On the $28 \times 28$ MNIST POC, that is a $4 \times 4$ grid of $7 \times 7$ patches, so 16 tokens. A random subset of tokens is the **target**; the rest are the **context**. Three small networks then play their roles:
 
@@ -24,7 +24,7 @@ There is no decoder anywhere in this objective and no term that touches pixels. 
 
 ## The target encoder, and why it is a slow copy
 
-A subtle question hides in that loss: where do the targets come from? If the targets came from the *same* network being trained, there is a trivial way to win — map every input to the same constant vector. Prediction becomes effortless and the representation becomes useless. This is **representation collapse**, the central failure mode of any predict-your-own-embedding scheme.
+A subtle question hides in that loss: where do the targets come from? If the targets came from the *same* network being trained, there is a trivial way to win: map every input to the same constant vector. Prediction becomes effortless and the representation becomes useless. This is **representation collapse**, the central failure mode of any predict-your-own-embedding scheme.
 
 JEPA's main guard is to make the targets come from a **separate, slowly moving copy** of the encoder. The target encoder $f_{\bar\theta}$ is not trained by gradient descent; its weights track the student by an exponential moving average,
 
@@ -36,12 +36,12 @@ with momentum $m$ ramped from $0.996$ toward $1$ on a cosine schedule, and a sto
 
 ## Knowing it worked: collapse diagnostics
 
-"No collapse" is not a vibe — it is measurable, and you should measure it every epoch. Two cheap signals do the job, and they are distinct:
+"No collapse" is not a vibe. It is measurable, and you should measure it every epoch. Two cheap signals do the job, and they are distinct:
 
-- **feature standard deviation** — the mean, over latent dimensions, of each dimension's spread across a batch. Drifting to zero means every input is mapping to the same point.
-- **effective rank** — a soft count of *how many independent directions* the representation actually uses, computed as the exponential of the entropy of the (normalized) singular-value spectrum of the centered embeddings. It catches the sneakier failure where variance crams into a few axes while the rest go dead — which feature std alone can miss.
+- **feature standard deviation**: the mean, over latent dimensions, of each dimension's spread across a batch. Drifting to zero means every input is mapping to the same point.
+- **effective rank**: a soft count of *how many independent directions* the representation actually uses, computed as the exponential of the entropy of the (normalized) singular-value spectrum of the centered embeddings. It catches the sneakier failure where variance crams into a few axes while the rest go dead, a failure that feature std alone can miss.
 
-The full definitions and how to read them live in the companion note [Representation diagnostics](https://github.com/pleiadian53/ssl-lab/blob/main/examples/jepa_basics/docs/representation-diagnostics.md). The headline from the reference run: effective rank climbs from $\approx 74$ to $\mathbf{103.7}$ out of $128$ over training, with feature std steady around $0.75$ — a high-rank, non-collapsed latent. A separate sanity check, a **linear probe**, fits a logistic regression on the frozen latents and reaches **95.3%** test accuracy on digit classification: the representation is not merely high-variance, it is *semantically* organized, with classes linearly separable, despite never seeing a label.
+The full definitions and how to read them live in the companion note [Representation diagnostics](https://github.com/pleiadian53/ssl-lab/blob/main/examples/jepa_basics/docs/representation-diagnostics.md). The headline from the reference run: effective rank climbs from $\approx 74$ to $\mathbf{103.7}$ out of $128$ over training, with feature std steady around $0.75$, the signature of a high-rank, non-collapsed latent. A separate sanity check, a **linear probe**, fits a logistic regression on the frozen latents and reaches **95.3%** test accuracy on digit classification: the representation is not merely high-variance, it is *semantically* organized, with classes linearly separable, despite never seeing a label.
 
 ## The handoff: one latent per observation
 
@@ -64,4 +64,4 @@ This pooled $z$ is the currency of the rest of the pipeline: [Stage 2](02-the-la
 
 ---
 
-*Next: [Part 2 — The latent prior](02-the-latent-prior.md), where a rectified-flow model learns to sample new $z$'s from noise.*
+*Next: [Part 2: The latent prior](02-the-latent-prior.md), where a rectified-flow model learns to sample new $z$'s from noise.*

@@ -1,16 +1,16 @@
 # Appendix — A primer on the data modalities (for readers without a biology background)
 
-*Optional background. The series uses bio and health data as worked examples; this page explains those modalities from scratch so the examples land. If you already know single-cell RNA-seq, EHR codes, or wearable streams, skip it — nothing here is needed for the machine-learning ideas, only for the examples that illustrate them.*
+*Optional background. The series uses bio and health data as worked examples; this page explains those modalities from scratch so the examples land. If you already know single-cell RNA-seq, EHR codes, or wearable streams, skip it. Nothing here is needed for the machine-learning ideas, only for the examples that illustrate them.*
 
-The generative-JEPA design space is **modality-agnostic** — the routes care about latents, priors, and decoders, not about what the data *is*. But abstract routes are hard to learn from, so the chapters anchor each idea in a concrete domain: single-cell gene expression (Part 6's count decoder, Part 11's perturbation application) and continuous health monitoring (Part 12's diabetes world model). Those domains carry vocabulary an ML reader may not have met. This appendix supplies the minimum, in plain terms, with a pointer back to where each piece is used.
+The generative-JEPA design space is **modality-agnostic**: the routes care about latents, priors, and decoders, not about what the data *is*. But abstract routes are hard to learn from, so the chapters anchor each idea in a concrete domain: single-cell gene expression (Part 6's count decoder, Part 11's perturbation application) and continuous health monitoring (Part 12's diabetes world model). Those domains carry vocabulary an ML reader may not have met. This appendix supplies the minimum, in plain terms, with a pointer back to where each piece is used.
 
 ---
 
-## 1. Single-cell RNA-seq — gene counts, dropout, library size
+## 1. Single-cell RNA-seq: gene counts, dropout, library size
 
-**The one-sentence version.** A single-cell RNA-seq (scRNA-seq) experiment measures, for each individual **cell**, how active each **gene** is — and it does so by *counting molecules*.
+**The one-sentence version.** A single-cell RNA-seq (scRNA-seq) experiment measures, for each individual **cell**, how active each **gene** is, and it does so by *counting molecules*.
 
-Let's unpack that. Every cell contains messenger-RNA transcripts, and the number of transcripts of a given gene is a proxy for how strongly that gene is "switched on." The instrument captures and counts those transcripts. So one cell becomes a long vector of **counts** — one non-negative integer per gene, across roughly 20,000 genes. A whole experiment is a big matrix: cells as rows, genes as columns, counts in the entries.
+Let's unpack that. Every cell contains messenger-RNA transcripts, and the number of transcripts of a given gene is a proxy for how strongly that gene is "switched on." The instrument captures and counts those transcripts. So one cell becomes a long vector of **counts**, one non-negative integer per gene across roughly 20,000 genes. A whole experiment is a big matrix: cells as rows, genes as columns, counts in the entries.
 
 ```mermaid
 flowchart LR
@@ -25,22 +25,22 @@ flowchart LR
 Three properties of that count vector matter for *how you model it*, and they are exactly why [Part 6 §2](06-route-a-latent-decoder-head.md) argues a plain Gaussian/MSE decoder is the wrong tool:
 
 - **Counts are non-negative integers.** You cannot have $-3.2$ transcripts. A model that predicts continuous real numbers is already speaking the wrong language.
-- **They are overdispersed.** Across cells, a gene's count varies far more than a simple Poisson-counting process would predict — the variance greatly exceeds the mean. This is what the **negative binomial (NB)** distribution is for: a count distribution with a mean *and* a separate dispersion knob that lets the variance run high.
-- **They are dominated by dropout — a sea of zeros.** Typically **over 90%** of the entries are zero, and many of those are *technical* zeros: the gene was active, but no transcript happened to be captured. Dropout is a *measurement artifact*, not biology. The **zero-inflated** negative binomial (ZINB) adds an explicit "structural zero" probability to model this excess.
+- **They are overdispersed.** Across cells, a gene's count varies far more than a simple Poisson-counting process would predict; the variance greatly exceeds the mean. This is what the **negative binomial (NB)** distribution is for: a count distribution with a mean *and* a separate dispersion knob that lets the variance run high.
+- **They are dominated by dropout, a sea of zeros.** Typically **over 90%** of the entries are zero, and many of those are *technical* zeros: the gene was active, but no transcript happened to be captured. Dropout is a *measurement artifact*, not biology. The **zero-inflated** negative binomial (ZINB) adds an explicit "structural zero" probability to model this excess.
 
-One more practical term: **library size**. Different cells yield different *total* counts — some cells are sequenced more deeply than others — purely as a technical matter. A cell's library size $\ell$ is its total captured counts. Because it is a technical nuisance, models separate "the *shape* of a cell's expression" (a profile over genes that sums to one) from "how deeply it was sequenced" ($\ell$), and reconstruct the count mean as profile $\times \ell$. That is exactly the softmax-rate-times-library-size construction in Part 6.
+One more practical term: **library size**. Different cells yield different *total* counts, purely as a technical matter, because some cells are sequenced more deeply than others. A cell's library size $\ell$ is its total captured counts. Because it is a technical nuisance, models separate "the *shape* of a cell's expression" (a profile over genes that sums to one) from "how deeply it was sequenced" ($\ell$), and reconstruct the count mean as profile $\times \ell$. That is exactly the softmax-rate-times-library-size construction in Part 6.
 
 ### The perturbation setup (used across the routes)
 
-Much of the biology in this series is about **perturbations**, so here is the whole setup from scratch — assume no prior exposure to it. You start with a **baseline** (control) cell — its gene-count vector — and you **apply something** to it: knock out a gene, add a drug, over-express a gene, or some combination. The cell responds, and you measure it again; call that the **perturbed** cell. Three facts make this a *generative* problem rather than a lookup:
+Much of the biology in this series is about **perturbations**, so here is the whole setup from scratch, assuming no prior exposure to it. You start with a **baseline** (control) cell, represented by its gene-count vector, and you **apply something** to it: knock out a gene, add a drug, over-express a gene, or some combination. The cell responds, and you measure it again; call that the **perturbed** cell. Three facts make this a *generative* problem rather than a lookup:
 
-- **The task is prediction.** The goal the models in this series pursue is to **predict the perturbed cell from the baseline cell and the perturbation** — "given this control cell and *this* drug, what does the cell become?" — *without* having run the experiment. That is conditional generation: baseline + perturbation → perturbed-cell expression.
-- **The response is a population, not a point.** Apply the *same* perturbation to many genetically identical cells and they respond *differently* (biology is stochastic). So the honest target is a whole **distribution** of perturbed cells — the cell-to-cell heterogeneity — which is exactly why a model that emits one profile is not enough (the "G1" gap of [Part 5](05-two-gaps-four-routes.md)).
-- **What you score is the *change*.** Comparing the perturbed cell to the baseline, gene by gene, gives the **change** in expression, called **differential expression**; the magnitude-and-pattern of that change is the perturbation's **effect size**. [Part 5 §3](05-two-gaps-four-routes.md) explains why effect size — the *change*, not the *after-state* — is the hard and important target, and why a model can ace the latent yet miss it.
+- **The task is prediction.** The goal the models in this series pursue is to **predict the perturbed cell from the baseline cell and the perturbation**, *without* having run the experiment. Put plainly, the question is "given this control cell and *this* drug, what does the cell become?" That is conditional generation: baseline + perturbation → perturbed-cell expression.
+- **The response is a population, not a point.** Apply the *same* perturbation to many genetically identical cells and they respond *differently* (biology is stochastic). So the honest target is a whole **distribution** of perturbed cells that captures the cell-to-cell heterogeneity. That is exactly why a model that emits one profile is not enough (the "G1" gap of [Part 5](05-two-gaps-four-routes.md)).
+- **What you score is the *change*.** Comparing the perturbed cell to the baseline, gene by gene, gives the **change** in expression, called **differential expression**; the magnitude-and-pattern of that change is the perturbation's **effect size**. [Part 5 §3](05-two-gaps-four-routes.md) explains why effect size, the *change* rather than the *after-state*, is the hard and important target, and why a model can ace the latent yet miss it.
 
-One inverse use shows up in [Part 10](10-route-d-world-model-planning.md): instead of "what does this perturbation do?", ask "**which** perturbation pushes a *diseased* cell toward a *healthy* target state?" — screening framed as a search over perturbations.
+One inverse use shows up in [Part 10](10-route-d-world-model-planning.md): instead of "what does this perturbation do?", ask "**which** perturbation pushes a *diseased* cell toward a *healthy* target state?" This is screening framed as a search over perturbations.
 
-> **Want the fuller treatment?** This series keeps the perturbation example just deep enough to illustrate the generative machinery. For a standalone, end-to-end guide to perturbation modeling — datasets (Perturb-seq), the established baselines (scGen, CPA, GEARS, scPPDM), and the VAE → JEPA → diffusion progression — see the companion [genai-lab perturbation-prediction guide](https://github.com/pleiadian53/genai-lab/blob/main/docs/applications/perturbation_prediction.md). It is an optional reference, not a prerequisite.
+> **Want the fuller treatment?** This series keeps the perturbation example just deep enough to illustrate the generative machinery. For a standalone, end-to-end guide to perturbation modeling, see the companion [genai-lab perturbation-prediction guide](https://github.com/pleiadian53/genai-lab/blob/main/docs/applications/perturbation_prediction.md). It covers datasets (Perturb-seq), the established baselines (scGen, CPA, GEARS, scPPDM), and the VAE → JEPA → diffusion progression. It is an optional reference, not a prerequisite.
 
 ### A tiny worked example
 
@@ -51,15 +51,15 @@ Three genes, one control cell and one drug-treated cell (counts):
 | control | 8 | 0 | 40 | 48 |
 | treated | 9 | 0 | 120 | 129 |
 
-Read it off: gene C tripled, gene A barely moved, gene B reads zero in both (likely dropout). The **effect** is "gene C strongly up," and a good model must predict *that change* — not just that the treated cell still looks broadly like its baseline. Note the library sizes differ (48 vs. 129), which is why raw counts must be normalized before they are comparable.
+Read it off: gene C tripled, gene A barely moved, gene B reads zero in both (likely dropout). The **effect** is "gene C strongly up," and a good model must predict *that change*, not just that the treated cell still looks broadly like its baseline. Note the library sizes differ (48 vs. 129), which is why raw counts must be normalized before they are comparable.
 
 ---
 
-## 2. Electronic health records (EHR) — medical codes as a language
+## 2. Electronic health records (EHR): medical codes as a language
 
-**The one-sentence version.** An electronic health record turns a patient's clinical history into a sequence of **timestamped codes** — and you can treat that sequence like a sentence in a language.
+**The one-sentence version.** An electronic health record turns a patient's clinical history into a sequence of **timestamped codes**, and you can treat that sequence like a sentence in a language.
 
-When a clinician records a diagnosis, prescription, or lab result, it is logged against a *standard vocabulary*: **SNOMED** for diagnoses, **RXNORM** for drugs, **LOINC** for lab tests. Each event is a code with a date. So a patient becomes a chronological list of coded events — sparse (events happen only at visits), irregular (no fixed clock), and symbolic (codes, not numbers). The sibling [`ehr-sequencing`](https://github.com/pleiadian53/ehr-sequencing) project treats this exactly as a language model treats text: codes are "words," a patient history is a "document."
+When a clinician records a diagnosis, prescription, or lab result, it is logged against a *standard vocabulary*: **SNOMED** for diagnoses, **RXNORM** for drugs, **LOINC** for lab tests. Each event is a code with a date. So a patient becomes a chronological list of coded events that is sparse (events happen only at visits), irregular (no fixed clock), and symbolic (codes, not numbers). The sibling [`ehr-sequencing`](https://github.com/pleiadian53/ehr-sequencing) project treats this exactly as a language model treats text: codes are "words," a patient history is a "document."
 
 A slice of a diabetic patient's record (the format used in the [diabetes world-model example](../operator_world_models/05-worked-example-diabetes.md)):
 
@@ -68,17 +68,17 @@ A slice of a diabetic patient's record (the format used in the [diabetes world-m
 2024-06-15:  [LOINC:4548-4, LOINC:2339-0]
 ```
 
-`LOINC:4548-4` is an HbA1c lab (a three-month average-glucose test), `SNOMED:44054006` is type 2 diabetes, `RXNORM:860975` is a glucose-lowering drug, `LOINC:2339-0` is a fasting-glucose result. The stream carries *what the system already knows about the patient* — diagnoses, every drug started or stopped, every lab — as one symbolic modality alongside the dense sensor streams below.
+`LOINC:4548-4` is an HbA1c lab (a three-month average-glucose test), `SNOMED:44054006` is type 2 diabetes, `RXNORM:860975` is a glucose-lowering drug, `LOINC:2339-0` is a fasting-glucose result. The stream carries *what the system already knows about the patient* as one symbolic modality alongside the dense sensor streams below: diagnoses, every drug started or stopped, every lab.
 
 ---
 
 ## 3. Wearable and continuous-monitoring streams (brief)
 
-**The one-sentence version.** Wearables and medical sensors produce dense, continuously-sampled physiological time series — the raw material of "digital phenotyping."
+**The one-sentence version.** Wearables and medical sensors produce dense, continuously-sampled physiological time series, the raw material of "digital phenotyping."
 
-Examples used in [Part 12](12-application-digital-phenotyping.md) and the [diabetes example](../operator_world_models/05-worked-example-diabetes.md): a **continuous glucose monitor (CGM)** reading blood sugar every five minutes; an insulin pen logging doses; a watch tracking steps, heart rate, and sleep; a scale logging weight. These streams are dense but **heterogeneous** (wildly different sampling rates), **irregular**, and **often missing** (people take the watch off). Handling that irregularity as the *native* input — rather than forcing everything onto a clean grid first — is itself part of the modeling challenge.
+Examples used in [Part 12](12-application-digital-phenotyping.md) and the [diabetes example](../operator_world_models/05-worked-example-diabetes.md): a **continuous glucose monitor (CGM)** reading blood sugar every five minutes; an insulin pen logging doses; a watch tracking steps, heart rate, and sleep; a scale logging weight. These streams are dense but **heterogeneous** (wildly different sampling rates), **irregular**, and **often missing** (people take the watch off). Handling that irregularity as the *native* input, rather than forcing everything onto a clean grid first, is itself part of the modeling challenge.
 
-> **A standing caveat for all health data.** Real CGM and EHR data are **protected health information (PHI)** — working with them means de-identification, consent or a waiver, an IRB, and secure handling. Every health example in this series uses **synthetic / illustrative** data and is **not** medical advice.
+> **A standing caveat for all health data.** Real CGM and EHR data are **protected health information (PHI)**. Working with them means de-identification, consent or a waiver, an IRB, and secure handling. Every health example in this series uses **synthetic / illustrative** data and is **not** medical advice.
 
 ---
 
@@ -92,4 +92,4 @@ Examples used in [Part 12](12-application-digital-phenotyping.md) and the [diabe
 
 ---
 
-*Series home: [Generative JEPA](index.md). Back to [Part 6 — Route A](06-route-a-latent-decoder-head.md).*
+*Series home: [Generative JEPA](index.md). Back to [Part 6: Route A](06-route-a-latent-decoder-head.md).*
