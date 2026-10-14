@@ -36,11 +36,38 @@ import torch.nn.functional as F
 
 
 def nb_nll(x: torch.Tensor, mu: torch.Tensor, kappa: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
-    """Negative-binomial negative log-likelihood, averaged over cells.
+    """Negative-binomial negative log-likelihood of observed counts, averaged over cells.
 
-    ``x`` ``(B, G)`` integer counts, ``mu`` ``(B, G)`` mean, ``kappa`` dispersion
-    ``(G,)`` or ``(B, G)`` (broadcast). Numerically stable scVI-style form; equals
-    the per-gene NLL ``-[logΓ(x+κ) - logΓ(κ) - logΓ(x+1) + κ log(κ/(κ+μ)) + x log(μ/(κ+μ))]``.
+    Arguments
+        x      ``(B, G)`` observed counts for B cells and G genes.
+        mu     ``(B, G)`` the decoder's mean count for each cell and gene.
+        kappa  ``(G,)`` or ``(B, G)`` dispersion, broadcast over cells. Smaller kappa means
+               noisier counts.
+        eps    small constant that keeps ``log`` finite when a mean is zero.
+
+    What it computes
+        For one gene, the probability of observing count x under a negative binomial with
+        mean μ and dispersion κ is
+
+            p(x) = Γ(x + κ) / (x! Γ(κ)) · (κ / (κ + μ))^κ · (μ / (κ + μ))^x
+
+        Its variance is μ + μ²/κ: noisier than a Poisson (variance μ) by an amount κ
+        controls. The form is not arbitrary. It is what you get when each cell's true
+        expression rate varies around μ according to a Gamma distribution and sequencing
+        then samples molecules from that rate as a Poisson draw. The function returns the
+        negative log of p(x), summed over genes and averaged over cells.
+
+    Why log-gamma
+        Γ overflows almost immediately for real counts (in float32, once its argument passes
+        about 35), and κ is a learned real number, so plain factorials do not apply.
+        ``torch.lgamma`` computes log Γ directly without forming Γ, and it is differentiable
+        in κ. Working in logs also turns the products and ratios above into sums.
+        ``lgamma(x + 1)`` is log x!; it has no parameters, so it does not change gradients,
+        but keeping it makes the value the exact NLL.
+
+    The derivation, from the Gamma-Poisson mixture to this formula, is in
+    ``docs/generative_jepa/06-route-a-latent-decoder-head.md``, section "The count
+    likelihood, written out".
     """
     log_k_mu = torch.log(kappa + mu + eps)
     ll = (
