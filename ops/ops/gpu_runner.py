@@ -37,7 +37,7 @@ GPU_SPECS: dict[str, GpuSpec] = {
     "l4": GpuSpec("L4:1", 24, 0.43),
     "rtx4090": GpuSpec("RTX4090:1", 24, 0.69),
     "rtx5090": GpuSpec("RTX5090:1", 32, 0.89),
-    "a40": GpuSpec("A40:1", 48, 0.39),
+    "a40": GpuSpec("A40:1", 48, 0.63),
     "a100": GpuSpec("A100:1", 80, 1.19),
     "h100": GpuSpec("H100:1", 80, 2.49),
 }

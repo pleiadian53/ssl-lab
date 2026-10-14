@@ -24,7 +24,7 @@
 #   SMOKE=1 VOL=. DATA_DIR=data bash examples/ecg_rhythm/run_ecg_pilot_pod.sh /tmp/ecg_smoke
 #
 # Env: VOL (/runpod-volume/ssl-lab), DATA_DIR ($VOL/data), EXPERIMENT (ecg_rhythm_v1),
-#      PYTHON (python), SMOKE (0), USD_PER_HR (0.39, A40)
+#      PYTHON (python), SMOKE (0), USD_PER_HR (0.63, A40)
 set -euo pipefail
 
 VOL="${VOL:-/runpod-volume/ssl-lab}"
@@ -33,7 +33,7 @@ DATA_DIR="${DATA_DIR:-$VOL/data}"
 EXP="${EXPERIMENT:-ecg_rhythm_v1}"
 PY="${PYTHON:-python}"
 SMOKE="${SMOKE:-0}"
-USD_PER_HR="${USD_PER_HR:-0.39}"
+USD_PER_HR="${USD_PER_HR:-0.63}"
 D=examples/ecg_rhythm
 
 mkdir -p "$OUT_ROOT/$EXP/logs"

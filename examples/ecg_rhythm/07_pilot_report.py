@@ -14,7 +14,7 @@ only), then prints:
 
 Usage
 -----
-    python examples/ecg_rhythm/07_pilot_report.py --tag pilot --usd-per-hr 0.39
+    python examples/ecg_rhythm/07_pilot_report.py --tag pilot --usd-per-hr 0.63
 
 Output
 ------
@@ -38,7 +38,7 @@ def main() -> None:
     p.add_argument("--experiment", default="ecg_rhythm_v1")
     p.add_argument("--output-root", default="output")
     p.add_argument("--study", default=None)
-    p.add_argument("--usd-per-hr", type=float, default=0.39, help="pod price (A40 default from ops/gpu_runner)")
+    p.add_argument("--usd-per-hr", type=float, default=0.63, help="pod price (A40 default from ops/gpu_runner)")
     p.add_argument("--overhead-min", type=float, default=15.0, help="pod setup + staging + fetch, minutes")
     p.add_argument("--selection-tag", default=None, help="frozen lr selection (default: the protocol's selection tag)")
     p.add_argument("--timing-tags", default=None, help="comma-separated run tags to time from (default: tag + selection tag)")
