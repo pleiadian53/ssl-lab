@@ -59,12 +59,7 @@ def main() -> None:
     exp = experiment(args.experiment, args.output_root).ensure()
 
     ck = torch.load(exp.checkpoints / "cvae_baseline.pt", map_location=device)
-    model = ConditionalNBVAE(
-        n_genes=ck["n_genes"], pert_gene=ck["pert_gene"], latent_dim=ck["latent_dim"],
-        cond_dim=ck["cond_dim"], gene_dim=ck["gene_dim"], hidden=ck["hidden"], compose=ck["compose"],
-    ).to(device)
-    model.load_state_dict(ck["state"])
-    model.eval()
+    model = ConditionalNBVAE.from_checkpoint(ck, device)
 
     cache = load_cache(Path(args.data_dir) / args.artifact)
     hvg = cache.hvg_X
@@ -87,7 +82,8 @@ def main() -> None:
 
     exp.write_report("effect_size_cvae", {
         "model": "conditional_nb_vae", "split": args.split, "n_generated": args.n, "top_k": args.top_k,
-        "compose": ck["compose"], **summary, "per_pert": per_pert,
+        "compose": ck["compose"], "encoder_cond": ck.get("encoder_cond", False),
+        **summary, "per_pert": per_pert,
     })
     logger.info("wrote report -> %s", exp.reports / "effect_size_cvae.json")
 

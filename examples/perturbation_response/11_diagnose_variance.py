@@ -149,10 +149,7 @@ def main() -> None:
             return out["rho"], out["kappa"]
     else:
         ck = torch.load(exp.checkpoints / "cvae_baseline.pt", map_location=device)
-        model = ConditionalNBVAE(n_genes=ck["n_genes"], pert_gene=ck["pert_gene"], latent_dim=ck["latent_dim"],
-                                 cond_dim=ck["cond_dim"], gene_dim=ck["gene_dim"], hidden=ck["hidden"],
-                                 compose=ck["compose"]).to(device)
-        model.load_state_dict(ck["state"]); model.eval()
+        model = ConditionalNBVAE.from_checkpoint(ck, device)
 
         @torch.no_grad()
         def decode(pid: int):

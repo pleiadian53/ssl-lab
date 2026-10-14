@@ -56,6 +56,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--hidden", type=int, default=512)
     p.add_argument("--compose", type=str, default="additive", choices=["additive", "deepsets"])
     p.add_argument("--beta", type=float, default=1.0, help="KL weight (beta-VAE)")
+    p.add_argument("--encoder-cond", action="store_true",
+                   help="textbook cVAE: the encoder also reads the condition, q(z | x, c); "
+                        "default is the condition-blind q(z | x) (see ConditionalNBVAE)")
     p.add_argument("--grad-clip", type=float, default=5.0, help="max grad norm (VAE stability)")
     p.add_argument("--limit", type=int, default=None)
     p.add_argument("--seed", type=int, default=42)
@@ -78,11 +81,12 @@ def main() -> None:
     model = ConditionalNBVAE(
         n_genes=n_genes, pert_gene=pert_gene, latent_dim=args.latent_dim,
         cond_dim=args.cond_dim, gene_dim=args.gene_dim, hidden=args.hidden, compose=args.compose,
+        encoder_cond=args.encoder_cond,
     ).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr)
-    logger.info("cvae baseline: genes=%d latent=%d cond=%d genes_vocab=%d compose=%s split=%s cells=%d",
-                n_genes, args.latent_dim, args.cond_dim, len(gene_vocab), args.compose, args.split,
-                len(train_loader.dataset))
+    logger.info("cvae baseline: genes=%d latent=%d cond=%d genes_vocab=%d compose=%s encoder=%s split=%s cells=%d",
+                n_genes, args.latent_dim, args.cond_dim, len(gene_vocab), args.compose,
+                "q(z|x,c)" if args.encoder_cond else "q(z|x)", args.split, len(train_loader.dataset))
 
     avg = float("nan")
     for epoch in range(args.epochs):
@@ -106,10 +110,11 @@ def main() -> None:
     torch.save({
         "state": model.state_dict(), "n_genes": n_genes, "latent_dim": args.latent_dim,
         "cond_dim": args.cond_dim, "gene_dim": args.gene_dim, "hidden": args.hidden,
-        "compose": args.compose, "pert_gene": pert_gene,
+        "compose": args.compose, "pert_gene": pert_gene, "encoder_cond": args.encoder_cond,
     }, out)
     exp.write_report("baseline_cvae", {"final_loss": avg, "split": args.split, "beta": args.beta,
-                                       "compose": args.compose, "train_cells": len(train_loader.dataset)})
+                                       "compose": args.compose, "encoder_cond": args.encoder_cond,
+                                       "train_cells": len(train_loader.dataset)})
     logger.info("saved cvae baseline -> %s", out)
 
 
