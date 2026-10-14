@@ -36,7 +36,14 @@ The approach is exactly this pair of closures, one mechanism for each gap.
 
 **G2 is closed by a negative-binomial count decoder.** We learn a decoder that maps a sampled latent $z$ to gene counts, so the model emits actual data and effect sizes become recoverable. The decoder uses a negative-binomial likelihood rather than a Gaussian one because that is what the data are. Single-cell RNA-seq measurements are counts, and they are *overdispersed*: their variance grows faster than their mean, more than a Poisson would allow. The [Reading Perturb-seq series](../reading-perturb-seq/index.md) develops why the negative binomial is the right noise model for this count structure. Here we simply inherit that conclusion and put an NB head on the decoder.
 
-Put the two together and the full generative story reads left to right. Fix a condition $c$. Draw noise. Integrate it through the conditional flow to a latent $z^* \sim p(z \mid c)$. Decode $z^*$ to a gene-count profile. Repeat with fresh noise to build a population, then take its mean, subtract the control mean, and read off the predicted $\Delta$.
+Put the two together and the full generative story reads left to right, one simulated cell at a time.
+
+1. **Fix the question.** Choose the condition $c$ that describes the perturbation being asked about.
+2. **Choose a starting point.** Pick a latent $z_0$ for the flow to start from. The textbook choice is noise: sample $z_0$ from a standard Gaussian, $z_0 \sim \mathcal{N}(0, I)$, where $I$ is the identity matrix, so the starting point says nothing about any cell and the flow must build the whole outcome. Nothing in the method requires noise, though. A flow can start from any distribution it was trained to start from, and for this task there is a more natural one: the latent of a real control cell, $z_0 = z_b$. The flow then begins at an actual unperturbed cell and only has to carry it to where that perturbation sends it, which is exactly the change the benchmark scores. In our experiments this control-cell start is the better of the two, and [Chapter 3a](3a-the-models-in-the-head-to-head.md) compares them.
+3. **Let the flow carry it.** Starting from $z_0$ at time $t = 0$, repeatedly take a small step in the direction the velocity field $v_\eta(z, t, c)$ points at the current position, until $t = 1$. Formally this solves the ordinary differential equation $dz/dt = v_\eta(z, t, c)$, and the end point $z^* = z(1)$ is one draw from $p(z \mid c)$, the latent of one simulated perturbed cell.
+4. **Decode it.** The count decoder turns $z^*$ into a gene-count profile for that cell.
+
+Repeat steps 2 to 4 with a fresh starting point for each simulated cell, a new noise sample or a new control cell, to build a population. Then take the population's mean expression gene by gene, subtract the control mean, and read off the predicted $\Delta$.
 
 ## 4. What the condition is
 
@@ -46,7 +53,7 @@ $$
 c = (z_b, z_p).
 $$
 
-$z_b$ is the **baseline state**: the latent of a control cell, encoded by the frozen JEPA encoder. It is the "before", the state the intervention acts on. Carrying the baseline in the condition is what lets the generated outcome be anchored to a specific starting cell rather than to the average cell.
+$z_b$ is the **baseline state**: the latent of a control cell, encoded by the frozen JEPA encoder. It is the "before", the state the intervention acts on. Where the baseline goes depends on the starting point chosen in §3. With a noise start, the baseline has nowhere else to enter, so it rides along in the condition. With a control-cell start, the baseline *is* the starting point, $z_0 = z_b$, and the condition reduces to the intervention alone, $c = z_p$. The second arrangement turns out to matter. Sequencing destroys each cell it measures, so a control cell and a perturbed cell are never the same cell, and a baseline drawn at random from the control population carries no information about any particular outcome. Placed in the condition, it is inert: it cannot move the predicted outcome, and the noise-start flow reduces to modeling the outcome given the perturbation alone, as [Chapter 5](05-challenges-and-limitations.md) works out. Placed at the start of the path, it anchors each simulated cell to a real one.
 
 $z_p$ is the **intervention**: an embedding of which gene or genes were activated. It is the "what we did". A naive way to build $z_p$ is a lookup table with one learned vector per perturbation, but that cannot represent a combination the model never saw during training. A better route builds $z_p$ compositionally from per-gene parts, so that a two-gene activation is assembled from its single-gene pieces and an unseen combination still has a vector. [Chapter 2](02-implementation.md) details both encoders and why the compositional one matters for generalization.
 
