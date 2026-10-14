@@ -176,6 +176,7 @@ The stages are GPU work, and the shell wrappers in `examples/perturbation_respon
 | `run_operator_pod.sh` | 13 for the deterministic and stochastic operator arms x 3 seeds (lever A, ledger Round 3); grade locally with `06 --stage-b operator` | `norman_operator_s*`, `norman_operator_stoch_s*` |
 | `run_operator_algebra_pod.sh` | 16, the per-gene operator algebra (ledger Round 4); grade locally with `17` and `06 --stage-b operator_algebra` | `norman_operator_algebra_s0` |
 | `sweep_action_weight_pod.sh` | 16 at least-action weights $10^{-3}$, $10^{-2}$, $10^{-1}$, to find the near-identity regime Round 4 needed | `norman_opalg_aw*_s0` |
+| `run_vae_encoder_ablation_pod.sh` | 08 for the condition-blind and conditioned NB-VAE encoders at 3 seeds each; graded locally with 09, 10 and `12_compare_arms.py` | `norman_vae_blind_s*`, `norman_vae_cond_s*` |
 
 The pod workflow itself is four steps, and it exists because the SkyPilot workdir upload excludes `/data` and `/output` (they are large or transient), so the cache and the reused checkpoints must be staged to the pod's persistent volume once, then read from there:
 

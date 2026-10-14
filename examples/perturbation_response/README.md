@@ -105,6 +105,7 @@ The scripts are numbered `00` to `17` in the order they were written, which is n
 | `run_operator_pod.sh` | the action operator, deterministic and stochastic |
 | `run_operator_algebra_pod.sh` | the per-gene operator algebra |
 | `sweep_action_weight_pod.sh` | the strength of the penalty that keeps operators near the identity |
+| `run_vae_encoder_ablation_pod.sh` | the baseline's two encoder forms, condition-blind $q(z \mid x)$ and conditioned $q(z \mid x, c)$, at three seeds each |
 
 ## 0 · Process Norman 2019 into a cache
 
