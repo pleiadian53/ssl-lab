@@ -8,7 +8,7 @@ This is the biological application of the generative-JEPA toolkit. A genetic per
 2. **Stage B, the transition.** A conditional generative model in that latent space turns a perturbation into a cloud of outcome latents. The main version is a conditional flow that transports control-cell latents toward the perturbed population. Variants replace the flow with a learned linear operator.
 3. **Stage C, the readout.** A negative-binomial count decoder turns each latent back into gene counts, because effect size is measured on genes, not on latents.
 
-The stack is compared against a from-scratch conditional NB-VAE, which has no JEPA and no flow and is conditioned on the same perturbation embedding. That baseline is the bar the method has to clear.
+The stack is compared against a from-scratch conditional NB-VAE, which has no JEPA and no flow and is conditioned on the same perturbation embedding. That baseline is the bar the method has to clear. Since round 6 of the [results ledger](docs/conditional-flow-jepa/results-ledger.md), the bar is the stronger form of that VAE, whose encoder reads the perturbation as well as the cell.
 
 **Dataset:** Norman et al. 2019, K562 cells under CRISPR activation, with both single-gene and two-gene perturbations. The combinatorial structure is the headline test. Models train on single-gene perturbations and some pairs, then must **predict twenty held-out two-gene combinations** they have never seen.
 
@@ -18,7 +18,8 @@ The full scoreboard and every round's details are in the [results ledger](docs/c
 
 | | Δr | what it says |
 |---|---|---|
-| Conditional NB-VAE, the bar | **0.766** | stable across seeds, spread 0.006 |
+| Conditional NB-VAE whose encoder reads the perturbation, the bar | **0.858** | the bar since round 6; seeds 0.852 to 0.862 |
+| Conditional NB-VAE with a condition-blind encoder | 0.766 | the bar for rounds 1 to 5, scored in round 1; seed spread 0.006 |
 | Transport flow, control to perturbed | 0.648 | the best generative configuration built so far |
 | Action operator | 0.645 | a dead tie with the flow |
 | Oracle Stage B, handed the real held-out latents | *0.679* | a ceiling, not a model |
@@ -26,13 +27,13 @@ The full scoreboard and every round's details are in the [results ledger](docs/c
 
 Five findings carry the story so far.
 
-- **The method loses to its baseline.** Every generative configuration lands between 0.61 and 0.65, about 0.12 below the NB-VAE, and the gap survives simultaneous confidence intervals over the whole family of comparisons.
+- **The method loses to its baseline, by more than first measured.** Every generative configuration lands between 0.61 and 0.65. In round 1 that put the best flow 0.118 below the condition-blind NB-VAE, a gap that survived simultaneous confidence intervals over the whole family of comparisons. Round 6 then let the baseline's encoder read the perturbation, which added a significant 0.083 and raised the bar to 0.858. Read across rounds through the bar, the transport flow now trails it by about 0.21.
 - **The transition was never the bottleneck.** A Stage B that is perfect by construction reaches only 0.679 through the current decoder, so improving the flow could gain at most 0.03. Three rounds spent on the transition (the flow variants, the action operator, the operator algebra) were bounded by that ceiling from the start.
-- **The decoder is where the effect is lost.** A plain linear readout of the frozen latents scores 0.852, above the baseline. The representation holds the signal, and the trained count decoder throws away 0.173 of it.
+- **The decoder is where the effect is lost.** A plain linear readout of the frozen latents scores 0.852, above the original baseline's 0.766 and just below the round-6 bar. It is a diagnostic handed real latents, not a model. The representation holds the signal, and the trained count decoder throws away 0.173 of it.
 - **The operator-algebra hypothesis is refuted.** The idea that how far two single-gene operators fail to commute predicts the pair's genetic interaction failed every test it was given.
 - **Two flow design choices are settled.** Transporting from a real control latent beats generating from noise (+0.036, significant). Optimal-transport coupling of the pairs makes things worse (−0.021, significant), even though it lowers the training loss.
 
-**What comes next** is the [co-adaptation](co-adaptation/README.md) program, which unfreezes the encoder one stage at a time. Its Phase 0 diagnostic has run. On the frozen latents, a nonlinear map from control to perturbed explains only about 1.5% more of the response than an affine map does, across the principal directions that can be measured reliably. The latent response is therefore close to affine, which lowers the priority of reshaping the encoder's geometry for the operator. Phase 1 trains the encoder jointly with the decoder, which targets the 0.173 directly while keeping the transition frozen so the result remains attributable.
+**What comes next** is the [co-adaptation](co-adaptation/README.md) program, which unfreezes the encoder one stage at a time. Its Phase 0 diagnostic has run. On the frozen latents, a nonlinear map from control to perturbed explains only about 1.5% more of the response than an affine map does, across the principal directions that can be measured reliably. The latent response is therefore close to affine, which lowers the priority of reshaping the encoder's geometry for the operator. Phase 1 trains the encoder jointly with the decoder, which targets the 0.173 directly while keeping the transition frozen so the result remains attributable. It is judged against the round-6 bar of 0.858.
 
 ## Where to read
 

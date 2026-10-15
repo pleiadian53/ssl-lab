@@ -79,7 +79,7 @@ Three things worth knowing before you read a script number as a step number.
 
 **The cheap scripts are the ones that changed the project's direction.** `14` trains nothing and runs in minutes, and it retired an entire lever family by showing the transition had $0.03$ of headroom. `11` trains nothing and it turned "calibration is bad" into a fork with two opposite consequences. The expensive scripts confirmed what the cheap ones had already implied.
 
-**The workflow you are in constrains what your number licenses.** A Score result is a measurement of one model. A Decide result is a claim about a difference. A Diagnose result is a bound, and a bound is not a model: the ceiling's linear readout scores above the baseline and is not something you can ship. Mixing these up is how a skyline gets reported as a win.
+**The workflow you are in constrains what your number licenses.** A Score result is a measurement of one model. A Decide result is a claim about a difference. A Diagnose result is a bound, and a bound is not a model: the ceiling's linear readout scores above the original baseline, close to the current bar, and is not something you can ship. Mixing these up is how a skyline gets reported as a win.
 
 ---
 

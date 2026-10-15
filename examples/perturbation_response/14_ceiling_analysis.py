@@ -2,8 +2,9 @@
 
 Three rounds of this project have improved Stage B (the thing that turns a perturbation into a
 cloud of outcome latents): a Gaussian flow, a transport flow, an action operator. They land at
-0.612, 0.648, 0.645. The NB-VAE sits at 0.766. Every round asked "is this lever better than the
-last one" and none asked the prior question:
+0.612, 0.648, 0.645. The NB-VAE sat at 0.766 when this analysis was designed; round 6 of the
+results ledger later raised that bar to 0.858 by letting the VAE's encoder read the perturbation
+too. Every round asked "is this lever better than the last one" and none asked the prior question:
 
     **Given this frozen encoder and this trained decoder, what is the best score ANY Stage B
     could achieve?**
@@ -36,8 +37,9 @@ The arms form a ladder, each one removing a suspect:
                  `linear` is no better, the **encoder** already threw it away, and no decoder lever
                  can help.
 
-Read against the standing scoreboard (transport flow 0.648, operator 0.645, NB-VAE 0.766), the
-`roundtrip` number decides the project's next move:
+Read against the scoreboard as it stood when this rule was fixed (transport flow 0.648, operator
+0.645, NB-VAE 0.766; the bar has been 0.858 since round 6), the `roundtrip` number decides the
+project's next move:
 
   * roundtrip near 0.65  -> Stage B is SATURATED. The flow/operator tie is a wall, not a failure,
                             and further Stage-B levers cannot pay. If it also sits *below* 0.766,

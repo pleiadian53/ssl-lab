@@ -27,7 +27,7 @@ Four arms, each removing one suspect:
 | `latent_mean` | the mean real latent, no spread | does latent *spread* matter for this metric? |
 | `linear` | real latents → a ridge readout | **attributes** the loss between encoder and decoder |
 
-What it found here, and why the project changed course: the oracle scores $0.679$ while the actual flow scores $0.648$, so **the transition is at $96\%$ of its ceiling** and at most $0.03$ was ever available there. Meanwhile a plain linear readout of the same frozen latents scores $0.852$, above the from-scratch baseline. The representation is information-rich; the decoder is where the effect is lost.
+What it found here, and why the project changed course: the oracle scores $0.679$ while the actual flow scores $0.648$, so **the transition is at $96\%$ of its ceiling** and at most $0.03$ was ever available there. Meanwhile a plain linear readout of the same frozen latents scores $0.852$, above the original from-scratch baseline's $0.766$ and just below the $0.858$ that round 6 of the [results ledger](../conditional-flow-jepa/results-ledger.md) later set as the bar. The representation is information-rich; the decoder is where the effect is lost.
 
 Three rounds of work went into the stage with $0.03$ of headroom. **Run this before you build a lever, not after.** The general form of the technique, and how to build the equivalent rung for a retrieval pipeline, an agent, or an RL policy, is [Chapter 7 of the methodology series](../../../../docs/experimental-method/07-the-ceiling.md).
 
@@ -104,7 +104,7 @@ Reaching for a more powerful diagnostic feels like rigor and is usually the oppo
 
 ## What a Diagnose result licenses, and what it does not
 
-**A bound is not a model.** The ceiling's `linear` arm scores $0.852$, above the baseline's $0.766$, and there is no sense in which that is a model you can ship: it is handed the real held-out latents, which a deployed system cannot produce, and it emits a mean rather than a distribution, so it cannot be scored on calibration at all. The honest sentence keeps the condition attached: *if the transition were perfect and the readout were linear, the score would be $0.852$.* That is a statement about headroom.
+**A bound is not a model.** The ceiling's `linear` arm scores $0.852$, above the original baseline's $0.766$ and just below the round-6 bar of $0.858$, and there is no sense in which that is a model you can ship: it is handed the real held-out latents, which a deployed system cannot produce, and it emits a mean rather than a distribution, so it cannot be scored on calibration at all. The honest sentence keeps the condition attached: *if the transition were perfect and the readout were linear, the score would be $0.852$.* That is a statement about headroom.
 
 **A ceiling is specific to what you held fixed.** The $0.679$ oracle is the ceiling *for this decoder*, not a universal bound on the task. Change the readout and it moves, which is exactly what the `linear` arm demonstrates.
 

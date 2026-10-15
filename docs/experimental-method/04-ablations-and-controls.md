@@ -28,7 +28,7 @@ Every one of these tells you something you can act on, because in every one of t
 
 A **control** is a different animal entirely, and calling it an ablation is a category error.
 
-Our control is the **from-scratch conditional NB-VAE**: a negative-binomial variational autoencoder trained end to end on the same data, with the same conditioning information, evaluated by the same harness on the same twenty held-out combinations. It scores $0.766$, which beats our best method arm ($0.648$) by $0.118$.
+Our control is the **from-scratch conditional NB-VAE**: a negative-binomial variational autoencoder trained end to end on the same data, with the same conditioning information, evaluated by the same harness on the same twenty held-out combinations. In the first head-to-head it scored $0.766$, which beat our best method arm ($0.648$) by $0.118$. A later round made this control stronger still, and the end of this chapter tells that part of the story.
 
 Now look at what actually differs between that model and ours. It has a **different encoder** (learned end to end for this task, rather than a frozen self-supervised JEPA representation). It has a **different prior** (a Gaussian variational posterior, rather than a learned flow). It has a **different training objective** (an ELBO with a reconstruction term and a KL term, rather than flow matching against a velocity field). It has different capacity, different inductive biases, and a different relationship between its representation and its reconstruction, because it is *allowed to adapt the representation to the reconstruction task* and we are not.
 
@@ -159,6 +159,8 @@ So the instruction, and it is the one thing I would most like a reader to take f
 > **Build the strongest, fairest baseline you can, and want it to be strong.**
 
 Give it the same conditioning. Give it the same tuning budget. Give it the same seed sweep. Give it a metric that can actually see what it is doing. And then hope, genuinely, that it is hard to beat, because a baseline you cannot beat is telling you something true about your problem, and a baseline you crush is usually telling you something true only about your baseline.
+
+We followed that instruction and still fell short of it. Our VAE received the same gene-set embedding as the method, but only its decoder read it. Its encoder never saw the perturbation, which is not the textbook conditional VAE. A pre-registered round later gave the encoder the condition as well, and the baseline rose from $0.775$, the original design re-run in that round, to $0.858$, a significant gain of $0.083$. Read through the bar, the method now trails by about $0.21$ rather than $0.12$, as round 6 of the [results ledger](https://github.com/pleiadian53/ssl-lab/blob/main/examples/perturbation_response/docs/conditional-flow-jepa/results-ledger.md) records. A baseline built in good faith can still be weaker than it should be, and the only remedy is to keep testing the baseline with the same suspicion you aim at the method.
 
 If your method beats a strong baseline, you have a result. If it loses to one, you have a *better* result, which is a direction, and you have it now rather than a year from now.
 

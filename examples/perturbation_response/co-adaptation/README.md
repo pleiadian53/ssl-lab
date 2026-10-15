@@ -1,6 +1,6 @@
 # co-adaptation: unfreezing the encoder (Round 5+)
 
-This sub-program continues the perturbation-response work by **unfreezing the JEPA encoder**. Every earlier round held the encoder frozen, which is the only reason the [results ledger](../docs/conditional-flow-jepa/results-ledger.md) could attribute a difference between two arms to the one thing that changed. This program relaxes that freeze **one stage at a time**. Its results **append to the same ledger as Round 5 onward**, because the task has not changed: it is still the single-step control-to-perturbed benchmark on the same Norman data, scored on the same 20 held-out combinations, against the same from-scratch NB-VAE bar of Δr = 0.766. It has not become a world model.
+This sub-program continues the perturbation-response work by **unfreezing the JEPA encoder**. Every earlier round held the encoder frozen, which is the only reason the [results ledger](../docs/conditional-flow-jepa/results-ledger.md) could attribute a difference between two arms to the one thing that changed. This program relaxes that freeze **one stage at a time**. Its results **append to the same ledger as Round 5 onward**, because the task has not changed: it is still the single-step control-to-perturbed benchmark on the same Norman data, scored on the same 20 held-out combinations, against the from-scratch NB-VAE bar. It has not become a world model. The bar was Δr = 0.766 through round 5. Round 6 let the baseline's encoder read the perturbation as well as the cell, which raised it to Δr = 0.858, and Phase 1 is judged against that.
 
 The narrative companion is the [co-adaptation series](docs/index.md).
 
@@ -8,7 +8,7 @@ The narrative companion is the [co-adaptation series](docs/index.md).
 
 By the end of round 4, the frozen encoder had been measured against two independent requirements.
 
-- **It retained the signal.** A linear ridge readout of the frozen latents scores Δr = 0.852, above the NB-VAE bar. This is the `linear` arm of [`14_ceiling_analysis.py`](../14_ceiling_analysis.py).
+- **It retained the signal.** A linear ridge readout of the frozen latents scores Δr = 0.852, above the original NB-VAE bar of 0.766 and just below the round-6 bar of 0.858. It is a diagnostic handed real latents, not a model. This is the `linear` arm of [`14_ceiling_analysis.py`](../14_ceiling_analysis.py).
 - **It did not keep the signal in small motions.** Fitting the latent response demanded operator generators with a median norm of about 12.4 in round 4, a large transformation rather than the small, near-identity motion the operator's design assumed. Masked-prediction pretraining preserves information, but nothing in it shapes the geometry of how perturbations act.
 
 The rationale is developed in the action-operator series, in [chapter 8, "what comes next"](../docs/action-operator/08-what-comes-next.md), and in [chapter 2](../docs/action-operator/02-why-linear-koopman.md), whose §6 shows that equivariance and Koopman invariance are one condition and whose §10 describes how to check it.
