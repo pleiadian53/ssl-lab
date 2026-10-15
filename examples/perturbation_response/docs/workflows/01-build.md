@@ -44,7 +44,7 @@ It also owns the **scoring seam**: `de_genes.json`, the per-perturbation gene li
 python examples/perturbation_response/00_process_norman.py --de-only
 ```
 
-regenerates it while leaving `splits.json` and `tokens_meta.npz` alone. **Every trained checkpoint stays valid**; only the evaluators need re-running. This seam is important enough to have its own chapter ([3e](../conditional-flow-jepa/3e-the-genes-the-metric-scores.md)) and its own acceptance gate, because a bad gene list once made the entire benchmark score models on a matrix of zeros.
+regenerates it while leaving `splits.json` and `tokens_meta.npz` alone. **Every trained checkpoint stays valid**; only the evaluators need re-running. This seam is important enough to have its own chapter ([3e](../conditional-flow-jepa/03e-the-genes-the-metric-scores.md)) and its own acceptance gate, because a bad gene list once made the entire benchmark score models on a matrix of zeros.
 
 ### `01`: the encoder, then `02` to gate it
 

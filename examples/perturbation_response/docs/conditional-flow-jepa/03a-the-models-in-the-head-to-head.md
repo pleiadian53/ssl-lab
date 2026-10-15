@@ -154,4 +154,4 @@ Three models, then, on one metric, each reading out through a count head of the 
 
 ---
 
-*Previous: [Chapter 3: Training and evaluation](03-training-and-evaluation.md). Up: [the method series](index.md). Next: [Chapter 3b: Reading the calibration metrics](3b-reading-the-calibration-metrics.md).*
+*Previous: [Chapter 3: Training and evaluation](03-training-and-evaluation.md). Up: [the method series](index.md). Next: [Chapter 3b: Reading the calibration metrics](03b-reading-the-calibration-metrics.md).*

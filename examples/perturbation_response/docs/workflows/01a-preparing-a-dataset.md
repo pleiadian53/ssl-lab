@@ -43,7 +43,7 @@ Four of these are worth more than a table row.
 
 **Step 3 selects on raw counts, and step 4 normalizes afterward.** `seurat_v3` fits a mean-variance trend on counts and ranks genes by variance-stabilized variance, so feeding it normalized data would be selecting on data that has already had the trend removed. This is also why step 0 exists: the raw download's `.X` is log-normalized, and using it directly would corrupt selection. What HVGs are and why the mean-relative comparison is the right one is covered in the docstring of [`make_gene_partition`](../../../../src/ssllab/data/perturbseq.py) and in [Reading Perturb-seq, chapter 2](../reading-perturb-seq/02-reading-the-dataset.md).
 
-**Step 6 is not a training input.** The DE gene list is the *scoring seam*: the per-perturbation genes the effect-size metric is computed on. No stage trains on it. That separation is what makes `--de-only` possible, and it has its own chapter, [3e](../conditional-flow-jepa/3e-the-genes-the-metric-scores.md), because a bad DE selection once made the whole benchmark score models on a matrix of zeros.
+**Step 6 is not a training input.** The DE gene list is the *scoring seam*: the per-perturbation genes the effect-size metric is computed on. No stage trains on it. That separation is what makes `--de-only` possible, and it has its own chapter, [3e](../conditional-flow-jepa/03e-the-genes-the-metric-scores.md), because a bad DE selection once made the whole benchmark score models on a matrix of zeros.
 
 Note what the chain does **not** contain: tokenization. `00` only writes the token *geometry* into the manifest and asserts the partition is well-formed. The actual gather from a $(B, 5000)$ gene vector into $(B, 50, 100)$ tokens happens at train time, in the loader's collate function, from a seed. That is why changing `--n-tokens` alone does not require rewriting the multi-gigabyte cache.
 
@@ -184,4 +184,4 @@ This is the payoff of keeping the scoring seam in its own file, out of the train
 
 ---
 
-*Up: [the workflow map](index.md). Companion to: [Build](01-build.md). What the data is: [Reading Perturb-seq](../reading-perturb-seq/index.md). Why tokens look like this: [the tokenization design space](../conditional-flow-jepa/06a-the-tokenization-design-space.md). What the metric scores: [3e](../conditional-flow-jepa/3e-the-genes-the-metric-scores.md).*
+*Up: [the workflow map](index.md). Companion to: [Build](01-build.md). What the data is: [Reading Perturb-seq](../reading-perturb-seq/index.md). Why tokens look like this: [the tokenization design space](../conditional-flow-jepa/06a-the-tokenization-design-space.md). What the metric scores: [3e](../conditional-flow-jepa/03e-the-genes-the-metric-scores.md).*

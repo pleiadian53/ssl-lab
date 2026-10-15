@@ -1,6 +1,6 @@
 # Chapter 6a — The tokenization design space: random groups, biology, and bias
 
-*A companion to [Chapter 6](06-beyond-the-current-limit.md), in the same spirit as [3d](3d-the-perturbation-vocabulary.md) for Chapter 3. [Chapter 3 §2](03-training-and-evaluation.md) and [Reading Perturb-seq, Part 3](../reading-perturb-seq/03-tokenization.md) already introduce tokenization: a fixed random partition of highly-variable genes into $50$ tokens, the gene-space analogue of I-JEPA's patchify. This note is the discussion those chapters defer. Why is that default defensible? What alternatives exist? How could each help or hurt? And if you swap schemes, how do you test it without breaking the combo-split discipline?*
+*A companion to [Chapter 6](06-beyond-the-current-limit.md), in the same spirit as [3d](03d-the-perturbation-vocabulary.md) for Chapter 3. [Chapter 3 §2](03-training-and-evaluation.md) and [Reading Perturb-seq, Part 3](../reading-perturb-seq/03-tokenization.md) already introduce tokenization: a fixed random partition of highly-variable genes into $50$ tokens, the gene-space analogue of I-JEPA's patchify. This note is the discussion those chapters defer. Why is that default defensible? What alternatives exist? How could each help or hurt? And if you swap schemes, how do you test it without breaking the combo-split discipline?*
 
 > **Where this sits.** Read [Reading Perturb-seq, Part 3 §3](../reading-perturb-seq/03-tokenization.md) first for the mechanics (`make_gene_partition`, `tokenize_cells`, the `(B, n_tokens, token_dim)` contract). [Chapter 6](06-beyond-the-current-limit.md) lists alternative tokenization as one lever among many. This note is the full argument behind that one line.
 
@@ -128,4 +128,4 @@ The experiment is cheap relative to the operator route or joint training: swap `
 
 ---
 
-*Previous: [Chapter 6: Beyond the current limit](06-beyond-the-current-limit.md). Up: [the method series](index.md). Related: [Reading Perturb-seq, Part 3](../reading-perturb-seq/03-tokenization.md) · [Chapter 3 §2: tokenization](03-training-and-evaluation.md) · [Chapter 3c: VICReg](3c-the-vicreg-collapse-guard.md).*
+*Previous: [Chapter 6: Beyond the current limit](06-beyond-the-current-limit.md). Up: [the method series](index.md). Related: [Reading Perturb-seq, Part 3](../reading-perturb-seq/03-tokenization.md) · [Chapter 3 §2: tokenization](03-training-and-evaluation.md) · [Chapter 3c: VICReg](03c-the-vicreg-collapse-guard.md).*

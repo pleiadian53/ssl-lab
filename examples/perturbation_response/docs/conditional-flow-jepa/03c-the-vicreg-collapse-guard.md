@@ -1,6 +1,6 @@
 # Chapter 3c — The VICReg collapse guard: how Stage A avoids learning nothing
 
-*A companion to [Chapter 3](03-training-and-evaluation.md), alongside [3a](3a-the-models-in-the-head-to-head.md) and [3b](3b-reading-the-calibration-metrics.md). Chapter 3 mentions in one line that Stage A adds "a VICReg-style regularizer, weighted by `--reg-coef`" as a collapse guard. This note unpacks that line: why a predict-embeddings objective can cheat, what VICReg is, what the two terms in our version actually do, and how they mirror the two collapse diagnostics the training loop logs.*
+*A companion to [Chapter 3](03-training-and-evaluation.md), alongside [3a](03a-the-models-in-the-head-to-head.md) and [3b](03b-reading-the-calibration-metrics.md). Chapter 3 mentions in one line that Stage A adds "a VICReg-style regularizer, weighted by `--reg-coef`" as a collapse guard. This note unpacks that line: why a predict-embeddings objective can cheat, what VICReg is, what the two terms in our version actually do, and how they mirror the two collapse diagnostics the training loop logs.*
 
 > **Where this sits.** Read [Chapter 3 §Stage A](03-training-and-evaluation.md) first for the self-supervised objective and the collapse diagnostics. This note is the mechanism behind the guard, implemented in [`src/ssllab/objectives/jepa_loss.py`](../../../../src/ssllab/objectives/jepa_loss.py). Nothing here is a result; it is the reason Stage A produces a representation worth generating in rather than a constant.
 
@@ -86,4 +86,4 @@ Stage A's job is to produce a representation the flow can generate in, and the V
 
 ---
 
-*Previous: [Chapter 3b: Reading the calibration metrics](3b-reading-the-calibration-metrics.md). Up: [the method series](index.md). Next: [Chapter 4: Results](04-results.md).*
+*Previous: [Chapter 3b: Reading the calibration metrics](03b-reading-the-calibration-metrics.md). Up: [the method series](index.md). Next: [Chapter 4: Results](04-results.md).*

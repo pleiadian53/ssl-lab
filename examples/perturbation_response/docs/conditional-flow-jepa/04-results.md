@@ -4,7 +4,7 @@
 
 Every result here is on Norman 2019. The headline metric is the **effect size**, defined in [Chapter 3](03-training-and-evaluation.md): for a perturbation, generate a predicted response population, form its differential expression $\Delta = \mathrm{mean}(\text{predicted}) - \mathrm{mean}(\text{control})$, and correlate it against the true $\Delta$ on the perturbation's top differentially-expressed genes. The score is the Pearson correlation $r$, which we call the $\Delta$-correlation. Higher is better.
 
-Which genes enter that correlation is a design decision rather than a detail, and [Chapter 3e](3e-the-genes-the-metric-scores.md) is the companion that explains it. The genes are the top 20 by $|z|$, the Wilcoxon rank-sum statistic against control, and on average they are detected in about 83% of the perturbation's cells. Ranking instead by fold change would select genes that are barely expressed at all, which produces metrics that are well-formed and meaningless. The numbers below are all on the $|z|$-selected genes.
+Which genes enter that correlation is a design decision rather than a detail, and [Chapter 3e](03e-the-genes-the-metric-scores.md) is the companion that explains it. The genes are the top 20 by $|z|$, the Wilcoxon rank-sum statistic against control, and on average they are detected in about 83% of the perturbation's cells. Ranking instead by fold change would select genes that are barely expressed at all, which produces metrics that are well-formed and meaningless. The numbers below are all on the $|z|$-selected genes.
 
 [Chapter 4a](04a-reading-the-head-to-head.md) is the audit behind this chapter: the full scoreboard, the statistical procedure, and the map from each number to the run that produced it.
 
@@ -67,7 +67,7 @@ Note also what the seeds say. The VAE's three seeds score $0.762$, $0.767$, $0.7
 
 ## Calibration: a second axis, and it does not rescue the flow
 
-Effect size grades only the mean of the response. A generative model's real promise is the whole predictive *distribution*, and a flow can in principle bend noise into a multimodal, correlated population that a cruder generator cannot. So we measured calibration directly, comparing each model's generated population against the held-out real cells on the top-DE genes, with the four metrics of [Chapter 3b](3b-reading-the-calibration-metrics.md).
+Effect size grades only the mean of the response. A generative model's real promise is the whole predictive *distribution*, and a flow can in principle bend noise into a multimodal, correlated population that a cruder generator cannot. So we measured calibration directly, comparing each model's generated population against the held-out real cells on the top-DE genes, with the four metrics of [Chapter 3b](03b-reading-the-calibration-metrics.md).
 
 These are **secondary endpoints**. The intervals are reported; no significance is claimed on them.
 
@@ -111,4 +111,4 @@ Two caveats bound everything above. The evaluation rests on a single dataset and
 
 ---
 
-*Previous: [Chapter 3: Training and evaluation](03-training-and-evaluation.md). Up: [the method series](index.md). Next: [Chapter 5: Challenges and limitations](05-challenges-and-limitations.md). The audit: [Chapter 4a](04a-reading-the-head-to-head.md). The gene selection: [Chapter 3e](3e-the-genes-the-metric-scores.md). Current state of play across all rounds: [the results ledger](results-ledger.md).*
+*Previous: [Chapter 3: Training and evaluation](03-training-and-evaluation.md). Up: [the method series](index.md). Next: [Chapter 5: Challenges and limitations](05-challenges-and-limitations.md). The audit: [Chapter 4a](04a-reading-the-head-to-head.md). The gene selection: [Chapter 3e](03e-the-genes-the-metric-scores.md). Current state of play across all rounds: [the results ledger](results-ledger.md).*

@@ -148,7 +148,7 @@ The lake is organized as `<modality>/<sub-topic>/<dataset>`, and the nested lake
 | `tokens_meta.npz` | the arrays read at train time, with no anndata needed: `hvg_X`, raw `counts`, `libsize`, `pert_id`, `is_control`, `ctrl_group`, per-cell split codes, `gene_ids`, `pert_names` |
 | `processed.h5ad` | the canonical AnnData, for inspection and re-derivation |
 | `splits.json` | perturbation-level splits: `combo` holds out unseen combinations, `cells` is an in-distribution sanity split |
-| `de_genes.json` | the top differentially expressed genes per perturbation, which is the set every metric scores; [chapter 3e](docs/conditional-flow-jepa/3e-the-genes-the-metric-scores.md) explains how they are chosen and why the choice matters |
+| `de_genes.json` | the top differentially expressed genes per perturbation, which is the set every metric scores; [chapter 3e](docs/conditional-flow-jepa/03e-the-genes-the-metric-scores.md) explains how they are chosen and why the choice matters |
 | `manifest.json` | provenance and every processing setting, including the seed of the token partition |
 
 ### Consuming the cache

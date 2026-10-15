@@ -36,7 +36,7 @@ We turned to calibration precisely because effect size grades only the mean, and
 
 The first thing to get right is *what a generated cell is*. If each cell is generated as the decoder's expected rate for its latent, then a whole predicted population has almost no spread, because real per-cell variation in single-cell data is dominated by technical count noise and expected rates omit it entirely. Asking what fraction of true cells fall inside an interval built from expected rates gives an answer near zero for every model, not because the models are bad but because the question is malformed. An expected-rate population cannot be calibrated against real cells. Calibration has to be measured on *sampled counts* drawn from the negative-binomial head, which is the population a real experiment would be compared against. That measurement rule is a prerequisite for everything below.
 
-Measured that way, the calibration axis says something sharp and uncomfortable, and it says it about every model at once. These are secondary endpoints, reported as numbers without a significance verdict, as [Chapter 3b](3b-reading-the-calibration-metrics.md) sets out.
+Measured that way, the calibration axis says something sharp and uncomfortable, and it says it about every model at once. These are secondary endpoints, reported as numbers without a significance verdict, as [Chapter 3b](03b-reading-the-calibration-metrics.md) sets out.
 
 | model | spread correlation ↑ | coverage (nominal 0.80) | 1-Wasserstein ↓ | joint energy ↓ |
 |---|---|---|---|---|

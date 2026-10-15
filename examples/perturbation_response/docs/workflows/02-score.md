@@ -71,7 +71,7 @@ The gap between those is the whole of the [Decide](04-decide.md) workflow. Two a
 
 Two failure modes specific to this workflow, both of which have bitten:
 
-**A number that will not move.** If a metric returns the same value across models that share almost nothing, it is measuring something they have in common rather than measuring them. Coverage sat at exactly $1.00$ for months for this reason, and the cause was upstream in the gene list, not in any decoder. See [the scoring seam](../conditional-flow-jepa/3e-the-genes-the-metric-scores.md).
+**A number that will not move.** If a metric returns the same value across models that share almost nothing, it is measuring something they have in common rather than measuring them. Coverage sat at exactly $1.00$ for months for this reason, and the cause was upstream in the gene list, not in any decoder. See [the scoring seam](../conditional-flow-jepa/03e-the-genes-the-metric-scores.md).
 
 **Grading against a stale support.** Train on a pod, but **score locally**. A pod volume can hold an out-of-date `de_genes.json`, and a blanket results fetch once overwrote seven corrected reports with wrong ones, caught only because the same command returned a different number twice.
 

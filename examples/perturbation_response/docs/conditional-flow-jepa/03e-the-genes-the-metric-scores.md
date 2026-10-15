@@ -35,7 +35,7 @@ Read the top row carefully, because it is worse than "suboptimal." The selected 
 
 A degenerate gene list does not announce itself. Every script still runs, every report still writes, and every metric still returns a plausible-looking number in $[0, 1]$. What it does instead is quietly destroy the meaning of both axes.
 
-**Coverage is forced to $1.00$.** Interval coverage asks what fraction of real cells fall inside the model's central $80\%$ predicted interval ([Chapter 3b](3b-reading-the-calibration-metrics.md)). If every real cell is exactly zero on a gene, then *any* predicted interval that contains zero contains all of them. Coverage comes back at $1.00$ for every model, at every setting, no matter what the decoder does. It looks exactly like a decoder that is over-dispersed, and it will not budge when you fix the dispersion, because the dispersion was never what produced it.
+**Coverage is forced to $1.00$.** Interval coverage asks what fraction of real cells fall inside the model's central $80\%$ predicted interval ([Chapter 3b](03b-reading-the-calibration-metrics.md)). If every real cell is exactly zero on a gene, then *any* predicted interval that contains zero contains all of them. Coverage comes back at $1.00$ for every model, at every setting, no matter what the decoder does. It looks exactly like a decoder that is over-dispersed, and it will not budge when you fix the dispersion, because the dispersion was never what produced it.
 
 **Effect size measures the wrong thing.** With the perturbed mean pinned at zero, the true effect reduces to $\Delta_g = 0 - \overline{x}_g^{\text{ctrl}} = -\overline{x}_g^{\text{ctrl}}$, which is the same fixed vector for every perturbation. Any model that learns to emit near-zero on silent genes reproduces it. The $\Delta$-correlation stays respectable and stops discriminating between models.
 
@@ -76,8 +76,8 @@ Choosing the genes well makes the metric *readable*. It does not make it *comple
 
 The list is computed from the perturbation's own cells, including the held-out ones. This is the field convention (the DE genes define *where* to score, not what the answer is) and it is unavoidable for a held-out combination, which by construction has no training cells of its own. But it does mean the benchmark tells a model which genes it will be graded on, and a method that exploited that would be flattered.
 
-And a top-$20$ list is still a marginal, per-gene view of a response that is jointly distributed across genes. It is the right support for the mean, and a reasonable one for per-gene spread, but the joint structure a flow is built to capture lives across genes rather than within any one of them. That is why the joint energy distance of [Chapter 3b](3b-reading-the-calibration-metrics.md) exists alongside the per-gene reads.
+And a top-$20$ list is still a marginal, per-gene view of a response that is jointly distributed across genes. It is the right support for the mean, and a reasonable one for per-gene spread, but the joint structure a flow is built to capture lives across genes rather than within any one of them. That is why the joint energy distance of [Chapter 3b](03b-reading-the-calibration-metrics.md) exists alongside the per-gene reads.
 
 ---
 
-*Up: [the method series](index.md). Parent: [Chapter 3: Training and evaluation](03-training-and-evaluation.md). Related: [Chapter 3b: Reading the calibration metrics](3b-reading-the-calibration-metrics.md), [Running the pipeline](../running-the-pipeline.md).*
+*Up: [the method series](index.md). Parent: [Chapter 3: Training and evaluation](03-training-and-evaluation.md). Related: [Chapter 3b: Reading the calibration metrics](03b-reading-the-calibration-metrics.md), [Running the pipeline](../running-the-pipeline.md).*
