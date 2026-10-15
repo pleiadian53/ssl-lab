@@ -10,23 +10,25 @@
 
 ## The standing verdict
 
-**The from-scratch conditional NB-VAE beats every generative configuration we have built, on the primary endpoint, by about $0.12$.** It scores $0.766$ in $\Delta$-correlation against the transport flow's $0.648$ and the action operator's $0.645$. Both gaps are significant under simultaneous intervals covering the whole contrast family, and the VAE's seed-to-seed spread is $0.006$, so this is not a lucky draw and reseeding will not close it.
+**A from-scratch conditional NB-VAE beats every generative configuration we have built, on the primary endpoint, and since round 6 the margin is about $0.21$.** In its textbook form, with an encoder that also reads the perturbation, it scores $0.858$ in $\Delta$-correlation against the transport flow's $0.648$ and the action operator's $0.645$. The original baseline, whose encoder was blind to the perturbation, scored $0.766$ and already beat the flow by $0.118$, a gap significant under simultaneous intervals in round 1. Round 6 then showed the baseline itself had been understated: conditioning its encoder adds $0.083$, also significant. The flow was not retrained against the stronger bar, so the $0.21$ is read across rounds through the bar, as this ledger's rules allow, rather than tested in one round. The VAE's seed-to-seed spread is about $0.01$, so no amount of reseeding closes either gap.
 
 **Three structural levers have now been measured and none closes the gap.** The decoder (round 2) targets the readout and is bounded by construction. The action operator (round 3) targets the transition, which was the deeper bet, and it lands in a dead tie with the flow it was meant to replace ($-0.003$, not significant). The operator *algebra* (round 4) gave the operator the one mechanism round 3 never used, composition in the group, and its structural claim is refuted outright. A fourth lever, the metric itself, was corrected and made the picture *worse* for the method rather than better.
 
-**And a ceiling now explains why the transition rounds could not have won.** Handing the pipeline the *real* held-out perturbed latents, a Stage B that is perfect by construction, scores $0.679$ against the flow's $0.648$. The transition is at $96\%$ of the best it can do given this encoder and this decoder, so **at most $0.03$ was ever available there**. The same ladder relocates the loss: a plain linear readout of the frozen latents scores $0.852$, above the baseline, so the representation is information-rich and the **decoder** is where the effect is lost. See [Chapter 7 of the methodology series](../../../../docs/experimental-method/07-the-ceiling.md).
+**And a ceiling now explains why the transition rounds could not have won.** Handing the pipeline the *real* held-out perturbed latents, a Stage B that is perfect by construction, scores $0.679$ against the flow's $0.648$. The transition is at $96\%$ of the best it can do given this encoder and this decoder, so **at most $0.03$ was ever available there**. The same ladder relocates the loss: a plain linear readout of the frozen latents scores $0.852$, above the original baseline and roughly level with the round-6 bar, so the representation is information-rich and the **decoder** is where the effect is lost. The readout is a diagnostic handed real latents, not a model. See [Chapter 7 of the methodology series](../../../../docs/experimental-method/07-the-ceiling.md).
 
 Three findings do survive and are worth keeping. Transporting from a real control latent beats transporting from noise ($+0.036$, significant). Optimal-transport coupling hurts ($-0.021$, significant). And the operator is the only model that has ever raised the latent distribution's share of the predicted spread, which is the mechanism the calibration axis actually needs, even though it does not raise it nearly enough to matter.
 
 Every model remains badly **under-dispersed**: coverage sits at $0.33$ to $0.38$ against a nominal $0.80$, so predicted populations are far too narrow.
 
-**Round 5 opened the co-adaptation program with a diagnostic, not a model.** It asked whether the frozen latents already respond affinely to perturbations, and they largely do: a nonlinear map explains only about $1.5\%$ more of the measurable response than the best affine map. Round 4's large generators were large rather than curved, so what failed there was the near-identity assumption, not linearity. No new $\Delta r$ was produced, and the scoreboard below is unchanged.
+**Round 5 opened the co-adaptation program with a diagnostic, not a model.** It asked whether the frozen latents already respond affinely to perturbations, and they largely do: a nonlinear map explains only about $1.5\%$ more of the measurable response than the best affine map. Round 4's large generators were large rather than curved, so what failed there was the near-identity assumption, not linearity. No new $\Delta r$ was produced.
+
+**Round 6 raised the bar.** The baseline's encoder had always been blind to the perturbation, $q(z \mid x)$, which is not the textbook conditional VAE. A pre-registered ablation gave it the condition too, $q(z \mid x, c)$, and the effect size rose from $0.775$ to $0.858$, a difference of $+0.083$ with a simultaneous interval of $[+0.053, +0.113]$. By the rule fixed in advance, the conditioned VAE is now the bar.
 
 ---
 
 ## Two rules of this ledger
 
-**Compare within a round.** Rounds are not run under identical conditions, so a difference is meaningful only against the other arms of its own round. The single quantity carried across rounds is the **NB-VAE reference**, held fixed as the standing bar.
+**Compare within a round.** Rounds are not run under identical conditions, so a difference is meaningful only against the other arms of its own round. The single quantity carried across rounds is the **NB-VAE reference**, the standing bar. It stood at $0.766$ from round 1 to round 5; round 6 replaced it, by a pre-registered rule, with the condition-aware variant at $0.858$.
 
 **One primary endpoint, everything else exploratory.** The $\Delta$-correlation is the only metric on which significance is claimed, and its contrasts are tested with a **joint bootstrap and max-$t$ simultaneous intervals** across the whole contrast family (see [Chapter 4a](04a-reading-the-head-to-head.md)). Calibration metrics are reported as intervals with no verdict. A difference found on a secondary endpoint after the fact is a hypothesis, and it does not become a result until it is confirmed on data that did not suggest it.
 
@@ -40,18 +42,20 @@ Every configuration evaluated on the twenty held-out Norman combinations, on the
 |---|---|---|---|---|---|---|---|
 | 1 | Gaussian flow (noise to outcome) | 3 | 0.612 | 0.205 | 0.357 | 1.013 | 3.794 |
 | 1 | transport flow + OT coupling | 3 | 0.627 | 0.214 | 0.365 | 1.010 | 3.746 |
-| 1 | **transport flow** (control to outcome) | 3 | **0.648** | 0.234 | 0.375 | 0.982 | **3.578** |
+| 1 | **transport flow** (control to outcome) | 3 | **0.648** | 0.234 | 0.375 | 0.982 | 3.578 |
 | 3 | **action operator** (deterministic) | 3 | 0.645 | 0.215 | **0.382** | 1.005 | 3.658 |
 | 3 | action operator (stochastic + residual) | 3 | 0.646 | 0.208 | 0.344 | 1.005 | 3.746 |
 | 4 | operator algebra, weak prior ($\lVert M\rVert$ $12.4$, **not near identity**) | 1 | 0.629 | | | | |
 | 4 | operator algebra, near-identity prior held ($\lVert M\rVert$ $1.10$) | 1 | 0.497 | | | | |
-| 1 | **conditional NB-VAE** (the bar) | 3 | **0.766** | **0.522** | 0.328 | **0.956** | 3.962 |
+| 1 | conditional NB-VAE, encoder blind to the condition (the original bar) | 3 | 0.766 | 0.522 | 0.328 | 0.956 | 3.962 |
+| 6 | conditional NB-VAE, encoder blind to the condition (re-run) | 3 | 0.775 | 0.519 | 0.324 | 0.964 | 3.994 |
+| 6 | **conditional NB-VAE, encoder reads the condition** (the bar) | 3 | **0.858** | **0.674** | 0.340 | **0.865** | **3.212** |
 | — | *oracle Stage B (real held-out latents, same decoder)* | — | *0.679* | | | | |
 | — | *linear readout of the frozen latents (diagnostic, not a model)* | — | *0.852* | | | | |
 
-The last two rows are not models and cannot be run; they are the [ceiling](../../../../docs/experimental-method/07-the-ceiling.md). The first says a *perfect* Stage B scores $0.679$ through this decoder, so every transition row above is within $0.03$ of the best it could possibly do. The second says the effect is sitting in the frozen representation at $0.852$, above the baseline, and the decoder is losing it.
+The last two rows are not models and cannot be run; they are the [ceiling](../../../../docs/experimental-method/07-the-ceiling.md). The first says a *perfect* Stage B scores $0.679$ through this decoder, so every transition row above is within $0.03$ of the best it could possibly do. The second says the effect is sitting in the frozen representation at $0.852$, above the original baseline, and the decoder is losing it.
 
-Read the bolded rows against each other and that is the project so far. Every generative configuration we have built clusters between $0.61$ and $0.65$, and the baseline sits alone at $0.766$. **No model's coverage is anywhere near nominal**, and the best coverage of any model belongs to the operator, which is the one model that widened its own latent cloud.
+Read the bolded rows against each other and that is the project so far. Every generative configuration we have built clusters between $0.61$ and $0.65$, and the bar, since round 6, sits alone at $0.858$. The two round-6 rows were trained together and compare directly with each other; every other row is read against them only through the bar. **No model's coverage is anywhere near nominal**, and the best coverage of any model belongs to the operator, which is the one model that widened its own latent cloud.
 
 ---
 
@@ -199,17 +203,48 @@ The singles interval excludes zero, so the nonlinear advantage is detectable, bu
 
 ---
 
+## Round 6 — the bar itself: does the baseline's encoder need the condition?
+
+**What changed.** Nothing in the method. This round tested the baseline. Every earlier round measured the method against an NB-VAE whose encoder is blind to the perturbation, $q(z \mid x)$, where $x$ is a cell's expression profile, $z$ its latent and $c$ the perturbation's embedding: the perturbation reaches that model only through its decoder. That design follows CPA's basal-state reading, without CPA's adversarial classifier. The textbook conditional VAE also conditions the encoder, $q(z \mid x, c)$. If that form is stronger, the bar every round was measured against was understated, and the program's next step, co-adaptation Phase 1, would be judged against the wrong number. [Chapter 3a](3a-the-models-in-the-head-to-head.md) sets out the design difference.
+
+**The pre-committed endpoint.** Both forms were trained in this round, at seeds 0, 1 and 2, with everything else identical, so the contrast is within the round. The primary endpoint is $\Delta r$ on the twenty held-out combinations, contrast conditioned minus blind, by joint paired bootstrap with a simultaneous interval. Calibration metrics are secondary and reported as intervals only. The decision rule, fixed before any numbers: if the conditioned encoder scores significantly higher, it becomes the bar.
+
+**Verdict: the conditioned encoder wins, and the bar rises to $0.858$.**
+
+| encoder | seed 0 | seed 1 | seed 2 | mean $\Delta r$ |
+|---|---|---|---|---|
+| blind to the condition, $q(z \mid x)$ | 0.768 | 0.777 | 0.780 | 0.775 |
+| reads the condition, $q(z \mid x, c)$ | 0.862 | 0.852 | 0.859 | **0.858** |
+
+| contrast | $\Delta$ | simultaneous 95% interval | verdict |
+|---|---|---|---|
+| **conditioned − blind** | $\mathbf{+0.083}$ | $[+0.053, +0.113]$ | **significant** |
+
+Every seed of the conditioned encoder beats every seed of the blind one. The secondary metrics move the same way: spread correlation rises from $0.519$ to $0.674$, the 1-Wasserstein distance falls from $0.964$ to $0.865$, and the energy distance from $3.99$ to $3.21$. Coverage barely moves, from $0.324$ to $0.340$, so the readout remains as under-dispersed as before.
+
+**Two checks.** The blind arm reproduces round 1: its mean is $0.775$ against round 1's $0.766$, and seed 0 matches exactly at $0.768$. And no test information can reach the model through the new input. Generation never runs the encoder: it draws $z$ from the prior and feeds it to the decoder with $c$. The held-out combinations therefore never touch the encoder, and the flag changes only what training teaches the decoder.
+
+**What it means.** The method's deficit was larger than the ledger reported. Against the stronger bar, the transport flow's $0.648$ sits about $0.21$ below, not $0.12$, read across rounds through the bar. Co-adaptation Phase 1 is now judged against $0.858$. The conditioned VAE also lands almost exactly on the linear-readout diagnostic's $0.852$. That is a coincidence across different representations, and the diagnostic is handed real latents, so it should not be read as anything more.
+
+**Why, as a hypothesis.** A blind encoder sees expression that already contains the perturbation's effect, so part of the effect can leak into $z$. The decoder learns to use it, and at generation that part is replaced by a draw from the prior, so the predicted effect is weakened. Telling the encoder the condition lets it account for the effect and keep $z$ for cell-to-cell variation. This round measured the outcome, not the mechanism. A direct test would measure how much perturbation information $z$ carries in each form, for example by probing $z$ for the perturbation's identity.
+
+**Limits.** The interval reflects the twenty test perturbations, not training-seed variance; the seeds were averaged first. The seed ranges, $0.768$ to $0.780$ against $0.852$ to $0.862$, are far apart, so seed noise is not a plausible explanation. The twenty perturbations share genes, which if anything makes the interval too narrow.
+
+**Script and report.** [`run_vae_encoder_ablation_pod.sh`](../../run_vae_encoder_ablation_pod.sh) trains both arms with `08_train_cvae_baseline.py`, the conditioned one with `--encoder-cond`. The arms were graded locally with `09_eval_cvae_baseline.py` and `10_eval_calibration.py`, and compared with `12_compare_arms.py`, which writes `output/vae_encoder_ablation_compare.json`.
+
+---
+
 ## Open, and what comes next
 
-Three structural levers have now been built and measured, and none closes a gap of $0.12$. The ceiling explains why two of them never could: the transition they targeted had at most $0.03$ of headroom. That is worth stating plainly rather than softening, because it changes what the remaining questions are, and it retires some of them.
+Three structural levers have now been built and measured, and none closed even the original gap of $0.12$; against the round-6 bar the gap is about $0.21$. The ceiling explains why two of them never could: the transition they targeted had at most $0.03$ of headroom. That is worth stating plainly rather than softening, because it changes what the remaining questions are, and it retires some of them.
 
 **Retired.** *Stage-B levers, for effect size.* The ceiling bounds them at $0.03$, and a fourth transition design would be a fourth round spent on three percent. The operator thread is closed on the primary endpoint, and round 4 closes its structural claim as well.
 
-1. **The readout is where the loss actually is, and it is the one lever never aimed correctly.** The linear rung of the ceiling scores $0.852$ on the frozen latents, above the baseline's $0.766$, while the trained decoder scores $0.679$ on the identical latents. That $0.173$ is the largest single term in the loss budget, it is six times the transition's, and round 2 aimed at the decoder's *dispersion* rather than at this. An un-attenuated mean head is the only route on the table that could plausibly beat the baseline on $\Delta r$. Note the honest caveat: the linear rung is a diagnostic, not a model, since it is handed real latents and emits no distribution.
+1. **The readout is where the loss actually is, and it is the one lever never aimed correctly.** The linear rung of the ceiling scores $0.852$ on the frozen latents, above the original baseline's $0.766$ and just below the round-6 bar of $0.858$, while the trained decoder scores $0.679$ on the identical latents. That $0.173$ is the largest single term in the loss budget, it is six times the transition's, and round 2 aimed at the decoder's *dispersion* rather than at this. An un-attenuated mean head is the only route on the table that could plausibly approach the bar on $\Delta r$, though since round 6 the linear rung that motivates it sits just below the bar rather than above it. Note the honest caveat: the linear rung is a diagnostic, not a model, since it is handed real latents and emits no distribution.
 2. **Data efficiency is still the one premise never tested.** Self-supervised pretraining does not claim to win at full data. It claims that a representation learned on abundant *unlabeled* cells pays off when *labeled* examples are scarce. Every number in this ledger is a full-data number, so not one of them tests the actual claim. The experiment is a subsampling ladder: shrink the training cells per perturbation, retrain the flow and the VAE at each rung, and plot $\Delta$-correlation against cells. It needs only a subsampling flag, and it is independent of everything above.
 3. **The frozen, condition-blind encoder** remains the deepest structural constraint, and three separate findings now converge on it. The ceiling says the representation was never shaped for the decoder that consumes it. The baseline's advantage survives with a count decoder of the same design, which points at what differs around it: the baseline's decoder is trained jointly with its encoder and also reads the condition directly ([Chapter 3a](3a-the-models-in-the-head-to-head.md)). And [Chapter 9](09-why-the-operator-is-linear-koopman.md) says the operator's linearity is licensed only by an encoder trained to supply Koopman coordinates, which ours was not. Relaxing it is the biggest swing still available, and it is the point at which the method stops being "a flow prior over frozen JEPA latents" and becomes something else. That relaxation is now under way as the [co-adaptation program](../../co-adaptation/README.md). Its first measurement, round 5, found the frozen latents already close to affine, which points the program at the decoder first.
 4. **If the generator identifiability of round 4 is ever revisited**, the diagnosis names the fix: constrain the generators to a shared low-rank basis, $M_g = \sum_i \beta_{g,i} B_i$, so a bracket lives in the span of $[B_i, B_j]$ rather than in $65{,}536$ directions the marginal-matching loss never touched. This is a hypothesis with a named mechanism, not a rescue of the refuted claim, and it should be pre-registered like any other round.
-5. **Is the bar itself as strong as it could be?** The NB-VAE's encoder is condition-blind, $q(z \mid x)$, where $x$ is a cell's expression profile and $z$ its latent: the perturbation reaches the model only through the decoder. The textbook conditional VAE also conditions the encoder, $q(z \mid x, c)$, so it can account for the perturbation instead of risking that part of the effect leaks into $z$, which is replaced by a draw from the prior at generation. A pre-registered baseline ablation trains both forms at three seeds in the same round with [`run_vae_encoder_ablation_pod.sh`](../../run_vae_encoder_ablation_pod.sh). The primary endpoint is $\Delta r$ on the twenty held-out combinations, contrast conditioned minus blind, by joint bootstrap; calibration is secondary. If the conditioned encoder scores higher, it becomes the bar that co-adaptation Phase 1 must beat.
+5. **Is the bar itself as strong as it could be? Answered in round 6: it was not.** The conditioned encoder raised the bar to $0.858$. The question as it was posed: the NB-VAE's encoder is condition-blind, $q(z \mid x)$, where $x$ is a cell's expression profile and $z$ its latent: the perturbation reaches the model only through the decoder. The textbook conditional VAE also conditions the encoder, $q(z \mid x, c)$, so it can account for the perturbation instead of risking that part of the effect leaks into $z$, which is replaced by a draw from the prior at generation. A pre-registered baseline ablation trains both forms at three seeds in the same round with [`run_vae_encoder_ablation_pod.sh`](../../run_vae_encoder_ablation_pod.sh). The primary endpoint is $\Delta r$ on the twenty held-out combinations, contrast conditioned minus blind, by joint bootstrap; calibration is secondary. If the conditioned encoder scores higher, it becomes the bar that co-adaptation Phase 1 must beat.
 6. **Or accept the negative result.** "A frozen self-supervised representation plus a learned conditional prior does not beat a from-scratch conditional VAE at Perturb-seq effect size; here is the ceiling that says why the transition never could; here are three structural levers that failed; and here is the metric-selection trap that nearly hid all of it" is a real contribution, and more useful to the field than a fifth lever that also fails.
 
 ---
