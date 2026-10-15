@@ -77,7 +77,39 @@ $$
 
 where the determinant of the Jacobian measures how much $g$ stretches or compresses volume near $x$. Where $g$ stretches a region, density thins out; where it compresses one, density piles up. That is how a single bell curve is reshaped into several peaks, and the VAE's decoder plays the role of $g$, with sampling noise added on top.
 
-Gene-to-gene correlation arises the same way: the negative-binomial counts are independent across genes for a *fixed* latent, but the latent varies from cell to cell, and genes that respond to the same latent direction move together. Nor is each cell's Gaussian posterior the same thing as the population. Averaged over all cells, those posteriors form a mixture of Gaussians, the *aggregate posterior*. It is not Gaussian in general, though it can be, and training pushes it toward the standard-normal prior. In a linear-Gaussian model it equals that prior exactly, even though each cell's own posterior is informative. What the Gaussian prior changes is therefore *where* the flexibility has to live, not *what* can be represented. With a simple prior, every sharp boundary between fates must be learned by the decoder, and smooth, weight-decayed networks are biased against sharp boundaries. A flow moves that work into the latent. That is a difference in inductive bias, not a hard limit, and it is the precise sense in which the flow carries a theoretical promise here.
+**Correlated genes from independent counts.** The decoder draws each gene's count independently once the latent is fixed. That sounds as if generated genes could never co-vary, but the independence holds only *for a fixed latent*, and the latent changes from cell to cell. Write $\mu_g(z)$ for the decoder's mean count of gene $g$ at latent $z$. The law of total covariance splits the covariance of two genes $A$ and $B$ into a part within a fixed latent and a part across latents:
+
+$$
+\mathrm{Cov}(x_A, x_B) = \mathbb{E}_z\big[\mathrm{Cov}(x_A, x_B \mid z)\big] + \mathrm{Cov}_z\big(\mu_A(z), \mu_B(z)\big) = \mathrm{Cov}_z\big(\mu_A(z), \mu_B(z)\big).
+$$
+
+The first term is zero because the counts are independent given $z$. All of the correlation comes from the second term: how the two genes' *means* move together as $z$ varies. Picture a latent direction that tracks how far a cell has progressed toward red-blood-cell fate. Two hemoglobin genes both rise along it, so cells high on that direction express both and cells low on it express neither: across the population the two genes are positively correlated. A gene that falls along the same direction is negatively correlated with them, and a gene whose mean does not depend on that direction is uncorrelated with all three. The correlation structure of the generated cells is therefore the geometry of how the decoder's means respond to the latent.
+
+**One cell's posterior is not the population.** The encoder gives each cell $x_i$ its own Gaussian, $q(z \mid x_i) = \mathcal{N}(m_i, s_i^2)$, a narrow cloud around where that cell sits in latent space, with center $m_i$ and spread $s_i$. Pool those clouds over all $N$ cells and you get the *aggregate posterior*,
+
+$$
+q_{\mathrm{agg}}(z) = \frac{1}{N} \sum_{i=1}^{N} \mathcal{N}(z; m_i, s_i^2),
+$$
+
+a mixture of Gaussians with one component per cell. Every component is Gaussian, but the mixture need not be. Suppose half the cells are of one type with $m_i \approx -1.5$ and half of another with $m_i \approx +1.5$, each with $s_i = 0.3$. The aggregate then has two separated peaks, even though no single cell's posterior does. So "the VAE's posteriors are Gaussian" says nothing about the shape of the population in latent space.
+
+**When the aggregate equals the prior, and when it does not.** There is an exact identity, and it holds for *any* latent-variable model, not only simple ones. If the posterior is the model's exact posterior $p(z \mid x)$, and the cells are drawn from the model's own distribution $p(x)$, then averaging the posterior over those cells returns the prior:
+
+$$
+\int p(z \mid x) p(x) \mathrm{d}x = \int p(x \mid z) p(z) \mathrm{d}x = p(z) \int p(x \mid z) \mathrm{d}x = p(z),
+$$
+
+using Bayes' rule, $p(z \mid x) p(x) = p(x \mid z) p(z)$, and the fact that $p(x \mid z)$ integrates to one. A linear-Gaussian model is simply the case where this can be checked by hand. Take a one-dimensional latent $z \sim \mathcal{N}(0, 1)$ and observation $x = z + \varepsilon$, with noise $\varepsilon \sim \mathcal{N}(0, \sigma^2)$ and $\sigma^2 = 0.25$. Then $x \sim \mathcal{N}(0, 1.25)$, and each cell's exact posterior is $p(z \mid x) = \mathcal{N}(0.8 x, 0.2)$. That posterior is informative: its variance $0.2$ is far below the prior's $1$. Yet averaged over cells, the posterior means $0.8 x$ spread with variance $0.64 \times 1.25 = 0.8$, and adding the within-posterior variance $0.2$ gives a total of $1$, with mean $0$. The mixture of narrow, informative Gaussians is exactly $\mathcal{N}(0, 1)$ again.
+
+A trained VAE meets neither condition. Its encoder $q(z \mid x)$ only approximates the exact posterior, and its cells come from the real data, not from the model. So its aggregate posterior is generally *not* the prior. What training does is pull it toward the prior. The KL term of the ELBO, averaged over the data, splits into two pieces,
+
+$$
+\mathbb{E}_{x}\big[\mathrm{KL}\big(q(z \mid x) \Vert p(z)\big)\big] = I_q(x; z) + \mathrm{KL}\big(q_{\mathrm{agg}}(z) \Vert p(z)\big),
+$$
+
+where $I_q(x; z)$ is the mutual information between a cell and its latent under the encoder, a measure of how much the latent says about the cell. The second piece penalizes exactly the mismatch between the aggregate posterior and the prior; the first penalizes the latent for carrying information at all, which the reconstruction term must outweigh. The balance between them is why a VAE's aggregate posterior ends up close to, but not exactly, the standard normal.
+
+What the Gaussian prior changes is therefore *where* the flexibility has to live, not *what* can be represented. With a simple prior, every sharp boundary between fates must be learned by the decoder, and smooth, weight-decayed networks are biased against sharp boundaries. A flow moves that work into the latent. That is a difference in inductive bias, not a hard limit, and it is the precise sense in which the flow carries a theoretical promise here.
 
 Two facts specific to this project turn that generic contrast into the exact comparison Chapter 4 runs.
 
