@@ -1,10 +1,10 @@
-"""Build the committed results folder for study v1 from the frozen run outputs.
+"""Build the committed results for setting 01 (study v1: JEPA label efficiency) from the frozen run outputs.
 
 Reads the test-split comparison (``06``), the frozen learning-rate selection, the
 pretraining reports and the saved subsets, and writes everything the results
 page shows, so no number on the page is transcribed by hand:
 
-    examples/ecg_rhythm/results/
+    examples/ecg_rhythm/results/01-jepa-label-efficiency/
       figures/label_efficiency.png     core macro AUROC vs labelled-patient budget, per arm
       figures/paired_differences.png   finetune - scratch and probe - scratch, with intervals
       figures/per_label_auroc.png      the five core labels, small multiples
@@ -73,7 +73,8 @@ def main() -> None:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     p.add_argument("--experiment", default="ecg_rhythm_v1")
     p.add_argument("--output-root", default="output")
-    p.add_argument("--out", type=Path, default=Path(__file__).resolve().parent / "results")
+    p.add_argument("--out", type=Path, default=Path(__file__).resolve().parent / "results" / "01-jepa-label-efficiency",
+                   help="topic folder for this setting (default: results/01-jepa-label-efficiency)")
     args = p.parse_args()
 
     study = S.load_study()

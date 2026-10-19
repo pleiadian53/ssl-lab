@@ -8,7 +8,7 @@ The comparison is built so that its answer can be trusted. The same encoder is t
 
 ## Result (study v1)
 
-Span-masked JEPA pretraining helps most when labels are scarce. With labels for 5% of training patients, the fine-tuned pretrained encoder beats the same encoder trained from scratch by +0.078 core macro AUROC (95% interval over test patients +0.064 to +0.091; all five repeats agree), and the advantage shrinks to a tie when every patient is labelled. A frozen pretrained encoder with only a linear readout does best of all at 5 to 10% but stalls as labels grow. Full figures, tables, uncertainty and caveats: [**results/**](results/README.md).
+Span-masked JEPA pretraining helps most when labels are scarce. With labels for 5% of training patients, the fine-tuned pretrained encoder beats the same encoder trained from scratch by +0.078 core macro AUROC (95% interval over test patients +0.064 to +0.091; all five repeats agree), and the advantage shrinks to a tie when every patient is labelled. A frozen pretrained encoder with only a linear readout does best of all at 5 to 10% but stalls as labels grow. Full design, figures, tables, uncertainty and caveats: [**results/01-jepa-label-efficiency/**](results/01-jepa-label-efficiency/README.md); all settings are indexed in [results/](results/README.md).
 
 ## Status
 
@@ -23,7 +23,7 @@ Span-masked JEPA pretraining helps most when labels are scarce. With labels for 
 | Learning-rate selection on validation | `05_select_lr.py` | done |
 | Paired patient-cluster bootstrap comparison | `06_compare_arms.py` | done |
 | Pilot report and grid estimate | `07_pilot_report.py` | done |
-| Results page | `08_make_results.py` → [`results/`](results/README.md) | done |
+| Results page | `08_make_results.py` → [`results/01-jepa-label-efficiency/`](results/01-jepa-label-efficiency/README.md) | done |
 | Calibration, robustness, external shift, attribution | later | planned |
 
 ## 0 · Acquire and process PTB-XL
