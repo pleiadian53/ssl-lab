@@ -249,6 +249,13 @@ def _require_sky() -> None:
         )
 
 
+def _cluster_is_up(name: str) -> bool:
+    """True if ``sky status`` lists cluster ``name`` as UP (or INIT, i.e. it exists and bills)."""
+    out = subprocess.run(["sky", "status", name], capture_output=True, text=True, check=False).stdout
+    return any(line.split()[:1] == [name] and ("UP" in line or "INIT" in line)
+               for line in out.splitlines())
+
+
 def _run(cmd: list[str]) -> subprocess.CompletedProcess:
     print(f"[ssl-ops] $ {' '.join(cmd)}")
     return subprocess.run(cmd, check=True)
@@ -282,6 +289,9 @@ def launch(
             _run(["sky", "launch", str(yaml_path), "-y", "-c", cluster_name])
             launched = True
         except subprocess.CalledProcessError as e:
+            # `sky launch` also fails when the pod came up but the JOB failed. Ask
+            # SkyPilot rather than assume: a live pod must be reported (and torn down).
+            launched = _cluster_is_up(cluster_name)
             raise RuntimeError(
                 f"job failed on cluster '{cluster_name}'. Inspect logs:\n"
                 f"    sky logs {cluster_name}\n"
