@@ -2,7 +2,7 @@
 
 The first runnable instance of the [Time-Series JEPA](../../docs/time_series_jepa/index.md) series on a real physiological signal. The question is a controlled one: does span-masked JEPA pretraining make a fixed encoder more useful for **cardiac rhythm classification** when only a limited number of patients carry labels?
 
-The comparison is built so that its answer can be trusted. The same encoder is trained from scratch and from pretraining. Labelled patient subsets are identical across methods. Test patients stay fixed. Variation across training repeats is reported separately from patient-bootstrap uncertainty. Whether pretraining helps, ties or hurts is an open question here, not an assumption.
+The comparison is built so that its answer can be trusted. The same encoder is trained from scratch and from pretraining. Labelled patient subsets are identical across methods. Test patients stay fixed. Variation across training repeats is reported separately from patient-bootstrap uncertainty. Whether pretraining would help, tie or hurt was treated as an open question, not an assumption.
 
 **Dataset:** [PTB-XL v1.0.3](https://physionet.org/content/ptb-xl/1.0.3/) (Wagner et al. 2020, *Scientific Data*; PhysioNet, CC BY 4.0). It holds 21,799 ten-second, 12-lead clinical ECGs from 18,869 patients, with 500 Hz signals and an official 100 Hz copy. Patient-confined stratified folds ship with the data: folds 1–8 train, 9 validation, 10 test.
 
@@ -119,7 +119,7 @@ Every artifact records hashes of the settings it depends on. Scripts reuse an ar
 | Model | one 12-output sigmoid head on a mean-pooled `JEPAEncoder` (40 tokens of 250 ms) |
 | Primary comparison | the same encoder trained from scratch vs. JEPA-pretrained and fully fine-tuned |
 | Secondary readout | frozen pretrained encoder with a trained linear head |
-| Repeats | five: each changes the labelled-patient subset (nested within the repeat), the downstream seed, and the JEPA pretraining run |
+| Repeats | five; each draws a new labelled-patient subset (within a repeat, the 5% patients are part of the 10% set, which is part of the 25% set), a new downstream seed, and a new JEPA pretraining run |
 | Headline metric | core macro AUROC at recording level; method differences with a paired patient-cluster bootstrap; repeat-to-repeat spread reported separately |
 | AF operating point | AFIB output on the primary AF cohort; threshold = highest with validation sensitivity ≥ 0.90, applied unchanged to test |
 
@@ -131,4 +131,5 @@ ssh <c> 'cd /runpod-volume/ssl-lab/data && mv cache100 ptbxl100'   # staging nam
 python examples/ops/ops_run_pipeline.py --execute --cluster <c> -- bash examples/ecg_rhythm/run_ecg_lrsearch_pod.sh   # amended grid search
 python examples/ops/ops_run_pipeline.py --execute --cluster <c> -- bash examples/ecg_rhythm/run_ecg_grid_pod.sh       # full grid
 python examples/ecg_rhythm/06_compare_arms.py --tag main --split test                                              # bootstrap, locally
+python examples/ecg_rhythm/08_make_results.py                                                                      # figures, metrics and the results page
 ```
