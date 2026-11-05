@@ -24,11 +24,14 @@ from ssllab.data.perturbseq import (
     detokenize_cells,
     get_perturbseq_dataloaders,
     make_gene_partition,
+    target_gene_support,
+    target_genes,
     token_dim_for,
     tokenize_cells,
     write_cache,
 )
 from ssllab.extract import extract_latents
+from ssllab.generative.condition import build_pert_gene_matrix
 from ssllab.jepa.model import build_jepa
 
 
@@ -158,6 +161,21 @@ def test_control_sampler(tmp_path):
     assert idx.shape == (20,)
     assert bundle.is_control[idx.numpy()].all()
     assert (bundle.ctrl_group[idx.numpy()] == 0).all()
+
+
+def test_target_gene_support_counts_singles_and_combos():
+    # control, A, A, B in train; A+B x3 in test; C+D in val; C, D in train.
+    pert_id = np.array([0, 1, 1, 2, 5, 5, 5, 6, 3, 4])
+    split = np.array([SPLIT_TRAIN] * 4 + [SPLIT_TEST] * 3 + [SPLIT_VAL] + [SPLIT_TRAIN] * 2)
+    sup = target_gene_support(pert_id, PERT_NAMES, split)
+
+    # Same gene vocabulary as the model's gene-compositional condition; control is not a gene.
+    assert sorted(sup) == build_pert_gene_matrix(PERT_NAMES)[1] == ["A", "B", "C", "D"]
+    assert sup["A"]["train"] == {"single": 2, "combos": {}, "in_combos": 0, "total": 2}
+    assert sup["A"]["test"] == {"single": 0, "combos": {"A+B": 3}, "in_combos": 3, "total": 3}
+    assert sup["B"]["test"]["total"] == 3 and sup["B"]["train"]["total"] == 1
+    assert sup["C"]["val"]["combos"] == {"C+D": 1} and sup["D"]["val"]["total"] == 1
+    assert target_genes("control") == [] and target_genes("A+B") == ["A", "B"]
 
 
 def test_stage_a_wiring(tmp_path):

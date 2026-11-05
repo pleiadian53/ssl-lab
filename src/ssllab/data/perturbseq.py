@@ -258,6 +258,69 @@ class ControlSampler:
 
 
 # --------------------------------------------------------------------------- #
+# Data card — how many cells inform each target gene, per split.
+# --------------------------------------------------------------------------- #
+def target_genes(pert_name: str) -> list[str]:
+    """The genes a perturbation targets: ``"CEBPE+KLF1"`` -> ``["CEBPE", "KLF1"]``.
+
+    ``"control"`` targets nothing and returns ``[]``. This is the same reading of a
+    perturbation name that the gene-compositional condition uses
+    (``ssllab.generative.condition.build_pert_gene_matrix``).
+    """
+    return [g for g in str(pert_name).split("+") if g and g != "control"]
+
+
+def target_gene_support(
+    pert_id: np.ndarray, pert_names: np.ndarray, split_codes: np.ndarray
+) -> dict[str, dict[str, dict[str, Any]]]:
+    """Count the cells that carry each target gene, per split, as a single and in combinations.
+
+    Arguments
+        pert_id      ``(n,)`` perturbation index of every cell (index into ``pert_names``).
+        pert_names   ``(n_perts,)`` perturbation names, ``"+"``-joined for combinations.
+        split_codes  ``(n,)`` split code of every cell under one split scheme
+                     (``CacheBundle.split_combo`` or ``split_cells``).
+
+    Returns ``{gene: {split: record}}`` for ``split`` in train/val/test, where ``record`` is
+
+        single      cells perturbed by the gene alone
+        combos      ``{combination name: cells}`` for each combination containing the gene
+                    that has cells in this split
+        in_combos   the sum of ``combos``
+        total       ``single + in_combos``
+
+    Why it matters. The gene-compositional condition embeds a perturbation as the sum of
+    learned per-gene vectors, so ``e(CEBPE)`` receives gradient from every training cell
+    whose perturbation targets CEBPE: the CEBPE single and every training combination
+    that includes it. ``total`` under ``train`` is that count. A gene with no training
+    cells keeps an untrained vector, which is why held-out genes are out of reach.
+    """
+    pert_id = np.asarray(pert_id)
+    split_codes = np.asarray(split_codes)
+    n_perts = len(pert_names)
+    genes = sorted({g for name in pert_names for g in target_genes(name)})
+    support: dict[str, dict[str, dict[str, Any]]] = {
+        g: {s: {"single": 0, "combos": {}, "in_combos": 0, "total": 0} for s in _SPLIT_CODE} for g in genes
+    }
+    for split, code in _SPLIT_CODE.items():
+        cells_per_pert = np.bincount(pert_id[split_codes == code], minlength=n_perts)
+        for p, name in enumerate(pert_names):
+            n_cells = int(cells_per_pert[p])
+            members = target_genes(name)
+            if n_cells == 0 or not members:
+                continue
+            for g in members:
+                rec = support[g][split]
+                if len(members) == 1:
+                    rec["single"] += n_cells
+                else:
+                    rec["combos"][str(name)] = n_cells
+                    rec["in_combos"] += n_cells
+                rec["total"] += n_cells
+    return support
+
+
+# --------------------------------------------------------------------------- #
 # Dataset + loaders.
 # --------------------------------------------------------------------------- #
 class PerturbDataset(Dataset):

@@ -85,6 +85,7 @@ The scripts are numbered `00` to `17` in the order they were written, which is n
 | script | answers |
 |---|---|
 | `00a_probe_hvg_coverage.py` | does the gene panel already contain the genes that respond? |
+| `00b_data_card.py` | how many cells carry each target gene in each split, as a single and inside combinations (`--gene CEBPE` for one gene)? |
 | `02_probe_cell_encoder.py` | is the frozen encoder any good, judged by a linear probe? |
 | `11_diagnose_variance.py` | how much of the predicted spread comes from the latent distribution, and how much from the decoder? |
 | `14_ceiling_analysis.py` | what is the best any Stage B could do with this encoder and decoder? |
