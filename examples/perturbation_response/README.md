@@ -8,7 +8,7 @@ This is the biological application of the generative-JEPA toolkit. A genetic per
 2. **Stage B, the transition.** A conditional generative model in that latent space turns a perturbation into a cloud of outcome latents. The main version is a conditional flow that transports control-cell latents toward the perturbed population. Variants replace the flow with a learned linear operator.
 3. **Stage C, the readout.** A negative-binomial count decoder turns each latent back into gene counts, because effect size is measured on genes, not on latents.
 
-The stack is compared against a from-scratch conditional NB-VAE, which has no JEPA and no flow and is conditioned on the same perturbation embedding. That baseline is the bar the method has to clear. Since round 6 of the [results ledger](docs/conditional-flow-jepa/results-ledger.md), the bar is the stronger form of that VAE, whose encoder reads the perturbation as well as the cell.
+The stack is compared against two references. The first is a from-scratch conditional NB-VAE, which has no JEPA and no flow and is conditioned on the same perturbation embedding. It is the strongest learned baseline, and since round 6 of the [results ledger](docs/conditional-flow-jepa/results-ledger.md) it is the stronger form of that VAE, whose encoder reads the perturbation as well as the cell. The second, since round 7, is the **additive reference**, which needs no training: it predicts a pair's effect as the sum of its two single-gene effects, measured on the training cells. It is the current reference for effect size. It predicts a mean profile and no cells, though, so it says nothing about the other half of the task, generating a realistic population, and there the VAE remains the reference.
 
 **Dataset:** Norman et al. 2019, K562 cells under CRISPR activation, with both single-gene and two-gene perturbations. The combinatorial structure is the headline test. Models train on single-gene perturbations and some pairs, then must **predict twenty held-out two-gene combinations** they have never seen.
 
@@ -18,22 +18,25 @@ The full scoreboard and every round's details are in the [results ledger](docs/c
 
 | | Δr | what it says |
 |---|---|---|
-| Conditional NB-VAE whose encoder reads the perturbation, the bar | **0.858** | the bar since round 6; seeds 0.852 to 0.862 |
-| Conditional NB-VAE with a condition-blind encoder | 0.766 | the bar for rounds 1 to 5, scored in round 1; seed spread 0.006 |
+| Additive reference, the sum of the two single-gene effects | **0.961** | the reference on Δr since round 7; no training, a mean profile and no population |
+| Conditional NB-VAE whose encoder reads the perturbation | **0.858** | the strongest learned baseline, since round 6; seeds 0.852 to 0.862 |
+| Conditional NB-VAE with a condition-blind encoder | 0.766 | the learned baseline for rounds 1 to 5, scored in round 1; seed spread 0.006 |
 | Transport flow, control to perturbed | 0.648 | the best generative configuration built so far |
 | Action operator | 0.645 | a dead tie with the flow |
+| One average training effect, predicted for every pair | *0.711* | an exploratory reference that ignores which pair is asked |
 | Oracle Stage B, handed the real held-out latents | *0.679* | a ceiling, not a model |
 | Linear readout of the frozen latents | *0.852* | a diagnostic, not a model |
 
-Five findings carry the story so far.
+Six findings carry the story so far.
 
-- **The method loses to its baseline, by more than first measured.** Every generative configuration lands between 0.61 and 0.65. In round 1 that put the best flow 0.118 below the condition-blind NB-VAE, a gap that survived simultaneous confidence intervals over the whole family of comparisons. Round 6 then let the baseline's encoder read the perturbation, which added a significant 0.083 and raised the bar to 0.858. Read across rounds through the bar, the transport flow now trails it by about 0.21.
+- **No learned model has yet predicted mean effects better than additivity.** Round 7 scored the additive reference with the same harness as every model. It reaches 0.961, significantly above the conditioned NB-VAE (by 0.103) and the transport flow (by 0.313). The flow also falls below a reference that ignores which combination it is asked about, predicting one average training effect for every pair (0.711, exploratory). The finding is scoped to these twenty combinations, to correlation on each pair's top 20 genes, and to additivity in log1p-CP10K expression. It does not mean the pairs do not interact: an earlier round measured interactions of 17% to 54% of the effect on these same pairs, which the correlation metric largely cannot see because it ignores the size of the change. And it does not settle whether a model can generate useful, calibrated populations of cells, which the additive reference cannot do at all.
+- **The method loses to its learned baseline, by more than first measured.** Every generative configuration lands between 0.61 and 0.65. In round 1 that put the best flow 0.118 below the condition-blind NB-VAE, a gap that survived simultaneous confidence intervals over the whole family of comparisons. Round 6 then let the baseline's encoder read the perturbation, which added a significant 0.083 and raised the bar to 0.858. Read across rounds through the bar, the transport flow now trails it by about 0.21.
 - **The transition was never the bottleneck.** A Stage B that is perfect by construction reaches only 0.679 through the current decoder, so improving the flow could gain at most 0.03. Three rounds spent on the transition (the flow variants, the action operator, the operator algebra) were bounded by that ceiling from the start.
-- **The decoder is where the effect is lost.** A plain linear readout of the frozen latents scores 0.852, above the original baseline's 0.766 and just below the round-6 bar. It is a diagnostic handed real latents, not a model. The representation holds the signal, and the trained count decoder throws away 0.173 of it.
+- **The decoder is where the effect is lost.** A plain linear readout of the frozen latents scores 0.852, above the original baseline's 0.766, just below the conditioned VAE's 0.858, and 0.11 below the additive reference. It is a diagnostic handed real latents, not a model. The representation holds the signal, and the trained count decoder throws away 0.173 of it.
 - **The operator-algebra hypothesis is refuted.** The idea that how far two single-gene operators fail to commute predicts the pair's genetic interaction failed every test it was given.
 - **Two flow design choices are settled.** Transporting from a real control latent beats generating from noise (+0.036, significant). Optimal-transport coupling of the pairs makes things worse (−0.021, significant), even though it lowers the training loss.
 
-**What comes next** is the [co-adaptation](co-adaptation/README.md) program, which unfreezes the encoder one stage at a time. Its Phase 0 diagnostic has run. On the frozen latents, a nonlinear map from control to perturbed explains only about 1.5% more of the response than an affine map does, across the principal directions that can be measured reliably. The latent response is therefore close to affine, which lowers the priority of reshaping the encoder's geometry for the operator. Phase 1 trains the encoder jointly with the decoder, which targets the 0.173 directly while keeping the transition frozen so the result remains attributable. It is judged against the round-6 bar of 0.858.
+**What comes next** is the [co-adaptation](co-adaptation/README.md) program, which unfreezes the encoder one stage at a time. Its Phase 0 diagnostic has run. On the frozen latents, a nonlinear map from control to perturbed explains only about 1.5% more of the response than an affine map does, across the principal directions that can be measured reliably. The latent response is therefore close to affine, which lowers the priority of reshaping the encoder's geometry for the operator. Phase 1 trains the encoder jointly with the decoder, which targets the 0.173 directly while keeping the transition frozen so the result remains attributable. On the Δr endpoint it is compared against both the additive reference (0.961) and the conditioned NB-VAE (0.858). Beating the VAE alone would be an improvement over the strongest learned baseline, not over the strongest tested reference. Because Δr leaves only 0.04 of room above the additive reference, the ledger also proposes an endpoint that scores the size of the predicted change, to be fixed before any further training.
 
 ## Where to read
 
@@ -74,6 +77,7 @@ The scripts are numbered `00` to `17` in the order they were written, which is n
 | `05_sample_perturbed.py` | a generated population for one perturbation, for inspection |
 | `06_eval_effect_size.py` | the primary benchmark, Δr on the held-out combinations; `--stage-b` picks which Stage B to grade |
 | `09_eval_cvae_baseline.py` | the same metric through the same harness, for the baseline |
+| `18_eval_additive_baseline.py` | the same metric for the training-free additive reference, Δ(A) + Δ(B) from the training singles |
 | `10_eval_calibration.py` | the distributional axis: spread correlation, interval coverage, Wasserstein distance |
 
 **Diagnose** where the loss lives. These train nothing, run in minutes, and several of them changed the direction of the project.
