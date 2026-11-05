@@ -58,6 +58,8 @@ logger = logging.getLogger(__name__)
 REPORTS = {
     "flow": {"effect": "effect_size.json", "calib": "calibration_flow.json"},
     "vae": {"effect": "effect_size_cvae.json", "calib": "calibration_vae.json"},
+    # Training-free reference (18): a mean profile, not a population, so no calibration report.
+    "additive": {"effect": "effect_size_additive.json", "calib": "calibration_additive.json"},
 }
 CALIB_METRICS = ["spread_r", "coverage", "wasserstein", "energy"]
 LOWER_IS_BETTER = {"wasserstein", "energy"}
