@@ -98,12 +98,13 @@ def replay_time_branch(tr: Trace, flow: VelocityMLP, t: torch.Tensor) -> tuple[t
 
 def replay_velocity(
     tr: Trace, flow: VelocityMLP, z: torch.Tensor, t: torch.Tensor, c: torch.Tensor, expand: bool,
+    c_desc: str = "condition vector (see condition-embedding), the same in every row",
 ) -> torch.Tensor:
     """One evaluation of ``v(z, t, c)``, operation by operation, as ``VelocityMLP.forward`` does it."""
     scale, shift = replay_time_branch(tr, flow, t)
 
     tr.section("condition branch")
-    tr.record("c", c, "condition vector (see condition-embedding), the same in every row", label="")
+    tr.record("c", c, c_desc, label="")
     hc = run_sequential(tr, flow.cond_mlp, c, "cond_mlp")
     cscale, cshift = hc.chunk(2, dim=-1)
     tr.record("scale_c, shift_c", cscale, "split the columns in half", label="split",
@@ -170,14 +171,27 @@ def replay_condition(tr: Trace, cond: nn.Module, vocab: Vocab, opts: Options, na
 # --------------------------------------------------------------------------- #
 # Components.
 # --------------------------------------------------------------------------- #
+def _control_rows(bundle: dict, n: int) -> torch.Tensor:
+    """``n`` rows of the (standardized) control pool, drawn with a fixed seed."""
+    pool = bundle["ctrl_pool"]
+    return pool[torch.randint(len(pool), (n,), generator=torch.Generator().manual_seed(0))]
+
+
+def inputs_note(bundle: dict) -> str:
+    if bundle.get("real_inputs"):
+        return "real control latents and standardization statistics from cond_flow.pt"
+    return "control pool and standardization statistics are random stand-ins"
+
+
 @component("time-embedding", group="flow", aliases=("time",),
-           summary="flow time t → sinusoidal features → MLP → FiLM scale and shift", options=("t",))
-def time_embedding(geo: Geometry, vocab: Vocab, opts: Options) -> Walkthrough:
-    flow = build_flow(geo)
+           summary="flow time t → sinusoidal features → MLP → FiLM scale and shift", options=("t",),
+           needs=("cond_flow",))
+def time_embedding(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthrough:
+    flow = src.flow_bundle(geo, vocab, opts)["flow"]
     t = torch.full((geo.n,), opts.t)
     tr = Trace()
     scale, shift = replay_time_branch(tr, flow, t)
-    ref = flow.time_mlp(sinusoidal_time_embedding(t, geo.time_dim))
+    ref = flow.time_mlp(sinusoidal_time_embedding(t, flow.time_dim))
     return Walkthrough(
         component="time-embedding", title="how the flow reads the clock", options=_variant(opts, "t"),
         geometry=geo.as_dict(), steps=tr.steps, modules={"time MLP": flow.time_mlp},
@@ -188,59 +202,70 @@ def time_embedding(geo: Geometry, vocab: Vocab, opts: Options) -> Walkthrough:
 
 @component("condition-embedding", group="flow", aliases=("condition", "cond"),
            summary="perturbation name → gene membership → embedding → condition vector c",
-           options=("pert", "flow_base", "cond_type", "compose"), variants=FLOW_VARIANTS)
-def condition_embedding(geo: Geometry, vocab: Vocab, opts: Options) -> Walkthrough:
+           options=("pert", "flow_base", "cond_type", "compose"), variants=FLOW_VARIANTS, needs=("cond_flow",))
+def condition_embedding(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthrough:
     name = vocab.resolve(opts.pert)
-    cond = build_condition(geo, vocab, opts)
+    bundle = src.flow_bundle(geo, vocab, opts)
+    cond = bundle["cond"]
     pid = torch.full((geo.n,), vocab.pert_id(name), dtype=torch.long)
-    z_b = torch.randn(geo.n, geo.embed_dim) if opts.flow_base == "gaussian" else None
+    z_b = _control_rows(bundle, geo.n) if opts.flow_base == "gaussian" else None
     tr = Trace()
     c = replay_condition(tr, cond, vocab, opts, name, pid, z_b)
+    inputs = f"{geo.n} cells under {name} (vocabulary: {vocab.source})"
+    if z_b is not None:
+        inputs += "; z_b: " + inputs_note(bundle)
     return Walkthrough(
         component="condition-embedding", title="how the flow is told which perturbation to apply",
         options=_variant(opts, "flow_base", "cond_type", "compose") | {"pert": name},
         geometry=geo.as_dict(), steps=tr.steps, modules={"condition module": cond},
-        output=c, reference=call_condition(cond, opts, pid, z_b), checked="c",
-        inputs=f"{geo.n} cells under {name} (vocabulary: {vocab.source})",
+        output=c, reference=call_condition(cond, opts, pid, z_b), checked="c", inputs=inputs,
     )
 
 
 @component("velocity-field", group="flow", aliases=("velocity",),
            summary="one evaluation of v(z, t, c): time and condition FiLM, residual MLP",
-           options=("t", "guidance", "expand"), variants=({}, {"guidance": 2.0}, {"expand": True}))
-def velocity_field(geo: Geometry, vocab: Vocab, opts: Options) -> Walkthrough:
-    flow = build_flow(geo)
-    z = torch.randn(geo.n, geo.embed_dim)
-    c = torch.randn(geo.n, geo.cond_dim)
-    t = torch.full((geo.n,), opts.t)
+           options=("t", "guidance", "pert", "flow_base", "cond_type", "compose", "expand"),
+           variants=({}, {"guidance": 2.0}, {"expand": True}, {"flow_base": "gaussian"}), needs=("cond_flow",))
+def velocity_field(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthrough:
+    name = vocab.resolve(opts.pert)
+    bundle = src.flow_bundle(geo, vocab, opts)
+    flow, cond = bundle["flow"], bundle["cond"]
+    n = geo.n
+    z_b = _control_rows(bundle, n)
+    pid = torch.full((n,), vocab.pert_id(name), dtype=torch.long)
+    c = call_condition(cond, opts, pid, z_b)
+    z = z_b if opts.flow_base == "control" else torch.randn(n, bundle["dim"])
+    t = torch.full((n,), opts.t)
     tr = Trace()
-    v = replay_velocity(tr, flow, z, t, c, opts.expand)
+    c_desc = ("condition vector (see condition-embedding), the same in every row" if opts.flow_base == "control"
+              else "condition vector: the perturbation fused with each cell's control latent, so rows differ")
+    v = replay_velocity(tr, flow, z, t, c, opts.expand, c_desc)
     ref = flow(z, t, c)
     if opts.guidance != 1.0:
         tr.section("classifier-free guidance")
-        null = flow.null_cond.expand(geo.n, -1)
+        null = flow.null_cond.expand(n, -1)
         v_null = tr.record("v_null", flow(z, t, null), "the same network again, with the learned null condition",
                            params=flow.null_cond.numel(), label="null pass")
         v = tr.record("v", v_null + opts.guidance * (v - v_null), f"v_null + {opts.guidance:g}·(v − v_null)",
                       label="guide")
         ref = flow(z, t, null) + opts.guidance * (flow(z, t, c) - flow(z, t, null))
+    source = "control latents" if opts.flow_base == "control" else "Gaussian noise"
     return Walkthrough(
         component="velocity-field", title="one evaluation of the velocity network v(z, t, c)",
-        options=_variant(opts, "t", "guidance"), geometry=geo.as_dict(), steps=tr.steps,
-        modules={"velocity field": flow}, output=v, reference=ref, checked="v",
-        inputs=f"{geo.n} cells; z and c are random stand-ins of the right shape",
+        options=_variant(opts, "t", "guidance", "flow_base", "cond_type", "compose") | {"pert": name},
+        geometry=geo.as_dict(), steps=tr.steps, modules={"velocity field": flow}, output=v, reference=ref,
+        checked="v", inputs=f"{n} cells under {name}; z = source samples ({source}) evaluated at t = {opts.t}; "
+                            + inputs_note(bundle),
     )
 
 
 @component("conditional-flow", group="flow", aliases=("flow",),
            summary="sampling: source cells → Euler integration of v → outcome latents",
-           options=("pert", "flow_base", "cond_type", "compose", "guidance"), variants=FLOW_VARIANTS)
-def conditional_flow(geo: Geometry, vocab: Vocab, opts: Options) -> Walkthrough:
+           options=("pert", "flow_base", "cond_type", "compose", "guidance"), variants=FLOW_VARIANTS,
+           needs=("cond_flow",))
+def conditional_flow(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthrough:
     name = vocab.resolve(opts.pert)
-    flow, cond = build_flow(geo), build_condition(geo, vocab, opts)
-    bundle = {"flow": flow, "cond": cond, "flow_base": opts.flow_base, "dim": geo.embed_dim,
-              "ctrl_pool": torch.randn(geo.n_ctrl, geo.embed_dim),
-              "mean": torch.randn(geo.embed_dim), "std": torch.rand(geo.embed_dim) + 0.5}
+    bundle = src.flow_bundle(geo, vocab, opts)
     pid0 = vocab.pert_id(name)
     tr, n, steps = Trace(), geo.n, geo.steps
 
@@ -253,9 +278,10 @@ def conditional_flow(geo: Geometry, vocab: Vocab, opts: Options) -> Walkthrough:
     return Walkthrough(
         component="conditional-flow", title="generating outcome latents for one perturbation",
         options=_variant(opts, "flow_base", "cond_type", "compose", "guidance") | {"pert": name},
-        geometry=geo.as_dict(), steps=tr.steps, modules={"velocity field": flow, "condition module": cond},
+        geometry=geo.as_dict(), steps=tr.steps,
+        modules={"velocity field": bundle["flow"], "condition module": bundle["cond"]},
         output=z, reference=ref, checked="the generated latents",
-        inputs=f"{n} cells under {name}; control pool and standardization statistics are random stand-ins",
+        inputs=f"{n} cells under {name}; " + inputs_note(bundle),
     )
 
 

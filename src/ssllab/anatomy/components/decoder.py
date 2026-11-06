@@ -65,10 +65,11 @@ def replay_decoder(tr: Trace, dec: CountDecoder, z: torch.Tensor, ell: torch.Ten
 @component("count-decoder", group="decoder", aliases=("decoder", "nb-decoder"),
            summary="cell latent z → gene rates rho → NB mean and dispersion → expression or counts",
            options=("zinb", "anchored_mean", "state_dispersion"),
-           variants=({}, {"zinb": True}, {"anchored_mean": True}, {"state_dispersion": True}))
-def count_decoder(geo: Geometry, vocab: Vocab, opts: Options) -> Walkthrough:
-    dec = build_decoder(geo, opts)
-    z = torch.randn(geo.n, geo.embed_dim)
+           variants=({}, {"zinb": True}, {"anchored_mean": True}, {"state_dispersion": True}),
+           needs=("count_decoder",))
+def count_decoder(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthrough:
+    dec = src.decoder(geo, opts)
+    z, z_desc = src.decoder_input(geo, geo.n)
     ell = torch.full((geo.n,), vocab.median_libsize)
     tr = Trace()
     out = replay_decoder(tr, dec, z, ell)
@@ -93,5 +94,5 @@ def count_decoder(geo: Geometry, vocab: Vocab, opts: Options) -> Walkthrough:
         geometry=geo.as_dict(), steps=tr.steps, modules={"decoder": dec},
         output=torch.cat([out[k].flatten() for k in keys]), reference=torch.cat([ref[k].flatten() for k in keys]),
         checked=", ".join(keys),
-        inputs=f"{geo.n} random stand-in latents; library size {vocab.median_libsize:,.0f} (median of {vocab.source})",
+        inputs=f"{z_desc}; library size {vocab.median_libsize:,.0f} (median of {vocab.source})",
     )

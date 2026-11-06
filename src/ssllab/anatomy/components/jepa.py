@@ -73,14 +73,14 @@ def _walk(component_name: str, title: str, opts_shown: dict, geo: Geometry, tr: 
 
 @component("cell-tokens", group="data", aliases=("tokenizer", "tokens"),
            summary="a cell's gene vector → fixed random gene groups → token tensor")
-def cell_tokens(geo: Geometry, vocab: Vocab, opts: Options) -> Walkthrough:
+def cell_tokens(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthrough:
     hvg = torch.randn(geo.batch, geo.n_hvg).abs()
-    partition = make_gene_partition(geo.n_hvg, geo.n_tokens, seed=0)
+    partition = make_gene_partition(geo.n_hvg, geo.n_tokens, seed=vocab.partition_seed)
     tr = Trace()
     tr.section("tokenize")
     tr.record("hvg_X", hvg, "log1p-CP10K expression of the highly variable genes, one row per cell", label="")
     tr.record("partition", partition, f"fixed random partition: {geo.n_tokens} groups of {geo.token_dim} gene "
-                                      "indices (seeded, the same for every cell)", label="",
+                                      f"indices (seed {vocab.partition_seed}, the same for every cell)", label="",
               note="padding with -1 when the genes do not divide evenly")
     valid = partition >= 0
     gathered = hvg[:, partition.clamp_min(0)]
@@ -95,9 +95,9 @@ def cell_tokens(geo: Geometry, vocab: Vocab, opts: Options) -> Walkthrough:
 
 @component("jepa-encoder", group="jepa", aliases=("encoder",),
            summary="tokens → embed → positions → transformer → mean-pool → cell latent z",
-           options=("expand",), variants=({}, {"expand": True}))
-def jepa_encoder(geo: Geometry, vocab: Vocab, opts: Options) -> Walkthrough:
-    jepa = build(geo, opts)
+           options=("expand",), variants=({}, {"expand": True}), needs=("encoder",))
+def jepa_encoder(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthrough:
+    jepa = src.jepa(geo, opts)
     tokens = stand_in_tokens(geo)
     tr = Trace()
     tr.section("encode all tokens")
@@ -112,9 +112,9 @@ def jepa_encoder(geo: Geometry, vocab: Vocab, opts: Options) -> Walkthrough:
 
 
 @component("student-branch", group="jepa", aliases=("student", "context-encoder"),
-           summary="training: the encoder sees only the context tokens", options=("expand",))
-def student_branch(geo: Geometry, vocab: Vocab, opts: Options) -> Walkthrough:
-    jepa = build(geo, opts)
+           summary="training: the encoder sees only the context tokens", options=("expand",), needs=("encoder",))
+def student_branch(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthrough:
+    jepa = src.jepa(geo, opts)
     tokens = stand_in_tokens(geo)
     tr = Trace()
     ctx_idx, _ = _masks(geo, tr)
@@ -130,9 +130,9 @@ def student_branch(geo: Geometry, vocab: Vocab, opts: Options) -> Walkthrough:
 
 @component("teacher-branch", group="jepa", aliases=("teacher", "target-encoder", "ema"),
            summary="training: the EMA teacher encodes all tokens, then keeps the targets",
-           options=("expand",))
-def teacher_branch(geo: Geometry, vocab: Vocab, opts: Options) -> Walkthrough:
-    jepa = build(geo, opts)
+           options=("expand",), needs=("encoder",))
+def teacher_branch(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthrough:
+    jepa = src.jepa(geo, opts, teacher=True)
     teacher = jepa.ema.teacher
     tokens = stand_in_tokens(geo)
     tr = Trace()
@@ -155,9 +155,9 @@ def teacher_branch(geo: Geometry, vocab: Vocab, opts: Options) -> Walkthrough:
 
 @component("predictor", group="jepa", aliases=("jepa-predictor",),
            summary="training: fill in the target positions from the context embeddings",
-           options=("expand",))
-def predictor(geo: Geometry, vocab: Vocab, opts: Options) -> Walkthrough:
-    jepa = build(geo, opts)
+           options=("expand",), needs=("encoder",))
+def predictor(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthrough:
+    jepa = src.jepa(geo, opts)
     pred = jepa.predictor
     tr = Trace()
     ctx_idx, tgt_idx = _masks(geo, tr)
@@ -186,9 +186,9 @@ def predictor(geo: Geometry, vocab: Vocab, opts: Options) -> Walkthrough:
 
 @component("jepa-step", group="jepa", aliases=("jepa", "jepa-training"),
            summary="one training step: student, predictor, teacher, prediction loss + VICReg",
-           options=("reg_coef",), variants=({}, {"reg_coef": 0.0}))
-def jepa_step(geo: Geometry, vocab: Vocab, opts: Options) -> Walkthrough:
-    jepa = build(geo, opts)
+           options=("reg_coef",), variants=({}, {"reg_coef": 0.0}), needs=("encoder",))
+def jepa_step(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthrough:
+    jepa = src.jepa(geo, opts, teacher=True)
     cfg = jepa.cfg
     tokens = stand_in_tokens(geo)
     tr = Trace()

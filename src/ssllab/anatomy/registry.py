@@ -1,7 +1,9 @@
 """Component registry: a name (and aliases) for each walkthrough, its options and variants.
 
-A walkthrough is a function ``fn(geo, vocab, opts) -> Walkthrough`` registered with
-:func:`component`. ``options`` lists the :class:`~ssllab.anatomy.options.Options` fields it
+A walkthrough is a function ``fn(geo, vocab, opts, src) -> Walkthrough`` registered with
+:func:`component`; ``src`` supplies its modules (fresh or trained, see
+:mod:`ssllab.anatomy.source`), and ``needs`` names the checkpoints a trained run must have
+for it (keys of ``source.CHECKPOINTS``). ``options`` lists the :class:`~ssllab.anatomy.options.Options` fields it
 reads (shown in its header), and ``variants`` lists option settings that exercise every
 structural branch it has, which the tests replay one by one. Adding a variant of a
 component (a new time embedding, a new condition encoder) means registering what the new
@@ -27,6 +29,7 @@ class ComponentSpec:
     aliases: tuple[str, ...] = ()
     options: tuple[str, ...] = ()
     variants: tuple[dict[str, Any], ...] = field(default_factory=lambda: ({},))
+    needs: tuple[str, ...] = ()
 
 
 _REGISTRY: dict[str, ComponentSpec] = {}
@@ -41,11 +44,12 @@ def component(
     aliases: tuple[str, ...] = (),
     options: tuple[str, ...] = (),
     variants: tuple[dict[str, Any], ...] = ({},),
+    needs: tuple[str, ...] = (),
 ) -> Callable[[Callable[..., Walkthrough]], Callable[..., Walkthrough]]:
     def register(fn: Callable[..., Walkthrough]) -> Callable[..., Walkthrough]:
         if name in _REGISTRY:
             raise ValueError(f"component {name!r} registered twice")
-        _REGISTRY[name] = ComponentSpec(name, fn, summary, group, aliases, options, variants)
+        _REGISTRY[name] = ComponentSpec(name, fn, summary, group, aliases, options, variants, needs)
         for alias in aliases:
             _ALIASES[alias] = name
         return fn

@@ -43,9 +43,9 @@ def replay_decode(tr: Trace, m: ConditionalNBVAE, z: torch.Tensor, pid: torch.Te
 @component("cvae", group="baseline", aliases=("nb-vae", "vae", "baseline"),
            summary="the from-scratch conditional NB-VAE: training objective or generation",
            options=("mode", "encoder_cond", "compose", "pert"),
-           variants=({}, {"mode": "train"}, {"mode": "train", "encoder_cond": True}))
-def cvae(geo: Geometry, vocab: Vocab, opts: Options) -> Walkthrough:
-    m = build_cvae(geo, vocab, opts)
+           variants=({}, {"mode": "train"}, {"mode": "train", "encoder_cond": True}), needs=("cvae",))
+def cvae(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthrough:
+    m = src.cvae(geo, vocab, opts)
     tr = Trace()
     shown = {"mode": opts.mode, "encoder_cond": opts.encoder_cond, "compose": opts.compose}
     if opts.mode == "generate":

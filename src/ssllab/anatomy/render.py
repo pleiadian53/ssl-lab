@@ -38,6 +38,9 @@ def _header(w: Walkthrough) -> list[str]:
     lines = [f"{w.component}: {w.title}"]
     if w.options:
         lines.append("variant: " + ", ".join(f"{k}={v}" for k, v in w.options.items()))
+    if w.weights:
+        lines.append(f"weights: {w.weights}")
+    lines += [f"note: {n}" for n in w.notes]
     if w.inputs:
         lines.append(f"inputs: {w.inputs}")
     if w.modules:
@@ -138,7 +141,7 @@ def render_markdown(w: Walkthrough) -> str:
 def render_json(w: Walkthrough) -> str:
     return json.dumps({
         "component": w.component, "title": w.title, "options": w.options, "geometry": w.geometry,
-        "inputs": w.inputs, "parameters": w.param_summary, "frozen": list(w.frozen),
+        "inputs": w.inputs, "weights": w.weights, "notes": w.notes, "parameters": w.param_summary, "frozen": list(w.frozen),
         "check": {"on": w.checked, "max_abs_diff": w.max_abs_diff},
         "steps": [{"name": s.name, "shape": list(s.shape) if s.shape is not None else None,
                    "op": s.op, "params": s.params, "note": s.note, "section": s.section,
@@ -187,5 +190,6 @@ def render_catalog(prog: str = "") -> str:
                 f"  {prog} velocity-field",
                 f"  {prog} condition --cond-type table --flow-base gaussian",
                 f"  {prog} decoder --zinb --format markdown",
-                f"  {prog} encoder --expand --stats"]
+                f"  {prog} encoder --expand --stats",
+                f"  {prog} pipeline --from-experiment norman_flow_control   # a trained run"]
     return "\n".join(out)

@@ -10,13 +10,14 @@ in, which is enough for every shape.
 from __future__ import annotations
 
 import difflib
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 import torch
 
-from ssllab.data.perturbseq import TOKENS_NPZ, target_genes
+from ssllab.data.perturbseq import MANIFEST_JSON, TOKENS_NPZ, target_genes
 from ssllab.generative.condition import build_pert_gene_matrix
 
 TOY_PERTS = ("control", "A", "B", "C", "A+B", "B+C")
@@ -30,6 +31,7 @@ class Vocab:
     genes: list[str]                 # column order of pert_gene
     source: str                      # where the names came from
     median_libsize: float = 10_000.0
+    partition_seed: int = 0          # the cache's gene-to-token partition seed (manifest)
 
     @property
     def n_perts(self) -> int:
@@ -64,11 +66,14 @@ def load_vocab(data_dir: str | Path = "data", artifact: str = "norman2019") -> V
         names = [str(p) for p in npz["pert_names"]]
         median_libsize = float(np.median(npz["libsize"]))
         source = str(Path(data_dir) / artifact)
+        manifest = Path(data_dir) / artifact / MANIFEST_JSON
+        partition_seed = (json.loads(manifest.read_text()).get("tokenization", {}).get("partition_seed", 0)
+                          if manifest.exists() else 0)
     else:
-        names, median_libsize, source = list(TOY_PERTS), 10_000.0, "toy vocabulary"
+        names, median_libsize, source, partition_seed = list(TOY_PERTS), 10_000.0, "toy vocabulary", 0
     pert_gene, genes = build_pert_gene_matrix(names)
     return Vocab(pert_names=names, pert_gene=pert_gene, genes=genes, source=source,
-                 median_libsize=median_libsize)
+                 median_libsize=median_libsize, partition_seed=int(partition_seed))
 
 
 def toy_vocab() -> Vocab:

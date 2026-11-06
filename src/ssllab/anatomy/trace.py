@@ -100,7 +100,8 @@ class Walkthrough:
     ``modules`` maps a display name to each top-level module involved, for the parameter
     summary; ``frozen`` names the ones that receive no gradient (the EMA teacher).
     ``output`` is the replay's result and ``reference`` the real forward's result on the
-    same inputs; ``checked`` says which output the two represent.
+    same inputs; ``checked`` says which output the two represent. ``weights`` says where the
+    modules came from (fresh or which checkpoints) and ``notes`` carries caveats about them.
     """
 
     component: str
@@ -114,6 +115,8 @@ class Walkthrough:
     reference: torch.Tensor | None = None
     checked: str = ""
     inputs: str = ""
+    weights: str = ""
+    notes: list[str] = field(default_factory=list)
 
     @property
     def max_abs_diff(self) -> float | None:
