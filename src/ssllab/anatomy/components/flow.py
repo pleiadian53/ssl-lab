@@ -4,7 +4,8 @@ and the conditional flow that integrates it.
 The modules are the real ones from ``ssllab.generative.flow`` and
 ``ssllab.generative.condition``, built the way ``04_train_cond_flow.py`` builds them. Inputs
 that would come from upstream stages (control latents, the condition vector) are random
-stand-ins of the right shape; the shapes and operations do not depend on their values.
+placeholders of the right shape (random values), unless a trained run supplies real ones;
+the shapes and operations do not depend on the values.
 """
 
 from __future__ import annotations
@@ -13,11 +14,13 @@ import torch
 import torch.nn as nn
 
 from ssllab.anatomy.components._common import (
+    PLACEHOLDER,
     describe,
     mlp_summary,
     rng_checkpoint,
     run_residual_mlps,
     run_sequential,
+    shape_text,
 )
 from ssllab.anatomy.geometry import Geometry
 from ssllab.anatomy.options import Options
@@ -163,7 +166,7 @@ def replay_condition(tr: Trace, cond: nn.Module, vocab: Vocab, opts: Options, na
     if opts.flow_base == "control":
         return z_p
     tr.section("fuse with a control cell (noise-base flow only)")
-    tr.record("z_b", z_b, "one control latent per cell (stand-in values)", label="")
+    tr.record("z_b", z_b, "one control latent per cell (see inputs for where they come from)", label="")
     h = tr.record("[z_b, z_p]", torch.cat([z_b, z_p], dim=-1), "concatenate", label="concat")
     return run_sequential(tr, cond.net, h, "net", name="c")
 
@@ -178,9 +181,11 @@ def _control_rows(bundle: dict, n: int) -> torch.Tensor:
 
 
 def inputs_note(bundle: dict) -> str:
+    n_ctrl, dim = bundle["ctrl_pool"].shape
+    pool = f"control pool of {n_ctrl:,} cells × {dim} latent features {shape_text(n_ctrl, dim)}"
     if bundle.get("real_inputs"):
-        return "real control latents and standardization statistics from cond_flow.pt"
-    return "control pool and standardization statistics are random stand-ins"
+        return f"{pool} and standardization statistics: real, from cond_flow.pt"
+    return f"{pool} and standardization statistics: {PLACEHOLDER}"
 
 
 @component("time-embedding", group="flow", aliases=("time",),
@@ -196,7 +201,7 @@ def time_embedding(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthrou
         component="time-embedding", title="how the flow reads the clock", options=_variant(opts, "t"),
         geometry=geo.as_dict(), steps=tr.steps, modules={"time MLP": flow.time_mlp},
         output=torch.cat([scale, shift], dim=-1), reference=ref, checked="scale and shift",
-        inputs=f"t = {opts.t} for {geo.n} cells",
+        inputs=f"t = {opts.t} for {geo.n} cells (cells per perturbation, --n)",
     )
 
 
@@ -211,7 +216,7 @@ def condition_embedding(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walk
     z_b = _control_rows(bundle, geo.n) if opts.flow_base == "gaussian" else None
     tr = Trace()
     c = replay_condition(tr, cond, vocab, opts, name, pid, z_b)
-    inputs = f"{geo.n} cells under {name} (vocabulary: {vocab.source})"
+    inputs = f"{geo.n} cells under {name} (cells per perturbation, --n; vocabulary: {vocab.source})"
     if z_b is not None:
         inputs += "; z_b: " + inputs_note(bundle)
     return Walkthrough(
@@ -254,7 +259,7 @@ def velocity_field(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthrou
         component="velocity-field", title="one evaluation of the velocity network v(z, t, c)",
         options=_variant(opts, "t", "guidance", "flow_base", "cond_type", "compose") | {"pert": name},
         geometry=geo.as_dict(), steps=tr.steps, modules={"velocity field": flow}, output=v, reference=ref,
-        checked="v", inputs=f"{n} cells under {name}; z = source samples ({source}) evaluated at t = {opts.t}; "
+        checked="v", inputs=f"{n} cells under {name} (cells per perturbation, --n); z = source samples ({source}) evaluated at t = {opts.t}; "
                             + inputs_note(bundle),
     )
 
@@ -281,7 +286,7 @@ def conditional_flow(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthr
         geometry=geo.as_dict(), steps=tr.steps,
         modules={"velocity field": bundle["flow"], "condition module": bundle["cond"]},
         output=z, reference=ref, checked="the generated latents",
-        inputs=f"{n} cells under {name}; " + inputs_note(bundle),
+        inputs=f"{n} generated cells under {name} (cells per perturbation, --n); " + inputs_note(bundle),
     )
 
 

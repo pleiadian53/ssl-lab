@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import torch
 
-from ssllab.anatomy.components._common import describe, rng_checkpoint, run_transformer_blocks
+from ssllab.anatomy.components._common import PLACEHOLDER, describe, rng_checkpoint, run_transformer_blocks, shape_text
 from ssllab.anatomy.geometry import Geometry
 from ssllab.anatomy.options import Options
 from ssllab.anatomy.registry import component
@@ -31,6 +31,13 @@ def build(geo: Geometry, opts: Options) -> JEPA:
 
 def stand_in_tokens(geo: Geometry) -> torch.Tensor:
     return torch.randn(geo.batch, geo.n_tokens, geo.token_dim)
+
+
+def token_inputs(geo: Geometry) -> str:
+    """The inputs line for the views that take cell tokens."""
+    return (f"one training batch of {geo.batch} cells (batch size, --batch) × {geo.n_tokens} tokens × "
+            f"{geo.token_dim} genes per token = tokens of shape "
+            f"{shape_text(geo.batch, geo.n_tokens, geo.token_dim)}; values: {PLACEHOLDER}")
 
 
 def replay_encoder(tr: Trace, enc: JEPAEncoder, tokens: torch.Tensor, idx: torch.Tensor | None,
@@ -90,7 +97,8 @@ def cell_tokens(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthrough:
                        label="gather")
     return _walk("cell-tokens", "how a cell becomes a sequence of tokens", {}, geo, tr,
                  output=tokens, reference=tokenize_cells(hvg, partition), checked="tokens",
-                 inputs=f"{geo.batch} cells × {geo.n_hvg} genes (random stand-in values)")
+                 inputs=f"one batch of {geo.batch} cells (batch size, --batch) × {geo.n_hvg} genes = hvg_X of shape "
+                        f"{shape_text(geo.batch, geo.n_hvg)}; values: {PLACEHOLDER}")
 
 
 @component("jepa-encoder", group="jepa", aliases=("encoder",),
@@ -108,7 +116,7 @@ def jepa_encoder(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthrough
                   note="this is the z the flow and the decoder use (from the student encoder)")
     return _walk("jepa-encoder", "the cell encoder used after pretraining", {"expand": opts.expand}, geo, tr,
                  modules={"encoder": jepa.encoder}, output=z, reference=jepa.embed(tokens), checked="z",
-                 inputs=f"{geo.batch} cells (random stand-in tokens)")
+                 inputs=token_inputs(geo))
 
 
 @component("student-branch", group="jepa", aliases=("student", "context-encoder"),
@@ -125,7 +133,7 @@ def student_branch(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthrou
     return _walk("student-branch", "the student encoder in a training step", {"expand": opts.expand}, geo, tr,
                  modules={"student encoder": jepa.encoder}, output=x,
                  reference=jepa.encoder(tokens, idx=ctx_idx), checked="ctx_embed",
-                 inputs=f"{geo.batch} cells (random stand-in tokens)")
+                 inputs=token_inputs(geo))
 
 
 @component("teacher-branch", group="jepa", aliases=("teacher", "target-encoder", "ema"),
@@ -150,7 +158,7 @@ def teacher_branch(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthrou
     ref = torch.gather(teacher(tokens), 1, gather)
     return _walk("teacher-branch", "the EMA teacher in a training step", {"expand": opts.expand}, geo, tr,
                  modules={"teacher encoder": teacher}, frozen=("teacher encoder",), output=target,
-                 reference=ref, checked="target", inputs=f"{geo.batch} cells (random stand-in tokens)")
+                 reference=ref, checked="target", inputs=token_inputs(geo))
 
 
 @component("predictor", group="jepa", aliases=("jepa-predictor",),
@@ -164,7 +172,7 @@ def predictor(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthrough:
     n_ctx = ctx_idx.shape[1]
     ctx_embed = torch.randn(geo.batch, n_ctx, geo.embed_dim)
     tr.section("assemble")
-    tr.record("ctx_embed", ctx_embed, "the student's context embeddings (stand-in values)", label="")
+    tr.record("ctx_embed", ctx_embed, "the student's context embeddings (placeholder values, see inputs)", label="")
     ctx = tr.record("ctx", ctx_embed + pred.trunk.pos_for(ctx_idx),
                     "add the predictor's own positional table at the context positions",
                     params=pred.trunk.pos_embed.numel(), label="+ pos")
@@ -181,7 +189,10 @@ def predictor(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthrough:
                     f"read out the last {geo.n_target} slots: the predicted target embeddings", label="slice")
     return _walk("predictor", "the JEPA predictor in a training step", {"expand": opts.expand}, geo, tr,
                  modules={"predictor": pred}, output=out, reference=pred(ctx_embed, ctx_idx, tgt_idx),
-                 checked="pred", inputs=f"{geo.batch} cells (random stand-in context embeddings)")
+                 checked="pred", inputs=f"context embeddings of one training batch of {geo.batch} cells (batch size, "
+                                       f"--batch) × {n_ctx} tokens × {geo.embed_dim} "
+                                       f"features = shape {shape_text(geo.batch, n_ctx, geo.embed_dim)}; "
+                                       f"values: {PLACEHOLDER}")
 
 
 @component("jepa-step", group="jepa", aliases=("jepa", "jepa-training"),
@@ -222,4 +233,4 @@ def jepa_step(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthrough:
                  modules={"student encoder": jepa.encoder, "predictor": jepa.predictor,
                           "teacher encoder": jepa.ema.teacher},
                  frozen=("teacher encoder",), output=loss, reference=ref, checked="the loss",
-                 inputs=f"{geo.batch} cells (random stand-in tokens)")
+                 inputs=token_inputs(geo))

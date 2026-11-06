@@ -12,7 +12,7 @@ from __future__ import annotations
 import torch
 import torch.nn.functional as F
 
-from ssllab.anatomy.components._common import describe, rng_checkpoint, run_sequential
+from ssllab.anatomy.components._common import PLACEHOLDER, describe, rng_checkpoint, run_sequential, shape_text
 from ssllab.anatomy.geometry import Geometry
 from ssllab.anatomy.options import Options
 from ssllab.anatomy.registry import component
@@ -62,7 +62,9 @@ def cvae(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthrough:
         ref = m.generate_expression(pid0, geo.n, generator=torch.Generator().manual_seed(0))
         return Walkthrough(component="cvae", title=f"predicting {name} with the baseline", options=shown | {"pert": name},
                            geometry=geo.as_dict(), steps=tr.steps, modules={"cVAE": m}, output=expr, reference=ref,
-                           checked="pred_mean", inputs=f"{geo.n} cells under {name}")
+                           checked="pred_mean", inputs=f"{geo.n} generated cells under {name} (cells per perturbation, --n); "
+                                                  f"Gaussian noise z of shape "
+                                                  f"{shape_text(geo.n, geo.vae_latent)} (the model's real source)")
 
     b = geo.batch
     x = torch.randn(b, geo.n_hvg).abs()
@@ -100,4 +102,6 @@ def cvae(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthrough:
         ref, _ = m.loss(x, counts, ell, pid)
     return Walkthrough(component="cvae", title="one training step of the baseline", options=shown,
                        geometry=geo.as_dict(), steps=tr.steps, modules={"cVAE": m}, output=loss, reference=ref,
-                       checked="the loss", inputs=f"{b} training cells (random stand-in expression and counts)")
+                       checked="the loss", inputs=f"one training batch of {b} cells (batch size, --batch) × {geo.n_hvg} genes = "
+                                          f"expression and counts of shape "
+                                          f"{shape_text(b, geo.n_hvg)}, mixed perturbations; values: {PLACEHOLDER}")

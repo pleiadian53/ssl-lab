@@ -41,8 +41,10 @@ def _header(w: Walkthrough) -> list[str]:
     if w.weights:
         lines.append(f"weights: {w.weights}")
     lines += [f"note: {n}" for n in w.notes]
-    if w.inputs:
-        lines.append(f"inputs: {w.inputs}")
+    if w.inputs:                                     # one part per line: "a; b; c"
+        parts = w.inputs.split("; ")
+        lines.append(f"inputs: {parts[0]}")
+        lines += [" " * len("inputs: ") + part for part in parts[1:]]
     if w.modules:
         parts = []
         for name, n in w.param_summary.items():
@@ -119,7 +121,7 @@ def render_chain(w: Walkthrough) -> str:
 
 def render_markdown(w: Walkthrough) -> str:
     out = [f"**{w.component}**: {w.title}", ""]
-    out += [f"- {line}" for line in _header(w)[1:]]
+    out += [f"- {line.strip()}" for line in _header(w)[1:]]
     out += ["", "| # | tensor | shape | operation | params |", "|---|---|---|---|---|"]
     section = None
     i = 0

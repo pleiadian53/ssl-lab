@@ -11,8 +11,9 @@ Every walkthrough replays the real module's forward with its own layers and chec
 result against the real forward on the same inputs; the header reports the difference,
 which is zero when the table is a faithful account of the code.
 
-By default the weights are freshly initialized and inputs are random stand-ins of the
-right shape: shapes and operations do not depend on either. ``--from-experiment NAME``
+By default the weights are freshly initialized and the inputs are random placeholder
+values of the right shape (the header's ``inputs:`` line spells out each shape): shapes
+and operations do not depend on either. ``--from-experiment NAME``
 loads the trained run in ``output/NAME/checkpoints/`` instead: its variant, sizes and
 weights, and where the checkpoint has them its real control latents, so the flow,
 velocity, condition, decoder and pipeline views compute that model's actual outputs (add

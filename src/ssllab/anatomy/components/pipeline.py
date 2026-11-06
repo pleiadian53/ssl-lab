@@ -47,5 +47,5 @@ def pipeline(geo: Geometry, vocab: Vocab, opts: Options, src) -> Walkthrough:
         geometry=geo.as_dict(), steps=tr.steps,
         modules={"condition module": cond, "velocity field": flow, "decoder": dec},
         output=pred, reference=ref, checked="the predicted mean profile",
-        inputs=f"{n} cells under {name}; " + inputs_note(bundle),
+        inputs=f"{n} generated cells under {name} (cells per perturbation, --n); " + inputs_note(bundle),
     )

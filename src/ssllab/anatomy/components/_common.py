@@ -10,6 +10,14 @@ import torch.nn as nn
 from ssllab.anatomy.trace import Trace, count_params
 
 
+PLACEHOLDER = "random placeholders, not real data (shapes and operations do not depend on the values)"
+
+
+def shape_text(*dims: int) -> str:
+    """``(256, 50, 100)`` for the inputs line."""
+    return "(" + ", ".join(str(d) for d in dims) + ")"
+
+
 def describe(m: nn.Module) -> str:
     """A short plain description of a single layer."""
     if isinstance(m, nn.Linear):

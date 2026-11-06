@@ -1,7 +1,7 @@
 """Where a walkthrough's modules come from: freshly initialized, or a trained run's checkpoints.
 
 ``FreshModels`` (the default) builds every module from the geometry with new random
-weights and gives the flow random stand-in control latents. Shapes and operations are
+weights and gives the flow random placeholder control latents. Shapes and operations are
 exactly those of the trained models; values are not.
 
 ``TrainedModels`` loads a run from ``<output_root>/<experiment>/checkpoints/`` with the same
@@ -10,7 +10,7 @@ variant and weights. Where the checkpoint carries real inputs (the flow checkpoi
 the standardized latents of the training control cells and the standardization
 statistics), the walkthroughs use them, so the flow, velocity, condition, decoder and
 pipeline views compute the trained model's real outputs. The JEPA views still use random
-stand-in tokens: real cells would mean reading the expression matrix (gigabytes) for a
+placeholder tokens: real cells would mean reading the expression matrix (gigabytes) for a
 handful of rows.
 
 A run's variant and sizes are facts about the run, so they come from its checkpoints. An
@@ -31,6 +31,7 @@ from typing import Any
 
 import torch
 
+from ssllab.anatomy.components._common import PLACEHOLDER, shape_text
 from ssllab.anatomy.components.cvae import build_cvae
 from ssllab.anatomy.components.decoder import build_decoder
 from ssllab.anatomy.components.flow import build_condition, build_flow
@@ -72,7 +73,7 @@ class FreshModels:
         return build_jepa_model(geo, opts)
 
     def flow_bundle(self, geo: Geometry, vocab: Vocab, opts: Options) -> dict[str, Any]:
-        """The same keys ``load_cond_flow`` returns, with random stand-ins for the control pool and statistics."""
+        """The same keys ``load_cond_flow`` returns, with random placeholders for the control pool and statistics."""
         return {"flow": build_flow(geo), "cond": build_condition(geo, vocab, opts), "flow_base": opts.flow_base,
                 "dim": geo.embed_dim, "ctrl_pool": torch.randn(geo.n_ctrl, geo.embed_dim),
                 "mean": torch.randn(geo.embed_dim), "std": torch.rand(geo.embed_dim) + 0.5, "real_inputs": False}
@@ -81,7 +82,9 @@ class FreshModels:
         return build_decoder(geo, opts)
 
     def decoder_input(self, geo: Geometry, n: int) -> tuple[torch.Tensor, str]:
-        return torch.randn(n, geo.embed_dim), f"{n} random stand-in latents"
+        return torch.randn(n, geo.embed_dim), (f"{n} cells (cells per perturbation, --n) × {geo.embed_dim} latent "
+                                               f"features = z of shape {shape_text(n, geo.embed_dim)}; "
+                                               f"values: {PLACEHOLDER}")
 
     def cvae(self, geo: Geometry, vocab: Vocab, opts: Options) -> ConditionalNBVAE:
         return build_cvae(geo, vocab, opts)
@@ -235,13 +238,18 @@ class TrainedModels:
         return load_count_decoder(self.path("count_decoder"))
 
     def decoder_input(self, geo: Geometry, n: int) -> tuple[torch.Tensor, str]:
-        """Real control latents in encoder units when the run has a flow checkpoint, else stand-ins."""
+        """Real control latents in encoder units when the run has a flow checkpoint, else placeholders."""
         if not self.has("cond_flow"):
-            return torch.randn(n, geo.embed_dim), f"{n} random stand-in latents (the run has no cond_flow.pt)"
+            return torch.randn(n, geo.embed_dim), (f"{n} cells (cells per perturbation, --n) × {geo.embed_dim} "
+                                                   f"latent features = z of shape "
+                                                   f"{shape_text(n, geo.embed_dim)}; values: {PLACEHOLDER} "
+                                                   "(the run has no cond_flow.pt to take real ones from)")
         ck = self.raw("cond_flow")
         pool = ck["ctrl_pool"]
         idx = torch.randint(len(pool), (n,), generator=torch.Generator().manual_seed(0))
-        return pool[idx] * ck["std"] + ck["mean"], f"{n} real control-cell latents (from cond_flow.pt)"
+        return pool[idx] * ck["std"] + ck["mean"], (f"{n} real control cells (cells per perturbation, --n) × "
+                                                    f"{pool.shape[1]} latent features "
+                                                    f"= z of shape {shape_text(n, pool.shape[1])}, from cond_flow.pt")
 
     def cvae(self, geo: Geometry, vocab: Vocab, opts: Options) -> ConditionalNBVAE:
         ck = self.raw("cvae")
