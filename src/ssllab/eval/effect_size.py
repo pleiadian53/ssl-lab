@@ -67,6 +67,7 @@ def run_effect_size_eval(
     min_test_cells: int = 20,
     limit_perts: int | None = None,
     log: Callable[[str], None] | None = None,
+    profiles: dict[str, np.ndarray] | None = None,
 ) -> tuple[dict[str, float], dict[str, float]]:
     """Score effect-size recovery for *any* predictor, single-sourced across methods.
 
@@ -75,6 +76,11 @@ def run_effect_size_eval(
     **test** cells (``is_test``); the score is :func:`delta_correlation` on its top-DE
     genes. Returns ``(per_pert, summary)``. Used by the flow eval (06), the NB-VAE
     baseline (09), and any future predictor — so every method is graded identically.
+
+    If ``profiles`` is a dict, each scored perturbation's predicted mean profile is
+    stored in it under its name, so metrics beyond Δ-correlation (magnitude, interaction)
+    can be computed from exactly the predictions this score used. Passing it changes
+    nothing else: the predictor is called in the same order with the same arguments.
     """
     names = np.asarray(pert_names)
     n_genes = hvg_X.shape[1]
@@ -90,6 +96,8 @@ def run_effect_size_eval(
             continue
         true_mean = hvg_X[test_mask].mean(0)
         pred_mean = _np(predict_fn(pid, name))
+        if profiles is not None:
+            profiles[name] = np.asarray(pred_mean, dtype=np.float64).copy()
         top_idx = [i for i in de_genes[name]["top_idx"][:top_k] if i < n_genes]
         per_pert[name] = delta_correlation(pred_mean, true_mean, control_mean, top_idx)
 
