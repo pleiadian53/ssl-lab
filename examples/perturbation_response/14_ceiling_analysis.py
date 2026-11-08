@@ -119,7 +119,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--save-profiles", action="store_true",
                    help="also write each arm's predicted mean profile per perturbation to "
                         "reports/ceiling_profiles.npz, for metrics that need the profile itself "
-                        "(e.g. the relative error in ssllab.eval.interaction)")
+                        "(e.g. the relative error in ssllab.eval.interaction), together with each "
+                        "arm's prediction for the control cells (``<arm>__control``): the same "
+                        "readout applied to the real control cells the metric's control mean "
+                        "averages, so a predicted change can also be taken against the readout's "
+                        "own control prediction")
     return p.parse_args()
 
 
@@ -228,6 +232,29 @@ def main() -> None:
             raise ValueError(arm)
         return predict
 
+    # Each arm's prediction for the control cells: the same readout applied to the real control
+    # cells that `control_mean` averages (encoded once, only when profiles are saved). For the
+    # identity arm it is `control_mean` itself.
+    ctrl_rows = np.flatnonzero(cache.is_control.astype(bool))
+    z_ctrl: list[torch.Tensor] = []
+
+    def control_prediction(arm: str) -> np.ndarray:
+        if arm == "identity":
+            return np.asarray(control_mean, dtype=np.float64)
+        if not z_ctrl:
+            z_ctrl.append(encode_rows(jepa, hvg, partition, ctrl_rows, device, args.batch_size))
+        z = z_ctrl[0]
+        if arm == "roundtrip":
+            out = decode_mean(decoder, z, device)
+        elif arm == "latent_mean":
+            out = decode_mean(decoder, z.mean(0, keepdim=True), device)
+        elif arm == "linear":
+            W, b = ridge
+            out = (z @ W + b).mean(0)
+        else:
+            raise ValueError(arm)
+        return out.numpy().astype(np.float64)
+
     results: dict[str, dict] = {}
     saved: dict[str, np.ndarray] = {}
     for arm in args.arms:
@@ -244,6 +271,7 @@ def main() -> None:
             names = sorted(profiles)
             saved[f"{arm}__names"] = np.array(names)
             saved[f"{arm}__profiles"] = np.stack([profiles[k] for k in names])
+            saved[f"{arm}__control"] = control_prediction(arm)
         logger.info("%-12s  Delta-r mean %.3f  median %.3f  over %d perturbations",
                     arm, summary["mean_delta_r"], summary["median_delta_r"], summary["n_perturbations"])
 

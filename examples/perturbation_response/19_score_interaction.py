@@ -72,14 +72,14 @@ from ssllab.eval.effect_size import run_effect_size_eval
 from ssllab.eval.interaction import measured_single_deltas, pair_metrics, split_half_floor
 from ssllab.experiment import experiment
 from ssllab.generative.cvae import ConditionalNBVAE
-from ssllab.generative.perturb import load_cond_flow, load_count_decoder, predicted_expression
+from ssllab.generative.perturb import load_cond_flow, load_count_decoder, load_operator, predicted_expression
 from ssllab.utils import set_seed
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-7s  %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger(__name__)
 
 # Where each kind's standing Δ-correlation report lives (written by 06, 09, 18).
-EFFECT_REPORT = {"flow": "effect_size.json", "vae": "effect_size_cvae.json", "additive": "effect_size_additive.json",
+EFFECT_REPORT = {"flow": "effect_size.json", "operator": "effect_size.json", "vae": "effect_size_cvae.json", "additive": "effect_size_additive.json",
                  "average": "effect_size_additive.json"}
 METRICS = ("log_r", "r", "rel_err", "rel_err_all", "rel_gi", "interaction_r", "delta_r", "internal_r",
            "internal_log_r", "scale", "lam", "floor_e", "floor_e_all")
@@ -88,11 +88,12 @@ METRICS = ("log_r", "r", "rel_err", "rel_err_all", "rel_gi", "interaction_r", "d
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Score one run on magnitude and interaction metrics.")
     p.add_argument("--experiment", type=str, required=True)
-    p.add_argument("--kind", type=str, required=True, choices=["flow", "vae", "additive", "average"])
+    p.add_argument("--kind", type=str, required=True, choices=["flow", "vae", "operator", "additive", "average"])
     p.add_argument("--output-root", type=str, default="output")
     p.add_argument("--data-dir", type=str, default="data")
     p.add_argument("--artifact", type=str, default="norman2019")
-    p.add_argument("--decoder", type=str, default=None, help="flow only: count decoder (default: the run's own)")
+    p.add_argument("--decoder", type=str, default=None,
+                   help="flow and operator: count decoder (default: the run's own)")
     p.add_argument("--n", type=int, default=200, help="generated cells per perturbation (as 06/09)")
     p.add_argument("--steps", type=int, default=100, help="flow ODE steps (as 06)")
     p.add_argument("--guidance", type=float, default=1.0, help="flow guidance (as 06)")
@@ -111,8 +112,9 @@ def main() -> None:
     exp = experiment(args.experiment, args.output_root).ensure()
 
     # 1. The predictor, built exactly as 06 / 09 / 18 build it.
-    if args.kind == "flow":
-        bundle = load_cond_flow(exp.checkpoints / "cond_flow.pt", device)
+    if args.kind in ("flow", "operator"):
+        bundle = (load_cond_flow(exp.checkpoints / "cond_flow.pt", device) if args.kind == "flow"
+                  else load_operator(exp.checkpoints / "operator.pt", device))
         decoder = load_count_decoder(args.decoder or (exp.checkpoints / "count_decoder.pt"), device)
     elif args.kind == "vae":
         ck = torch.load(exp.checkpoints / "cvae_baseline.pt", map_location=device)
@@ -124,7 +126,7 @@ def main() -> None:
     control_mean = hvg[cache.is_control.astype(bool)].mean(0)
     gen = torch.Generator().manual_seed(args.seed)
 
-    if args.kind == "flow":
+    if args.kind in ("flow", "operator"):
         def predict(pid: int, name: str, g: torch.Generator = gen):
             return predicted_expression(bundle, decoder, pid, args.n, guidance=args.guidance,
                                         steps=args.steps, device=device, generator=g)
@@ -182,12 +184,24 @@ def main() -> None:
                                       is_train=is_train, control_mean=control_mean)
     names = np.asarray(cache.pert_names)
     pred_single: dict[str, np.ndarray] = {}
-    if args.kind in ("flow", "vae") and not args.no_internal:
+    if args.kind in ("flow", "vae", "operator") and not args.no_internal:
         gen_s = torch.Generator().manual_seed(args.seed + 1)
         for g in genes:
             pid = int(np.where(names == g)[0][0])
             out = predict(pid, g, gen_s)
             pred_single[g] = np.asarray(out.detach().cpu().numpy() if hasattr(out, "detach") else out, dtype=np.float64)
+
+    # 3b. The model's own prediction for the control condition, generated last with a separate
+    # generator seeded ``seed + 2`` (so it cannot change the pair or single profiles). A predicted
+    # change can then be taken against the model's own control rather than the measured control
+    # mean. For the additive reference the two are the same by construction; the pair-agnostic
+    # average predicts one profile for every condition, so it has no separate control prediction.
+    control_profile = None
+    if args.kind in ("flow", "vae", "operator"):
+        out = predict(int(np.where(names == "control")[0][0]), "control", torch.Generator().manual_seed(args.seed + 2))
+        control_profile = np.asarray(out.detach().cpu().numpy() if hasattr(out, "detach") else out, dtype=np.float64)
+    elif args.kind == "additive":
+        control_profile = np.asarray(control_mean, dtype=np.float64)
 
     # 4. Per-pair metrics.
     per_pert: dict[str, dict] = {}
@@ -223,8 +237,9 @@ def main() -> None:
 
     exp.write_report(f"interaction_{args.kind}", {
         "experiment": args.experiment, "kind": args.kind, "split": "combo", "top_k": args.top_k,
-        "n_generated": args.n, "steps": args.steps if args.kind == "flow" else None,
+        "n_generated": args.n, "steps": args.steps if args.kind in ("flow", "operator") else None,
         "guidance": args.guidance if args.kind == "flow" else None, "seed": args.seed,
+        "control_seed": args.seed + 2 if args.kind in ("flow", "vae", "operator") else None,
         "singles_seed": args.seed + 1 if pred_single else None,
         "decoder": str(args.decoder) if args.decoder else None,
         "space": "log1p-CP10K", "singles_from": "train split", "n_pairs": len(per_pert),
@@ -236,6 +251,7 @@ def main() -> None:
         single_names=np.array(sorted(pred_single)),
         single_profiles=(np.stack([pred_single[g] for g in sorted(pred_single)]) if pred_single
                          else np.zeros((0, hvg.shape[1]))),
+        control_profile=(control_profile if control_profile is not None else np.zeros(0)),
     )
     logger.info("wrote %s and profiles_%s.npz", exp.reports / f"interaction_{args.kind}.json", args.kind)
 
