@@ -116,6 +116,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--limit-perts", type=int, default=None)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--device", type=str, default="auto")
+    p.add_argument("--save-profiles", action="store_true",
+                   help="also write each arm's predicted mean profile per perturbation to "
+                        "reports/ceiling_profiles.npz, for metrics that need the profile itself "
+                        "(e.g. the relative error in ssllab.eval.interaction)")
     return p.parse_args()
 
 
@@ -225,15 +229,21 @@ def main() -> None:
         return predict
 
     results: dict[str, dict] = {}
+    saved: dict[str, np.ndarray] = {}
     for arm in args.arms:
+        profiles: dict[str, np.ndarray] | None = {} if args.save_profiles else None
         per_pert, summary = run_effect_size_eval(
             predictor(arm),
             hvg_X=hvg, pert_names=cache.pert_names, pert_id=cache.pert_id,
             is_test=is_test, de_genes=cache.de_genes["per_pert"],
             control_mean=control_mean, top_k=args.top_k, min_test_cells=args.min_test_cells,
-            limit_perts=args.limit_perts,
+            limit_perts=args.limit_perts, profiles=profiles,
         )
         results[arm] = {**summary, "per_pert": per_pert}
+        if profiles:
+            names = sorted(profiles)
+            saved[f"{arm}__names"] = np.array(names)
+            saved[f"{arm}__profiles"] = np.stack([profiles[k] for k in names])
         logger.info("%-12s  Delta-r mean %.3f  median %.3f  over %d perturbations",
                     arm, summary["mean_delta_r"], summary["median_delta_r"], summary["n_perturbations"])
 
@@ -260,6 +270,9 @@ def main() -> None:
         "arms": results,
     })
     logger.info("wrote report -> %s", exp.reports / "ceiling.json")
+    if saved:
+        np.savez_compressed(exp.reports / "ceiling_profiles.npz", **saved)
+        logger.info("wrote profiles -> %s", exp.reports / "ceiling_profiles.npz")
 
     if "roundtrip" in results:
         ceil = results["roundtrip"]["mean_delta_r"]
