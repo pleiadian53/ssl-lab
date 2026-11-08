@@ -180,7 +180,7 @@ This is the payoff of keeping the scoring seam in its own file, out of the train
 4. **Budget the memory.** Roughly $H \times N \times 8$ bytes resident, and about twice that transient during processing.
 5. **Stage it in the data lake.** `SSLLAB_DATA_ROOT`, symlinked in with `ops.datasets.link_dataset`, not committed into the repo tree.
 6. **Smoke test the chain first.** `--smoke --data-dir /tmp/smoke --artifact smoke_test` runs the entire pipeline on synthetic data in about a minute and catches an environment problem before a multi-hour run does.
-7. **Declare the fork.** A new cache means new baselines. Record in the [ledger](../conditional-flow-jepa/results-ledger.md) that the scoreboard restarted, because numbers from two panels sitting in one table are not a comparison.
+7. **Declare the fork.** A new cache means new baselines. Record in the [ledger](../results/index.md) that the scoreboard restarted, because numbers from two panels sitting in one table are not a comparison.
 
 ---
 

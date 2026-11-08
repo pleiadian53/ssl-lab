@@ -111,7 +111,7 @@ The first term is the readout's noise; the second is the generator actually doin
 
 **Check the model at initialization.** If a construction claims to start from a no-op, verify the no-op numerically before training anything. The action operator is built so that a zero-initialized policy gives $A = \exp(0) = I$, and the check is a one-line assertion that $\lVert A - I \rVert = 0$. It is trivial, it is fast, and it is the difference between a design property and an aspiration.
 
-**Shuffle the labels.** Train or fit the same probe against *permuted* targets. Performance should collapse to the floor. If it does not, you have a leak, and you have just found it for the price of one extra run. The same logic generalizes to a **permutation null** for any correlation you plan to claim, which is what the operator round's endpoint eval uses before reporting whether a bracket predicts epistasis. In Round 4 of the [results ledger](https://github.com/pleiadian53/ssl-lab/blob/main/examples/perturbation_response/docs/conditional-flow-jepa/results-ledger.md), it did not.
+**Shuffle the labels.** Train or fit the same probe against *permuted* targets. Performance should collapse to the floor. If it does not, you have a leak, and you have just found it for the price of one extra run. The same logic generalizes to a **permutation null** for any correlation you plan to claim, which is what the operator round's endpoint eval uses before reporting whether a bracket predicts epistasis. In Round 4 of the [results ledger](https://github.com/pleiadian53/ssl-lab/blob/main/examples/perturbation_response/docs/results/round-04-operator-algebra.md), it did not.
 
 ## 5. Choosing an instrument
 

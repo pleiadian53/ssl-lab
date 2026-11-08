@@ -4,7 +4,7 @@
 
 > **What this series is, and what it is not.** [Running the pipeline](../running-the-pipeline.md) is the **runbook**: the linear happy path from raw data to the scoreboard, with the exact commands in the exact order. Read that when you want to *reproduce* the result. This series is the **map**: which workflow answers which question, why the pieces are shaped the way they are, and which script to reach for when you have a question rather than a recipe. It also covers `13` through `17`, which the runbook predates and does not mention.
 >
-> It complements the [results ledger](../conditional-flow-jepa/results-ledger.md) the same way. The ledger records **what happened**, round by round. This series records **how you would ask a question like that** in the first place.
+> It complements the [results ledger](../results/index.md) the same way. The ledger records **what happened**, round by round. This series records **how you would ask a question like that** in the first place.
 
 ---
 
@@ -83,4 +83,4 @@ Three things worth knowing before you read a script number as a step number.
 
 ---
 
-*Up: [perturbation response](../index.md). The runbook: [Running the pipeline](../running-the-pipeline.md). What was found: [the results ledger](../conditional-flow-jepa/results-ledger.md). The general methodology, written to be reusable outside this project: [Running an experiment you can trust](../../../../docs/experimental-method/index.md).*
+*Up: [perturbation response](../index.md). The runbook: [Running the pipeline](../running-the-pipeline.md). What was found: [the results ledger](../results/index.md). The general methodology, written to be reusable outside this project: [Running an experiment you can trust](../../../../docs/experimental-method/index.md).*

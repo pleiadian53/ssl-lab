@@ -18,7 +18,7 @@ Retrain **only** the lever. Everything upstream and downstream is reused, byte f
 
 **A round is cheap.** Stage B on this data is minutes on an A40, not hours, because Stages A and C are not retrained.
 
-**Arms from different rounds can be read side by side.** Round 4's operator and Round 1's flow sit on the same frozen encoder and are graded through the same decoder and metric, so placing them on one scoreboard is meaningful. Claiming a difference between them is another matter. Rounds are not run under identical conditions, so the [ledger](../conditional-flow-jepa/results-ledger.md) claims differences only within a round, and the one quantity it carries across rounds is the NB-VAE reference.
+**Arms from different rounds can be read side by side.** Round 4's operator and Round 1's flow sit on the same frozen encoder and are graded through the same decoder and metric, so placing them on one scoreboard is meaningful. Claiming a difference between them is another matter. Rounds are not run under identical conditions, so the [ledger](../results/index.md) claims differences only within a round, and the one quantity it carries across rounds is the NB-VAE reference.
 
 ## How the reuse is expressed in the code
 
@@ -89,8 +89,8 @@ Four things that have each cost real time:
 
 ## Closing a round
 
-A round ends in the [ledger](../conditional-flow-jepa/results-ledger.md), and the ledger's own rules are the checklist: state what changed and which chapter specified it, pre-commit the endpoint and the decision rule, report the round's arms together while carrying the baseline forward as the fixed bar, say the seed count, and report failures **with their diagnosis**. A failure with a named cause is more useful than an omission, and it is often more useful than a success.
+A round ends in the [ledger](../results/index.md), and the ledger's own rules are the checklist: state what changed and which chapter specified it, pre-commit the endpoint and the decision rule, report the round's arms together while carrying the baseline forward as the fixed bar, say the seed count, and report failures **with their diagnosis**. A failure with a named cause is more useful than an omission, and it is often more useful than a success.
 
 ---
 
-*Previous: [Decide](04-decide.md). Up: [the workflow map](index.md). Where rounds are recorded: [the results ledger](../conditional-flow-jepa/results-ledger.md).*
+*Previous: [Decide](04-decide.md). Up: [the workflow map](index.md). Where rounds are recorded: [the results ledger](../results/index.md).*

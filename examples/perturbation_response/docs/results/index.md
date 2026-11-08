@@ -1,0 +1,147 @@
+# The results ledger
+
+*A living, append-only record of every experimental round on this method. [Chapter 4](../conditional-flow-jepa/04-results.md) is the narrative of the first round. This ledger is where each subsequent round lands, so that progress against the baseline can be read in one place rather than reconstructed from prose. This page holds what the rounds add up to: the standing verdict, the rules, the running scoreboard, the settings every round shares and what comes next. Each round has its own page, which says what changed, how it was run, what was measured and what the honest verdict was, with a link from every number back to the script that produced it.*
+
+> **How to read this.** The method is improved in rounds. [Chapter 6](../conditional-flow-jepa/06-beyond-the-current-limit.md) names the levers, [Chapter 7](../conditional-flow-jepa/07-modeling-the-transition-action-operators.md) develops the operator (the transition) and [Chapter 8](../conditional-flow-jepa/08-modeling-the-readout-count-decoder.md) develops the decoder (the readout). A round is one pass of building a lever and measuring it. The [pipeline guide](../running-the-pipeline.md) is how to run one.
+>
+> **What this ledger covers.** Every round evaluated on the same benchmark: the twenty held-out Norman two-gene combinations, scored on effect size and calibration, against the same fixed references: the from-scratch NB-VAE, the strongest learned baseline throughout, and since round 7 also the training-free additive reference on effect size. That is what makes rounds commensurable and it is the ledger's only scope claim. When the method stops answering that question, for instance by rolling forward in time ($T > 1$) rather than making a single control-to-perturbed transition, it has become a world model rather than a perturbation-response model, and its results belong elsewhere.
+
+---
+
+## The rounds
+
+| round | question | answer | page |
+|---|---|---|---|
+| 1 | Does the flow beat a from-scratch conditional VAE? | No: the VAE wins by $0.118$ in $\Delta r$ | [the head-to-head](round-01-head-to-head.md) |
+| 2 | Do the decoder levers help? | Superseded: the dispersion lever was aimed the wrong way, so the round is being re-run | [the decoder levers](round-02-decoder-levers.md) |
+| 3 | Does modeling the transition with an action operator beat the flow? | A dead tie with the flow, $-0.003$; the VAE still wins | [the action operator](round-03-action-operator.md) |
+| 4 | Does the operator algebra's bracket predict epistasis? | Refuted | [the operator algebra](round-04-operator-algebra.md) |
+| 5 | Are the frozen latents already linear in their response? | Close to affine: a nonlinear map adds about $1.5\%$ | [the Koopman probe](round-05-koopman-probe.md) |
+| 6 | Does the baseline's encoder need to read the condition? | Yes, $+0.083$; the bar rises to $0.858$ | [the conditioned encoder](round-06-conditioned-encoder.md) |
+| 7 | Does any learned model beat assuming no interaction? | No: the additive reference scores $0.961$ | [the additive reference](round-07-additive-reference.md) |
+| 7b | Can a non-additive gene-set embedding learn interactions? | No: inconclusive in the flow, worse in the VAE | [the composition ablation](round-07b-composition-deepsets.md) |
+| 8 | On the size of the change, does any learned model beat additivity? | No: error $0.29$ for additivity against $1.05$ and $1.26$, on every pair | [the size-aware endpoint](round-08-size-aware-endpoint.md) |
+| 9 | Does SIGReg give a better encoder than VICReg? | No: the readout falls from $0.853$ to about $0.75$; set aside | [the encoder's regularizer](round-09-sigreg-regularizer.md) |
+
+Rounds are numbered in the order they were run. Round 7b is a companion ablation run between rounds 7 and 8, sharing round 8's metrics but with its own question and protocol.
+
+---
+
+## The standing verdict
+
+**Since round 7 the ledger keeps two questions apart, because they have different answers.**
+
+- *Can a model predict the mean effect of an unseen combination better than adding the measured single-gene effects?* For every learned model tested so far, no. The additive reference sums the two singles' measured effects in log1p-CP10K and scores $0.961$ in $\Delta$-correlation. The strongest learned model, the conditioned NB-VAE, scores $0.858$ and is significantly below it. The transport flow, at $0.648$, scores below even an exploratory reference that ignores which combination is requested and predicts the same average training effect for every pair ($0.711$).
+- *Can a model generate useful, calibrated populations of perturbed cells?* Round 7 does not settle this. The additive reference predicts a mean profile, not a population, so it has no score for spread, coverage or distributional distance. On those axes the conditioned NB-VAE remains the strongest model tested, and every model is still far too narrow.
+
+Both answers are scoped to the twenty held-out combinations, to each pair's top 20 genes, and to additivity in log1p-CP10K. Neither says the pairs do not interact. Round 4 measured real interactions on these same pairs, and the correlation endpoint is largely blind to them.
+
+**Round 8 scored the size of the change, and the first answer became sharper.** On an endpoint that counts size as well as shape, the relative error of the predicted change, additivity's error is $0.29$ of the measured change. The conditioned NB-VAE's is $1.05$ and the transport flow's $1.26$, significantly worse, on every one of the twenty pairs. The learned models predict about half to two-thirds of the change along the direction the singles point, and lose even to a reference that predicts the same average profile for every pair ($0.80$).
+
+**Round 7b gave the embedding the freedom to depart from additivity, and it did not help.** A DeepSets composition, which lets a pair's embedding differ from the sum of its singles', left the transport flow's error unchanged within noise and made the conditioned VAE's about $13\%$ worse, significantly. The additive composition stays the default.
+
+**Round 9 swapped the encoder's regularizer and the representation got worse.** SIGReg from LeJEPA, at the paper's default weight, left the cell vectors with about twenty dimensions of variance instead of over two hundred. The linear readout fell from $0.853$ to $0.75$ in $\Delta$-correlation, lower on nearly every pair though not significantly under the round's simultaneous intervals, and its size-aware error rose from $0.54$ to about $0.80$.
+
+**A from-scratch conditional NB-VAE beats every generative configuration we have built, on the primary endpoint, and since round 6 the margin is about $0.21$.** In its textbook form, with an encoder that also reads the perturbation, it scores $0.858$ in $\Delta$-correlation against the transport flow's $0.648$ and the action operator's $0.645$. The original baseline, whose encoder was blind to the perturbation, scored $0.766$ and already beat the flow by $0.118$, a gap significant under simultaneous intervals in round 1. Round 6 then showed the baseline itself had been understated: conditioning its encoder adds $0.083$, also significant. The flow was not retrained against the stronger bar, so the $0.21$ is read across rounds through the bar, as this ledger's rules allow, rather than tested in one round. The VAE's seed-to-seed spread is about $0.01$, so no amount of reseeding closes either gap.
+
+**Three structural levers have now been measured and none closes the gap.** The decoder (round 2) targets the readout and is bounded by construction. The action operator (round 3) targets the transition, which was the deeper bet, and it lands in a dead tie with the flow it was meant to replace ($-0.003$, not significant). The operator *algebra* (round 4) gave the operator the one mechanism round 3 never used, composition in the group, and its structural claim is refuted outright. A fourth lever, the metric itself, was corrected and made the picture *worse* for the method rather than better.
+
+**And a ceiling now explains why the transition rounds could not have won.** Handing the pipeline the *real* held-out perturbed latents, a Stage B that is perfect by construction, scores $0.679$ against the flow's $0.648$. The transition is at $96\%$ of the best it can do given this encoder and this decoder, so **at most $0.03$ was ever available there**. The same ladder relocates the loss: a plain linear readout of the frozen latents scores $0.852$, above the original baseline and roughly level with the round-6 bar, so the representation is information-rich and the **decoder** is where the effect is lost. The readout is a diagnostic handed real latents, not a model. See [Chapter 7 of the methodology series](../../../../docs/experimental-method/07-the-ceiling.md).
+
+Three findings do survive and are worth keeping. Transporting from a real control latent beats transporting from noise ($+0.036$, significant). Optimal-transport coupling hurts ($-0.021$, significant). And the operator is the only model that has ever raised the latent distribution's share of the predicted spread, which is the mechanism the calibration axis actually needs, even though it does not raise it nearly enough to matter.
+
+Every model remains badly **under-dispersed**: coverage sits at $0.33$ to $0.38$ against a nominal $0.80$, so predicted populations are far too narrow.
+
+**Round 5 opened the co-adaptation program with a diagnostic, not a model.** It asked whether the frozen latents already respond affinely to perturbations, and they largely do: a nonlinear map explains only about $1.5\%$ more of the measurable response than the best affine map. Round 4's large generators were large rather than curved, so what failed there was the near-identity assumption, not linearity. No new $\Delta r$ was produced.
+
+**Round 6 raised the bar.** The baseline's encoder had always been blind to the perturbation, $q(z \mid x)$, which is not the textbook conditional VAE. A pre-registered ablation gave it the condition too, $q(z \mid x, c)$, and the effect size rose from $0.775$ to $0.858$, a difference of $+0.083$ with a simultaneous interval of $[+0.053, +0.113]$. By the rule fixed in advance, the conditioned VAE became the bar, and it remains the strongest learned baseline tested.
+
+**Round 7 set a reference above every learned model, on the mean-effect question.** The additive model, which assumes the two genes do not interact and adds their single-gene effects, needs no training and scores $0.961$. That is $0.103$ above the conditioned VAE, with a simultaneous interval of $[+0.024, +0.182]$, and $0.313$ above the transport flow. It is now the reference on $\Delta$-correlation. The conditioned VAE remains the strongest learned baseline, and the only reference for the population metrics, which the additive model cannot be scored on. Part of the gap is the metric: Pearson correlation ignores the size of the change, so the interactions round 4 measured on these pairs cost the additive model almost nothing, and only $0.04$ is left above it.
+
+---
+
+## Two rules of this ledger
+
+**Compare within a round.** Rounds are not run under identical conditions, so a difference is meaningful only against the other arms of its own round. Two references are carried across rounds. The first is the **strongest learned baseline**, the from-scratch NB-VAE: $0.766$ from round 1 to round 5, and since round 6, by a pre-registered rule, the condition-aware variant at $0.858$. It is scored on every metric, calibration included. The second, since round 7, is the **additive reference** at $0.961$, the current reference on $\Delta$-correlation. It needs no training and predicts only a mean, so it has no calibration scores and is no reference for population quality. A new arm is read against both. On $\Delta r$, beating the learned baseline alone is not enough to claim an improvement over the strongest tested reference; that claim needs a simultaneous interval against the additive reference that excludes zero.
+
+**One primary endpoint per round, everything else exploratory.** Each round names exactly one primary endpoint on its page. It is usually the $\Delta$-correlation, but rounds 4, 5, 7b and 8 asked questions that correlation cannot answer and named a different one, and round 9 used the correlation of a linear readout. In each round the primary is the only metric on which significance is claimed, and its contrasts are tested with a **joint bootstrap and max-$t$ simultaneous intervals** across the whole contrast family (see [Chapter 4a](../conditional-flow-jepa/04a-reading-the-head-to-head.md)). Calibration metrics are reported as intervals with no verdict. A difference found on a secondary endpoint after the fact is a hypothesis, and it does not become a result until it is confirmed on data that did not suggest it.
+
+---
+
+## Running scoreboard
+
+Every configuration evaluated on the twenty held-out Norman combinations, on the current gene selection ([Chapter 3e](../conditional-flow-jepa/03e-the-genes-the-metric-scores.md)). Primary metric first; the rest are exploratory.
+
+| round | configuration | seeds | $\Delta r$ | spread_r ↑ | coverage (nom. 0.80) | W1 ↓ | energy ↓ | $e_p$ ↓ (round 8) |
+|---|---|---|---|---|---|---|---|---|
+| 1 | Gaussian flow (noise to outcome) | 3 | 0.612 | 0.205 | 0.357 | 1.013 | 3.794 | 1.300 |
+| 1 | transport flow + OT coupling | 3 | 0.627 | 0.214 | 0.365 | 1.010 | 3.746 | |
+| 1 | **transport flow** (control to outcome) | 3 | **0.648** | 0.234 | 0.375 | 0.982 | 3.578 | 1.261 |
+| 3 | **action operator** (deterministic) | 3 | 0.645 | 0.215 | **0.382** | 1.005 | 3.658 | |
+| 3 | action operator (stochastic + residual) | 3 | 0.646 | 0.208 | 0.344 | 1.005 | 3.746 | |
+| 4 | operator algebra, weak prior ($\lVert M\rVert$ $12.4$, **not near identity**) | 1 | 0.629 | | | | | |
+| 4 | operator algebra, near-identity prior held ($\lVert M\rVert$ $1.10$) | 1 | 0.497 | | | | | |
+| 1 | conditional NB-VAE, encoder blind to the condition (the original bar) | 3 | 0.766 | 0.522 | 0.328 | 0.956 | 3.962 | |
+| 6 | conditional NB-VAE, encoder blind to the condition (re-run) | 3 | 0.775 | 0.519 | 0.324 | 0.964 | 3.994 | 1.207 |
+| 6 | **conditional NB-VAE, encoder reads the condition** (the strongest learned baseline) | 3 | **0.858** | **0.674** | 0.340 | **0.865** | **3.212** | **1.053** |
+| 7b | transport flow, DeepSets composition | 3 | 0.628 | | | | | 1.283 |
+| 7b | conditional NB-VAE, encoder reads the condition, DeepSets composition | 3 | 0.752 | | | | | 1.211 |
+| 7 | **additive model**, $\Delta(A) + \Delta(B)$ from the training singles, no training (the reference on $\Delta r$; a mean, no population) | — | **0.961** | | | | | **0.289** |
+| — | *oracle Stage B (real held-out latents, same decoder)* | — | *0.679* | | | | | |
+| — | *linear readout of the frozen latents (diagnostic, not a model)* | — | *0.852* | | | | | |
+| 9 | *linear readout, VICReg encoder retrained (diagnostic)* | 3 | *0.853* | | | | | *0.543* |
+| 9 | *linear readout, SIGReg encoder on the cell vector (diagnostic)* | 3 | *0.756* | | | | | *0.794* |
+| 9 | *linear readout, SIGReg encoder on tokens (diagnostic)* | 3 | *0.747* | | | | | *0.806* |
+
+The additive row is a reference rather than a learned model; it predicts a mean profile, so it has no calibration scores. The last column is round 8's relative error of the predicted change, which counts size as well as shape; it was scored only for the rows shown. The italic rows are not models and cannot be run. Round 9's three read a retrained encoder alone, and compare only with each other. The two round-7b rows are the DeepSets twins of the transport flow and the conditioned VAE, and compare with those rows. The two above them are the [ceiling](../../../../docs/experimental-method/07-the-ceiling.md). The first says a *perfect* Stage B scores $0.679$ through this decoder, so every transition row above is within $0.03$ of the best it could possibly do. The second says the effect is sitting in the frozen representation at $0.852$, above the original baseline, and the decoder is losing it.
+
+Read the bolded rows against each other and that is the project so far. Every generative configuration we have built clusters between $0.61$ and $0.65$. The conditioned VAE sits alone at $0.858$, and above it, since round 7, the additive reference at $0.961$, which needs no training at all. The two round-6 rows were trained together and compare directly with each other, and round 7 contrasted the additive reference directly with the conditioned VAE and the transport flow; every other row is read against them only through these two references. **No model's coverage is anywhere near nominal**, and the best coverage of any model belongs to the operator, which is the one model that widened its own latent cloud.
+
+---
+
+## What every round shares
+
+Rounds differ in what they change. Unless a round's page says otherwise, everything else is held fixed, and these are the settings.
+
+- **Data.** Norman et al. 2019, a Perturb-seq screen of single-gene and two-gene perturbations, processed by `00_process_norman.py` into 5,000 highly variable genes. Expression is compared in log1p-CP10K, the log of one plus the counts per ten thousand.
+- **Split.** The `combo` split holds out twenty two-gene combinations whose single genes both remain in training, so at test time a model has met each gene alone but never the two together ([Chapter 3](../conditional-flow-jepa/03-training-and-evaluation.md)). Stage A pretrains on the training side of the same split, so no held-out combination reaches the encoder.
+- **What is scored.** For each held-out pair, the measured change $\Delta_p$ is the mean of its held-out cells minus the mean of all control cells, and a model's predicted change $\hat{\Delta}_p$ is the same difference computed from its predictions. Both are restricted to the pair's top 20 genes, ranked by the Wilcoxon $\lvert z \rvert$ against control ([Chapter 3e](../conditional-flow-jepa/03e-the-genes-the-metric-scores.md)).
+- **Endpoints.** $\Delta r$, the Pearson correlation between predicted and measured change, has been the primary endpoint of most rounds. It ignores size, so since round 8 every model is also scored on the size-aware error $e_p = \lVert \hat{\Delta}_p - \Delta_p \rVert_2 / \lVert \Delta_p \rVert_2$, where predicting no change gives $1$. Each round names its own single primary endpoint.
+- **Frozen components.** Unless a round retrains them, the Stage A encoder is `norman_stage_a` (md5 `38f51067`) and flows are read out through the same count decoder (md5 `52a44337`).
+- **Seeds and aggregation.** Learned arms are trained at three seeds where the page says so; one-seed rounds say so and claim less. Metrics are computed per pair and seed, averaged over seeds per pair, then averaged over pairs.
+- **Statistics.** A joint paired bootstrap over the twenty pairs, 10,000 resamples with seed 0, and max-$t$ simultaneous 95% intervals across the round's whole family of contrasts ([Chapter 4a](../conditional-flow-jepa/04a-reading-the-head-to-head.md)). The intervals describe the twenty test pairs, not training-seed variance.
+- **Pre-registration.** Each round fixes its endpoint and decision rule before scoring. Since round 7b the protocol is the docstring of the round's comparison script, committed before any number is scored, and the scoring script stops unless it reproduces each run's stored $\Delta r$.
+- **Compute.** Training runs on one NVIDIA A40 GPU on a cloud pod; scoring runs on a CPU. The [pipeline guide](../running-the-pipeline.md) covers both.
+
+---
+
+## Open, and what comes next
+
+Three structural levers have now been built and measured, and none closed even the original gap of $0.12$; against the round-6 bar the gap is about $0.21$, and against the round-7 additive reference about $0.31$. The ceiling explains why two of them never could: the transition they targeted had at most $0.03$ of headroom. That is worth stating plainly rather than softening, because it changes what the remaining questions are, and it retires some of them.
+
+**Retired.** *Stage-B levers, for effect size.* The ceiling bounds them at $0.03$, and a fourth transition design would be a fourth round spent on three percent. The operator thread is closed on the primary endpoint, and round 4 closes its structural claim as well.
+
+1. **The readout is where the loss actually is, and it is the one lever never aimed correctly.** The linear rung of the ceiling scores $0.852$ on the frozen latents, above the original baseline's $0.766$ and just below the round-6 bar of $0.858$, while the trained decoder scores $0.679$ on the identical latents. That $0.173$ is the largest single term in the loss budget, it is six times the transition's, and round 2 aimed at the decoder's *dispersion* rather than at this. An un-attenuated mean head is the only route on the table that could plausibly approach the strongest learned baseline on $\Delta r$, though since round 6 the linear rung that motivates it sits just below that baseline rather than above it, and $0.11$ below the round-7 additive reference. Note the honest caveat: the linear rung is a diagnostic, not a model, since it is handed real latents and emits no distribution.
+2. **Data efficiency is still the one premise never tested.** Self-supervised pretraining does not claim to win at full data. It claims that a representation learned on abundant *unlabeled* cells pays off when *labeled* examples are scarce. Every number in this ledger is a full-data number, so not one of them tests the actual claim. The experiment is a subsampling ladder: shrink the training cells per perturbation, retrain the flow and the VAE at each rung, and plot $\Delta$-correlation against cells. It needs only a subsampling flag, and it is independent of everything above.
+3. **The frozen, condition-blind encoder** remains the deepest structural constraint, and three separate findings now converge on it. The ceiling says the representation was never shaped for the decoder that consumes it. The baseline's advantage survives with a count decoder of the same design, which points at what differs around it: the baseline's decoder is trained jointly with its encoder and also reads the condition directly ([Chapter 3a](../conditional-flow-jepa/03a-the-models-in-the-head-to-head.md)). And [Chapter 9](../conditional-flow-jepa/09-why-the-operator-is-linear-koopman.md) says the operator's linearity is licensed only by an encoder trained to supply Koopman coordinates, which ours was not. Relaxing it is the biggest swing still available, and it is the point at which the method stops being "a flow prior over frozen JEPA latents" and becomes something else. That relaxation is now under way as the [co-adaptation program](../../co-adaptation/README.md). Its first measurement, round 5, found the frozen latents already close to affine, which points the program at the decoder first.
+4. **If the generator identifiability of round 4 is ever revisited**, the diagnosis names the fix: constrain the generators to a shared low-rank basis, $M_g = \sum_i \beta_{g,i} B_i$, so a bracket lives in the span of $[B_i, B_j]$ rather than in $65{,}536$ directions the marginal-matching loss never touched. This is a hypothesis with a named mechanism, not a rescue of the refuted claim, and it should be pre-registered like any other round.
+5. **Is the bar itself as strong as it could be? Answered in round 6: it was not.** The conditioned encoder raised the bar to $0.858$. The question as it was posed: the NB-VAE's encoder is condition-blind, $q(z \mid x)$, where $x$ is a cell's expression profile and $z$ its latent: the perturbation reaches the model only through the decoder. The textbook conditional VAE also conditions the encoder, $q(z \mid x, c)$, so it can account for the perturbation instead of risking that part of the effect leaks into $z$, which is replaced by a draw from the prior at generation. A pre-registered baseline ablation trains both forms at three seeds in the same round with [`run_vae_encoder_ablation_pod.sh`](../../run_vae_encoder_ablation_pod.sh). The primary endpoint is $\Delta r$ on the twenty held-out combinations, contrast conditioned minus blind, by joint bootstrap; calibration is secondary. If the conditioned encoder scores higher, it becomes the bar that co-adaptation Phase 1 must beat.
+6. **An endpoint that sees the size of the change. Done as round 8.** On the relative error of the predicted change, additivity is significantly better than both learned models on every pair, and the learned models predict roughly half to two-thirds of the change along the direction the singles point. Co-adaptation Phase 1 and any new encoder should be scored on this endpoint as well as on $\Delta r$, since on $\Delta r$ alone there is little room left to show an advantage.
+7. **A different anti-collapse regularizer for the encoder. Measured in round 9.** SIGReg at LeJEPA's default weight leaves about twenty dimensions of variance and lowers the linear readout on every endpoint, so it is not a route to a better representation as configured. A frozen rule nonetheless triggered downstream retraining on its probe accuracy, which more plausibly reflects less probe overfitting; the retraining was not run and the swap is set aside in favor of the decoder.
+8. **Or accept the negative result.** "A frozen self-supervised representation plus a learned conditional prior does not beat a from-scratch conditional VAE at Perturb-seq effect size; here is the ceiling that says why the transition never could; here are three structural levers that failed; and here is the metric-selection trap that nearly hid all of it" is a real contribution, and more useful to the field than a fifth lever that also fails.
+
+---
+
+## Adding a round
+
+- **State what changed, and which chapter specified it.** A round executes a design; it does not improvise one.
+- **Pre-commit the primary endpoint and the decision rule** before looking at numbers.
+- **Report the arms of that round together**, comparing only within it, and carry the NB-VAE reference forward as the fixed bar.
+- **Say the seed count.** One seed is directional. A claim needs seed averaging and a simultaneous interval that excludes zero.
+- **Report failures with their diagnosis.** B2 is more useful written up as a failure with a named cause than omitted.
+- **Link every number to its script and report** so a reader can regenerate it.
+- **Give the round its own page**, `round-NN-short-name.md` in this folder, with its settings, endpoint, verdict, secondaries and limits; then add it to the table of rounds, the standing verdict and the scoreboard on this page.
+
+---
+
+*Up: [the method series](../conditional-flow-jepa/index.md). Round 1's narrative is [Chapter 4](../conditional-flow-jepa/04-results.md); its audit is [Chapter 4a](../conditional-flow-jepa/04a-reading-the-head-to-head.md). To run a round, see [Running the pipeline](../running-the-pipeline.md).*

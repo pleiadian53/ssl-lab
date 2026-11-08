@@ -56,7 +56,7 @@ Stated here rather than buried, because a reader deserves to know what they are 
 
 **The mathematics is sound and is not in question.** That commuting generators compose additively, that $\exp$ is the time-one map of a linear flow, that BCH produces only brackets: these are theorems, and where this series makes such a claim it is [checked numerically](checks/verify_bch.py).
 
-**The framework's central empirical claim, in this domain, was refuted.** We built an operator whose non-commutativity should have predicted genetic interaction, and it did not, across four tests and every variant we tried. The [results ledger](../conditional-flow-jepa/results-ledger.md) records it as Round 4.
+**The framework's central empirical claim, in this domain, was refuted.** We built an operator whose non-commutativity should have predicted genetic interaction, and it did not, across four tests and every variant we tried. The [results ledger](../results/index.md) records it as Round 4.
 
 **And the refutation is scoped.** Perturbation response is a $T=1$, simultaneous, unpaired, frozen-encoder setting, which is the corner of the framework where its distinctive machinery has the least to offer and its training objective is a degraded surrogate. A negative there is weak evidence about the framework and strong evidence about *this* application of it. [Chapter 7](07-the-application.md) is careful about the difference, and [Chapter 8](08-what-comes-next.md) turns the diagnosis into the experiments worth running next.
 

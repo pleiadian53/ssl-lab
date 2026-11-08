@@ -2,13 +2,18 @@
 
 This folder documents the perturbation-response work end to end: the single-cell data that feeds the model, the method built on top of it, and what we actually found when we ran it. It is organized as three series. The first covers the data, the second the method and its results, and the third the action-operator idea that the later rounds tested as a replacement for the flow.
 
+## The results
+
+### [The results ledger](results/index.md)
+Every experiment in one place. The front page holds the standing verdict, the running scoreboard, the settings every round shares and what comes next. Each round then has its own page with what changed, how it was run, the endpoint fixed before scoring, the verdict, the secondary results and the limits: from the first head-to-head against a from-scratch VAE, through the action operator, the additive reference and the size-aware endpoint, to the gene-set composition ablation and the SIGReg regularizer swap. Start here if you want the current state of play or the details of a particular experiment.
+
 ## The three series
 
 ### [Reading Perturb-seq](reading-perturb-seq/index.md)
 A four-part primer on the data. What a single-cell perturbation experiment measures, what the intervention *is* biologically, how a cell becomes tokens the encoder reads, and how success is scored. Every number is real, drawn from a reproducible slice of Norman et al. 2019. Start here if the vocabulary of counts, dropout, and library size is new, or if you want to know exactly what the model is being asked to predict.
 
 ### [The conditional-flow + JEPA method](conditional-flow-jepa/index.md)
-The method itself and its evaluation. The idea (a conditional flow prior over frozen JEPA latents, with a negative-binomial count decoder), the implementation, the training and pod workflow, the experimental results against a from-scratch baseline, the challenges we ran into, and the directions we think can push past the current limits. This series reports findings honestly, including the ones that did not go our way, because that is where the next idea comes from. Its [results ledger](conditional-flow-jepa/results-ledger.md) records every round in one place, and is the quickest way to see where the project stands.
+The method itself and its evaluation. The idea (a conditional flow prior over frozen JEPA latents, with a negative-binomial count decoder), the implementation, the training and pod workflow, the experimental results against a from-scratch baseline, the challenges we ran into, and the directions we think can push past the current limits. This series reports findings honestly, including the ones that did not go our way, because that is where the next idea comes from. Every experiment run on it is recorded in the [results ledger](results/index.md), described below.
 
 ### [Action operators: a development](action-operator/index.md)
 A careful build-up of the action-operator framework, in which a perturbation is a transformation applied to a cell's state rather than a label attached to it. It goes from what an operator is, through why it should be linear and why it is written as a matrix exponential, to how operators compose for two-gene perturbations and how the model is trained and applied. It was written after the operator rounds were measured and the operator-algebra claim was refuted, so it is explicit about which premises held and which did not, and its last chapter names what comes next.
