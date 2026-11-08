@@ -14,6 +14,8 @@ Usage
 -----
     # full run (a pod): all combo-train cells
     python examples/perturbation_response/01_pretrain_stage_a.py --epochs 50 --reg-coef 0.04
+    # SIGReg (LeJEPA) in place of VICReg, on the pooled cell vector, at the paper default weight
+    python examples/perturbation_response/01_pretrain_stage_a.py --reg-kind sigreg --reg-target pooled --reg-coef 0.05
     # local CPU smoke
     python examples/perturbation_response/01_pretrain_stage_a.py --limit 3000 --epochs 3 --embed-dim 128
 
@@ -63,7 +65,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--pred-depth", type=int, default=2)
     p.add_argument("--n-heads", type=int, default=4)
     p.add_argument("--n-target", type=int, default=12, help="# gene-group tokens to mask/predict (< n_tokens)")
-    p.add_argument("--reg-coef", type=float, default=0.04, help="VICReg weight (collapse guard; 0 disables)")
+    p.add_argument("--reg-coef", type=float, default=0.04,
+                   help="regularizer weight (collapse guard; 0 disables). VICReg: pred + w*reg. "
+                        "SIGReg: (1-w)*pred + w*reg, LeJEPA's form (paper default 0.05)")
+    p.add_argument("--reg-kind", type=str, default="vicreg", choices=["vicreg", "sigreg"],
+                   help="anti-collapse regularizer (default vicreg reproduces every earlier run)")
+    p.add_argument("--reg-target", type=str, default="tokens", choices=["tokens", "pooled"],
+                   help="what the regularizer acts on: the context-token embeddings, or their mean (one cell vector)")
+    p.add_argument("--sigreg-slices", type=int, default=1024, help="SIGReg random directions per step")
     p.add_argument("--limit", type=int, default=None, help="cap train cells (smoke runs)")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--device", type=str, default="auto")
@@ -97,6 +106,9 @@ def main() -> None:
         n_heads=args.n_heads,
         n_target=args.n_target,
         reg_coef=args.reg_coef,
+        reg_kind=args.reg_kind,
+        reg_target=args.reg_target,
+        sigreg_slices=args.sigreg_slices,
     ).to(device)
     jepa.ema.to(device)
     opt = torch.optim.AdamW(jepa.parameters(), lr=args.lr)
@@ -137,6 +149,10 @@ def main() -> None:
         "epochs": args.epochs,
         "n_target": args.n_target,
         "reg_coef": args.reg_coef,
+        "reg_kind": args.reg_kind,
+        "reg_target": args.reg_target,
+        "sigreg_slices": args.sigreg_slices if args.reg_kind == "sigreg" else None,
+        "seed": args.seed,
         "geometry": {"n_tokens": meta["n_tokens"], "token_dim": meta["token_dim"]},
         "train_cells": len(train_loader.dataset),
         "final_loss": avg,
