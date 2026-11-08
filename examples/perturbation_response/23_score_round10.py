@@ -299,18 +299,23 @@ def main() -> None:
     def per_pair(arm: str, conv: str, key: str) -> np.ndarray:
         return np.array([np.mean([run[conv][k][key] for run in scored[arm]]) for k in sc.pairs])
 
-    finite = np.all([np.isfinite(per_pair(a, c, k)) for a in scored for c in CONVENTIONS for k in KEYS], axis=0)
-    excluded = [k for k, ok in zip(sc.pairs, finite) if not ok]
-    if finite.sum() < 18:
-        _fail(f"only {int(finite.sum())} evaluable pairs")
-    keep = np.flatnonzero(finite)
-    idx = resample_indices(len(keep), args.n_boot, 0)
-
-    def vec(arm, conv, key):
-        return per_pair(arm, conv, key)[keep]
+    # Missing values, as the protocol states them: per metric, a pair enters only if every seed
+    # of every arm involved is finite. (The additive reference's interaction correlation, for
+    # instance, is undefined by construction and only excludes pairs from comparisons it is in.)
+    def masked(*vecs):
+        ok = np.all([np.isfinite(v) for v in vecs], axis=0)
+        sub = [v[ok] for v in vecs]
+        ix = resample_indices(int(ok.sum()), args.n_boot, 0)
+        return ok, sub, ix
 
     # ---- primary ------------------------------------------------------------------------- #
-    gap = vec("ceiling_linear", "own", "delta_r") - vec("ceiling_roundtrip", "own", "delta_r")
+    lin = per_pair("ceiling_linear", "own", "delta_r")
+    rt = per_pair("ceiling_roundtrip", "own", "delta_r")
+    ok, (lin_k, rt_k), idx = masked(lin, rt)
+    excluded = [k for k, good in zip(sc.pairs, ok) if not good]
+    if ok.sum() < 18:
+        _fail(f"only {int(ok.sum())} evaluable pairs for the primary")
+    gap = lin_k - rt_k
     fam = maxt_family({"linear-roundtrip (own)": gap}, idx, args.alpha)
     c = fam["contrasts"]["linear-roundtrip (own)"]
     lo, hi = c["ci_simultaneous"]
@@ -318,18 +323,25 @@ def main() -> None:
                if c["diff"] >= 0.02 and lo > 0 else
                "decoder readout better than the linear readout" if hi < 0 else "no gap established")
     c["verdict"] = verdict
+    c["n_pairs"] = int(ok.sum())
 
     # ---- secondaries --------------------------------------------------------------------- #
-    def pi(v):
-        return percentile_interval(v, idx, args.alpha)
+    def pi(*vecs, combine=lambda *v: v[0]):
+        ok, sub, ix = masked(*vecs)
+        r = percentile_interval(combine(*sub), ix, args.alpha)
+        r["n_pairs"] = int(ok.sum())
+        return r
 
-    table = {a: {conv: {k: pi(vec(a, conv, k)) for k in KEYS} for conv in CONVENTIONS} for a in scored}
-    effect = {a: {k: pi(vec(a, "own", k) - vec(a, "measured", k)) for k in ("delta_r", "rel_err")} for a in scored}
-    r8_own = {f"{a}-additive": {k: pi(vec(a, "own", k) - vec("additive", "own", k)) for k in ("rel_err", "delta_r")}
-              for a in ("vae_cond", "flow_transport")}
-    gap_measured = pi(vec("ceiling_linear", "measured", "delta_r") - vec("ceiling_roundtrip", "measured", "delta_r"))
-    r9_own = {f"{a}-vicreg": {k: pi(vec(f"r9_{a}", "own", k) - vec("r9_vicreg", "own", k)) for k in ("delta_r", "rel_err")}
-              for a in ("sigreg_tok", "sigreg_pool")}
+    diff = lambda a, b: a - b
+    table = {a: {conv: {k: pi(per_pair(a, conv, k)) for k in KEYS} for conv in CONVENTIONS} for a in scored}
+    effect = {a: {k: pi(per_pair(a, "own", k), per_pair(a, "measured", k), combine=diff)
+                  for k in ("delta_r", "rel_err")} for a in scored}
+    r8_own = {f"{a}-additive": {k: pi(per_pair(a, "own", k), per_pair("additive", "own", k), combine=diff)
+                                for k in ("rel_err", "delta_r")} for a in ("vae_cond", "flow_transport")}
+    gap_measured = pi(per_pair("ceiling_linear", "measured", "delta_r"),
+                      per_pair("ceiling_roundtrip", "measured", "delta_r"), combine=diff)
+    r9_own = {f"{a}-vicreg": {k: pi(per_pair(f"r9_{a}", "own", k), per_pair("r9_vicreg", "own", k), combine=diff)
+                              for k in ("delta_r", "rel_err")} for a in ("sigreg_tok", "sigreg_pool")}
     off = {a: {k: float(np.mean([o[k] for o in v])) for k in v[0]} for a, v in offsets.items()}
 
     # ---- report -------------------------------------------------------------------------- #
@@ -359,7 +371,7 @@ def main() -> None:
     print("\nNOTE: intervals reflect the finite set of pairs; seeds are averaged first.")
 
     out = {"protocol": "round 10, the control reference, frozen before scoring (see the script's docstring)",
-           "pairs": [sc.pairs[i] for i in keep], "excluded_pairs": excluded, "n_boot": args.n_boot,
+           "pairs": sc.pairs, "excluded_pairs_primary": excluded, "n_boot": args.n_boot,
            "alpha": args.alpha, "bootstrap_seed": 0,
            "primary": {"critical_value": fam["critical_value"], "contrast": c},
            "secondary": {"table": table, "convention_effect": effect, "round8_own": r8_own,
