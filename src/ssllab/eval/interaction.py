@@ -32,6 +32,13 @@ so a pair whose interaction is tiny (and whose ratio is therefore large for ever
 cannot dominate a comparison, and a difference of mean logs reads as a relative change
 in error.
 
+Round 4's additive scale is read the same way for a prediction. ``λ_p = ⟨Δ_p, a_p⟩ / ‖a_p‖²``
+with ``a_p = Δ_A + Δ_B`` is the least-squares coefficient of the truth on the additive
+direction (above 1 super-additive, below 1 sub-additive); ``s_p = ⟨Δ̂_p, a_p⟩ / ‖a_p‖²`` is the
+same projection of the prediction, so ``s_p`` against ``λ_p`` asks whether a model knows
+which pairs do more, or less, than their singles combined. The additive reference has
+``s_p = 1`` by construction.
+
 Two quantities need a model's *own* single predictions ``Δ̂_A``, ``Δ̂_B``. The
 model-internal interaction ``Δ̂_p − Δ̂_A − Δ̂_B`` is the only one where the subtraction
 does not cancel, so it is the only measure that isolates what the model's composition
@@ -111,8 +118,9 @@ def pair_metrics(
 
     Returns ``log_r``, ``r``, ``rel_err`` (Round 8's ``e_p``), ``rel_gi`` (``‖I_p‖/‖Δ_p‖``,
     the additive reference's ``e_p``), ``interaction_r``, ``delta_r`` (the standing
-    benchmark, recomputed), ``internal_r`` and ``internal_log_r``, plus the norms they
-    are built from.
+    benchmark, recomputed), ``internal_r`` and ``internal_log_r``, the additive-direction
+    scales ``scale`` (``s_p``, the prediction's) and ``lam`` (``λ_p``, the truth's), plus the
+    norms they are built from.
     """
     idx = np.asarray(top_idx, dtype=int)
     ctrl = _vec(control_mean)[idx]
@@ -126,6 +134,7 @@ def pair_metrics(
     n_inter = float(np.linalg.norm(inter))
     ratio_ok = n_inter > DENOMINATOR_REL_FLOOR * n_delta and n_inter > 0.0
     nan = float("nan")
+    ss = float(s @ s)
 
     out = {
         "err_norm": err,
@@ -137,6 +146,8 @@ def pair_metrics(
         "log_r": _log_ratio(err, n_inter) if ratio_ok else nan,
         "interaction_r": pearson(inter_hat, inter),
         "delta_r": pearson(d_hat, d),
+        "scale": float(d_hat @ s) / ss if ss > NUMERATOR_FLOOR else nan,
+        "lam": float(d @ s) / ss if ss > NUMERATOR_FLOOR else nan,
         "internal_r": nan,
         "internal_log_r": nan,
     }
@@ -158,7 +169,8 @@ def split_half_floor(
     half's mean is noisier than the full mean by a factor of about 2 in variance, and the
     difference of two halves carries both, so ``‖mean₁ − mean₂‖ / 2`` approximates the
     error a perfect predictor would show against the full held-out mean. Returned as a
-    ratio to ``‖I_p‖`` (``floor_r``) and its log, on the same scale as ``r_p``.
+    ratio to ``‖I_p‖`` (``floor_r``) and its log, on the same scale as ``r_p``, and as a
+    ratio to ``‖Δ_p‖`` (``floor_e``), on the scale of ``e_p``.
     """
     rng = np.random.default_rng(seed)
     n = pair_X.shape[0]
@@ -174,5 +186,6 @@ def split_half_floor(
     return {
         "floor_r": diff / n_inter if ok else float("nan"),
         "floor_log_r": _log_ratio(diff, n_inter) if ok else float("nan"),
+        "floor_e": diff / n_delta if n_delta >= NUMERATOR_FLOOR else float("nan"),
         "n_cells": int(n),
     }

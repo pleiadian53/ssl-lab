@@ -12,8 +12,12 @@ additivity, using :mod:`ssllab.eval.interaction`:
 - ``internal_r``, ``internal_log_r``: the same with the model's *own* predicted singles,
   the only measures that isolate what the model adds to a pair beyond its singles.
 - ``delta_r``: Δ-correlation, recomputed from the same predictions.
-- ``floor_r``, ``floor_log_r``: a split-half estimate of how small ``r_p`` can get given
-  the finite number of held-out cells (independent of the model).
+- ``scale``, ``lam``: the prediction's and the truth's least-squares scale on the additive
+  direction (``λ_p`` is Round 4's measured scale).
+- ``rel_err_all``: ``e_p`` over every measured gene instead of the top-DE genes.
+- ``floor_r``, ``floor_log_r``, ``floor_e``, ``floor_e_all``: a split-half estimate of how
+  small ``r_p`` and ``e_p`` can get given the finite number of held-out cells
+  (independent of the model).
 
 **Same predictions as the standing benchmark.** The pair profiles are generated through
 :func:`ssllab.eval.effect_size.run_effect_size_eval`, in the same order, with the same
@@ -25,6 +29,12 @@ the predictions are not the ones the benchmark scored.
 **Single-gene predictions** (for the internal metrics) are generated *after* the pairs,
 with a separate generator seeded ``seed + 1``, so they cannot change the pair profiles.
 The additive reference has no predicted singles of its own; its internal metrics are NaN.
+
+**Kinds.** ``flow`` and ``vae`` score a trained run; ``additive`` scores the sum of the
+measured singles; ``average`` scores Round 7's pair-agnostic reference, the mean profile
+over all training perturbations predicted identically for every pair (built exactly as
+18 builds it, and checked against 18's stored mean Δ-correlation). Both training-free
+kinds are written under ``norman_additive``.
 
 Output
 ------
@@ -38,6 +48,7 @@ Usage
         --decoder output/norman_flow_control/checkpoints/count_decoder.pt
     python examples/perturbation_response/19_score_interaction.py --experiment norman_vae_cond_s0 --kind vae
     python examples/perturbation_response/19_score_interaction.py --experiment norman_additive --kind additive
+    python examples/perturbation_response/19_score_interaction.py --experiment norman_additive --kind average
 """
 
 from __future__ import annotations
@@ -68,14 +79,16 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-7s  %(
 logger = logging.getLogger(__name__)
 
 # Where each kind's standing Δ-correlation report lives (written by 06, 09, 18).
-EFFECT_REPORT = {"flow": "effect_size.json", "vae": "effect_size_cvae.json", "additive": "effect_size_additive.json"}
-METRICS = ("log_r", "r", "rel_err", "rel_gi", "interaction_r", "delta_r", "internal_r", "internal_log_r")
+EFFECT_REPORT = {"flow": "effect_size.json", "vae": "effect_size_cvae.json", "additive": "effect_size_additive.json",
+                 "average": "effect_size_additive.json"}
+METRICS = ("log_r", "r", "rel_err", "rel_err_all", "rel_gi", "interaction_r", "delta_r", "internal_r",
+           "internal_log_r", "scale", "lam", "floor_e", "floor_e_all")
 
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Score one run on magnitude and interaction metrics.")
     p.add_argument("--experiment", type=str, required=True)
-    p.add_argument("--kind", type=str, required=True, choices=["flow", "vae", "additive"])
+    p.add_argument("--kind", type=str, required=True, choices=["flow", "vae", "additive", "average"])
     p.add_argument("--output-root", type=str, default="output")
     p.add_argument("--data-dir", type=str, default="data")
     p.add_argument("--artifact", type=str, default="norman2019")
@@ -118,12 +131,20 @@ def main() -> None:
     elif args.kind == "vae":
         def predict(pid: int, name: str, g: torch.Generator = gen):
             return model.generate_expression(pid, args.n, device=device, generator=g)
-    else:
+    elif args.kind == "additive":
         additive = additive_predictor(hvg_X=hvg, pert_names=cache.pert_names, pert_id=cache.pert_id,
                                       is_train=is_train, control_mean=control_mean)
 
         def predict(pid: int, name: str, g=None):
             return additive(pid, name)
+    else:
+        # Round 7's pair-agnostic reference, exactly as 18 builds it.
+        nm = np.asarray(cache.pert_names)
+        train_perts = [i for i in np.unique(cache.pert_id[is_train]) if nm[i] != "control"]
+        mean_effect = np.mean([hvg[is_train & (cache.pert_id == i)].mean(0) for i in train_perts], axis=0)
+
+        def predict(pid: int, name: str, g=None):
+            return mean_effect
 
     # 2. Pair profiles through the shared harness: the predictions the benchmark scores.
     profiles: dict[str, np.ndarray] = {}
@@ -137,7 +158,15 @@ def main() -> None:
         raise SystemExit(f"expected only combinations on the combo split, got {sorted(set(profiles) - set(pairs))}")
 
     stored = exp.reports / EFFECT_REPORT[args.kind]
-    if stored.exists():
+    if args.kind == "average":
+        if not stored.exists():
+            raise SystemExit(f"missing {stored}; run 18_eval_additive_baseline.py first")
+        want = json.loads(stored.read_text())["exploratory"]["mean_training_effect"]["mean_delta_r"]
+        got = float(np.mean(list(per_pert_r.values())))
+        if abs(got - want) > 1e-9:
+            raise SystemExit(f"average reference does not reproduce 18's mean Δ-correlation ({got:.6f} vs {want:.6f})")
+        logger.info("average reference reproduces 18's mean Δ-correlation (%.4f)", got)
+    elif stored.exists():
         ref = json.loads(stored.read_text())["per_pert"]
         worst = max(abs(per_pert_r[k] - ref[k]) for k in per_pert_r)
         if set(ref) != set(per_pert_r) or worst > 1e-9:
@@ -153,7 +182,7 @@ def main() -> None:
                                       is_train=is_train, control_mean=control_mean)
     names = np.asarray(cache.pert_names)
     pred_single: dict[str, np.ndarray] = {}
-    if args.kind != "additive" and not args.no_internal:
+    if args.kind in ("flow", "vae") and not args.no_internal:
         gen_s = torch.Generator().manual_seed(args.seed + 1)
         for g in genes:
             pid = int(np.where(names == g)[0][0])
@@ -162,6 +191,7 @@ def main() -> None:
 
     # 4. Per-pair metrics.
     per_pert: dict[str, dict] = {}
+    all_idx = list(range(hvg.shape[1]))
     for k in pairs:
         a, b = k.split("+")
         pid = int(np.where(names == k)[0][0])
@@ -174,6 +204,10 @@ def main() -> None:
             raise SystemExit(f"{k}: recomputed Δ-correlation {m['delta_r']:.6f} != harness {per_pert_r[k]:.6f}")
         m.update(split_half_floor(hvg[mask], control_mean=control_mean, delta_a=measured[a],
                                   delta_b=measured[b], top_idx=top_idx, seed=0))
+        # The same error and floor over every measured gene (Round 8, secondary 3).
+        kw_all = dict(control_mean=control_mean, delta_a=measured[a], delta_b=measured[b], top_idx=all_idx)
+        m["rel_err_all"] = pair_metrics(pred_pair=profiles[k], true_pair=hvg[mask].mean(0), **kw_all)["rel_err"]
+        m["floor_e_all"] = split_half_floor(hvg[mask], seed=0, **kw_all)["floor_e"]
         per_pert[k] = m
 
     def mean_of(key: str) -> float:

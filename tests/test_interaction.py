@@ -134,3 +134,36 @@ def test_collecting_profiles_does_not_change_the_score():
     again, _ = run_effect_size_eval(fn, profiles=prof, **kw)
     assert base == again and set(prof) == set(base)
     assert np.allclose(prof["A+B"], fn(2, "A+B"))
+
+
+def test_additive_reference_has_scale_one_and_lambda_is_round4s_projection():
+    _, ctrl, da, db, _, true_pair = _setup(7)
+    m = pair_metrics(pred_pair=ctrl + da + db, true_pair=true_pair, control_mean=ctrl,
+                     delta_a=da, delta_b=db, top_idx=TOP)
+    idx = np.array(TOP)
+    add, d = (da + db)[idx], (true_pair - ctrl)[idx]
+    assert math.isclose(m["scale"], 1.0, rel_tol=1e-12)
+    assert math.isclose(m["lam"], float(d @ add) / float(add @ add), rel_tol=1e-12)
+    # A prediction that doubles the additive change has scale 2.
+    m2 = pair_metrics(pred_pair=ctrl + 2 * (da + db), true_pair=true_pair, control_mean=ctrl,
+                      delta_a=da, delta_b=db, top_idx=TOP)
+    assert math.isclose(m2["scale"], 2.0, rel_tol=1e-12)
+
+
+def test_floor_on_the_e_scale_is_the_r_floor_times_rel_gi():
+    rng, ctrl, da, db, inter, _ = _setup(8)
+    cells = (ctrl + da + db + inter) + rng.normal(0, 0.1, (300, G))
+    f = split_half_floor(cells, control_mean=ctrl, delta_a=da, delta_b=db, top_idx=TOP, seed=0)
+    m = pair_metrics(pred_pair=cells.mean(0), true_pair=cells.mean(0), control_mean=ctrl,
+                     delta_a=da, delta_b=db, top_idx=TOP)
+    assert math.isclose(f["floor_e"], f["floor_r"] * m["rel_gi"], rel_tol=1e-10)
+
+
+def test_all_gene_error_uses_every_gene():
+    rng, ctrl, da, db, _, true_pair = _setup(9)
+    pred = true_pair.copy()
+    pred[25] += 1.0                                       # an error outside the top-DE genes only
+    kw = dict(pred_pair=pred, true_pair=true_pair, control_mean=ctrl, delta_a=da, delta_b=db)
+    assert pair_metrics(top_idx=TOP, **kw)["rel_err"] == 0.0
+    full = pair_metrics(top_idx=list(range(G)), **kw)["rel_err"]
+    assert math.isclose(full, 1.0 / np.linalg.norm(true_pair - ctrl), rel_tol=1e-12)
