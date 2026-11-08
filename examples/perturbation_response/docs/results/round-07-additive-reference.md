@@ -10,6 +10,21 @@ $$
 
 where $\bar{x}_g$ is the mean normalized expression (log1p-CP10K) of the cells perturbed by gene $g$ alone, $\bar{x}_{\mathrm{ctrl}}$ the mean of the control cells, and $\hat{\Delta}$ the prediction. Each $\Delta(g)$ comes from the training side of the `combo` split. Every single is on that side and only the combinations are held out, so the reference never reads a held-out cell. It is graded by the same harness as every model, on the same twenty pairs and the same top-20 genes. Published work finds this reference hard to beat on combination benchmarks of this kind (Ahlmann-Eltze, Huber and Anders, "Deep-learning-based gene perturbation effect prediction does not yet outperform simple linear baselines", *Nature Methods*, 2025). Round 4 had already computed the same prediction as an epistasis diagnostic, from the same single-gene cells, but it was never set beside the models.
 
+## Experimental settings
+
+| arm | what it is | experiments |
+|---|---|---|
+| additive | the sum of the two singles' measured effects, no training | `norman_additive` |
+| conditioned NB-VAE | round 6's $q(z \mid x, c)$ arm | `norman_vae_cond_s{0,1,2}` |
+| transport flow | round 1's control-to-perturbed flow | `norman_sweep_control_s{0,1,2}` |
+
+- **The reference.** `18_eval_additive_baseline.py` predicts each held-out pair as the control mean plus each single's mean training effect, in log1p-CP10K. It is deterministic, so it has no seeds, and it never reads a held-out cell.
+- **The learned arms, as trained.** The conditioned NB-VAE is round 6's. The transport flow is `04_train_cond_flow.py --split combo --cond-type geneset --flow-base control --coupling independent --seed <s>`, run by [`run_seed_sweep_pod.sh`](../../run_seed_sweep_pod.sh) on one A40 GPU, with its runner's default of 60 epochs: a velocity field of width 256 with 4 blocks and a 128-dimensional condition, on latents of the frozen encoder `norman_stage_a`. The latent statistics stored with each flow match that encoder's, and each run reads out through the shared count decoder (md5 `52a44337`).
+- **Predictions.** 200 generated cells per pair, generation seed 0, and for the flow 100 Euler steps with guidance 1.
+- **Exploratory references.** Each single alone; one average training effect, the mean over every non-control training perturbation of its mean training profile, combinations included; and two distinct singles drawn at random and added, 20 draws with random seed 0.
+- **Statistics.** `12_compare_arms.py` with the arm kind `additive`, seeds averaged per pair, a joint bootstrap of 10,000 resamples with seed 0; the max-$t$ critical value is $3.107$. Δr is the only endpoint, since the reference has no population to calibrate.
+- **Compute.** Locally on a CPU, in seconds.
+
 **The pre-committed endpoint.** $\Delta r$ on the twenty held-out combinations, with two contrasts in one max-$t$ family: additive minus the conditioned VAE (the round-6 bar), and additive minus the transport flow. The decision rule, fixed before any number: if the additive model is significantly above the bar, it becomes the bar. There are no secondary endpoints, because the additive model predicts a mean profile, not a population, and calibration does not apply to it.
 
 **Verdict: on mean-effect prediction, the additive reference beats every learned model tested, and it becomes the reference on $\Delta$-correlation at $0.961$.**

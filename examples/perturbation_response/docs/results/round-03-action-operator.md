@@ -10,6 +10,20 @@ Here $e(p)$ is the gene-set embedding of perturbation $p$ (so an unseen combinat
 
 Because sequencing destroys the cell, there is no "same cell before and after" and the per-pair equivariance loss cannot be computed at all. So each step pushes the control cloud through $A_p$ and matches its **marginal** against the real perturbed cloud with an **energy distance**, which needs no correspondence. Only Stage B is retrained; the frozen encoder and the count decoder are reused.
 
+## Experimental settings
+
+| arm | flags | experiments, seeds 0, 1, 2 |
+|---|---|---|
+| deterministic operator | none | `norman_operator_s{0,1,2}` |
+| stochastic operator + residual | `--stochastic --residual-scale 1.0` | `norman_operator_stoch_s{0,1,2}` |
+
+- **Stage B only.** `13_train_operator.py --split combo --epochs 60 --seed <s>` on latents of the frozen encoder `norman_stage_a` (md5 `38f51067`), run by [`run_operator_pod.sh`](../../run_operator_pod.sh). The count decoder is reused unchanged, the shared one of `norman_flow_control` (md5 `52a44337`).
+- **The model.** A basis of 16 generators, each $256 \times 256$, initialized with random entries scaled by $1/\sqrt{256}$. A policy MLP of widths $128 \to 256 \to 16$ with SiLU maps the 128-dimensional gene-set condition to the coefficients $\alpha$, and its last layer starts at zero. The least-action penalty is $10^{-4} \lVert M \rVert_F^2$. The stochastic arm adds a head for the log standard deviation of $\alpha$, initialized at $-3$, and a residual displacement head of widths $128 \to 256 \to 256$ initialized at zero.
+- **Training.** Each step samples 8 perturbations and clouds of 128 control and 128 perturbed cells, 100 steps per epoch, AdamW at learning rate $10^{-3}$, gradient clipping at 1.0. The loss is the sample energy distance between the pushed control cloud and the real perturbed cloud plus the penalty, averaged over perturbations. 196 of the 237 perturbations have enough cells to train on, over 96,256 training cells.
+- **Grading.** `06_eval_effect_size.py --stage-b operator` and `10_eval_calibration.py --stage-b operator --model flow`, with 200 cells per pair and seed 0. There is no ODE: control samples are pushed through $A_p$ and decoded. The contrasts come from `12_compare_arms.py`, which writes `output/norman_operator_s0/reports/arm_comparison.json`.
+- **The variance table** uses `11_diagnose_variance.py` on the seed-0 run of each operator arm and on the seed-42 transport flow `norman_flow_control`; its coverage column is the three-seed mean.
+- **Compute.** One A40 GPU, about 6 minutes per deterministic seed and about 28 per stochastic seed, about 1 hour 40 minutes in all. Grading on a CPU.
+
 **Two arms, three seeds each**, on an A40. Training energy fell from $0.68$ to $0.45$ and $\lVert A - I \rVert_F$ rose from $0$ to about $6$, so the operator did depart from the identity and stay there, rather than collapsing back into an expensive no-op.
 
 | contrast | difference | simultaneous 95% CI | reading |

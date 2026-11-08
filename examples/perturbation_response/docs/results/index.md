@@ -13,7 +13,7 @@
 | round | question | answer | page |
 |---|---|---|---|
 | 1 | Does the flow beat a from-scratch conditional VAE? | No: the VAE wins by $0.118$ in $\Delta r$ | [the head-to-head](round-01-head-to-head.md) |
-| 2 | Do the decoder levers help? | Superseded: the dispersion lever was aimed the wrong way, so the round is being re-run | [the decoder levers](round-02-decoder-levers.md) |
+| 2 | Do the decoder levers help? | Superseded: the dispersion lever was aimed the wrong way; a seeded re-run has not yet been done | [the decoder levers](round-02-decoder-levers.md) |
 | 3 | Does modeling the transition with an action operator beat the flow? | A dead tie with the flow, $-0.003$; the VAE still wins | [the action operator](round-03-action-operator.md) |
 | 4 | Does the operator algebra's bracket predict epistasis? | Refuted | [the operator algebra](round-04-operator-algebra.md) |
 | 5 | Are the frozen latents already linear in their response? | Close to affine: a nonlinear map adds about $1.5\%$ | [the Koopman probe](round-05-koopman-probe.md) |
@@ -101,9 +101,9 @@ Read the bolded rows against each other and that is the project so far. Every ge
 
 ## What every round shares
 
-Rounds differ in what they change. Unless a round's page says otherwise, everything else is held fixed, and these are the settings.
+Rounds differ in what they change. Unless a round's page says otherwise, everything else is held fixed, and these are the settings. Each round's page then has its own experimental-settings section with the arms, the exact training flags, the grading settings and the compute.
 
-- **Data.** Norman et al. 2019, a Perturb-seq screen of single-gene and two-gene perturbations, processed by `00_process_norman.py` into 5,000 highly variable genes. Expression is compared in log1p-CP10K, the log of one plus the counts per ten thousand.
+- **Data.** Norman et al. 2019, a Perturb-seq screen of single-gene and two-gene perturbations, processed by `00_process_norman.py` into a cache of 109,737 cells, 237 perturbations and 5,000 highly variable genes, chosen by the Seurat v3 method on raw counts. The differential-expression table that ranks each perturbation's genes is `de_genes.json`, md5 `9844c2c2`. Expression is compared in log1p-CP10K, the log of one plus the counts per ten thousand.
 - **Split.** The `combo` split holds out twenty two-gene combinations whose single genes both remain in training, so at test time a model has met each gene alone but never the two together ([Chapter 3](../conditional-flow-jepa/03-training-and-evaluation.md)). Stage A pretrains on the training side of the same split, so no held-out combination reaches the encoder.
 - **What is scored.** For each held-out pair, the measured change $\Delta_p$ is the mean of its held-out cells minus the mean of all control cells, and a model's predicted change $\hat{\Delta}_p$ is the same difference computed from its predictions. Both are restricted to the pair's top 20 genes, ranked by the Wilcoxon $\lvert z \rvert$ against control ([Chapter 3e](../conditional-flow-jepa/03e-the-genes-the-metric-scores.md)).
 - **Endpoints.** $\Delta r$, the Pearson correlation between predicted and measured change, has been the primary endpoint of most rounds. It ignores size, so since round 8 every model is also scored on the size-aware error $e_p = \lVert \hat{\Delta}_p - \Delta_p \rVert_2 / \lVert \Delta_p \rVert_2$, where predicting no change gives $1$. Each round names its own single primary endpoint.
@@ -111,7 +111,7 @@ Rounds differ in what they change. Unless a round's page says otherwise, everyth
 - **Seeds and aggregation.** Learned arms are trained at three seeds where the page says so; one-seed rounds say so and claim less. Metrics are computed per pair and seed, averaged over seeds per pair, then averaged over pairs.
 - **Statistics.** A joint paired bootstrap over the twenty pairs, 10,000 resamples with seed 0, and max-$t$ simultaneous 95% intervals across the round's whole family of contrasts ([Chapter 4a](../conditional-flow-jepa/04a-reading-the-head-to-head.md)). The intervals describe the twenty test pairs, not training-seed variance.
 - **Pre-registration.** Each round fixes its endpoint and decision rule before scoring. Since round 7b the protocol is the docstring of the round's comparison script, committed before any number is scored, and the scoring script stops unless it reproduces each run's stored $\Delta r$.
-- **Compute.** Training runs on one NVIDIA A40 GPU on a cloud pod; scoring runs on a CPU. The [pipeline guide](../running-the-pipeline.md) covers both.
+- **Compute.** Training runs on one NVIDIA A40 GPU on a cloud pod, except round 1's NB-VAE, which was trained on a laptop CPU; scoring runs on a CPU. The [pipeline guide](../running-the-pipeline.md) covers both.
 
 ---
 

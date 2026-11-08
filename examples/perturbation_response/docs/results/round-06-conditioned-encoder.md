@@ -4,6 +4,17 @@
 
 **What changed.** Nothing in the method. This round tested the baseline. Every earlier round measured the method against an NB-VAE whose encoder is blind to the perturbation, $q(z \mid x)$, where $x$ is a cell's expression profile, $z$ its latent and $c$ the perturbation's embedding: the perturbation reaches that model only through its decoder. That design follows CPA's basal-state reading, without CPA's adversarial classifier. The textbook conditional VAE also conditions the encoder, $q(z \mid x, c)$. If that form is stronger, the bar every round was measured against was understated, and the program's next step, co-adaptation Phase 1, would be judged against the wrong number. [Chapter 3a](../conditional-flow-jepa/03a-the-models-in-the-head-to-head.md) sets out the design difference.
 
+## Experimental settings
+
+| arm | encoder | experiments, seeds 0, 1, 2 |
+|---|---|---|
+| blind | $q(z \mid x)$ | `norman_vae_blind_s{0,1,2}` |
+| conditioned | $q(z \mid x, c)$ | `norman_vae_cond_s{0,1,2}` |
+
+- **Training.** `08_train_cvae_baseline.py --split combo --epochs 60 --seed <s>`, with `--encoder-cond` added for the conditioned arm and nothing else changed, run by [`run_vae_encoder_ablation_pod.sh`](../../run_vae_encoder_ablation_pod.sh). Both arms use the script's defaults: batch 256, AdamW at learning rate $10^{-3}$, gradient clipping at 5.0, KL weight $\beta = 1$, latent dimension 256, hidden width 512, condition dimension 128, gene vectors of dimension 64 composed additively. 96,322 training cells. The VAE is the no-JEPA control, so no pretrained encoder or decoder is involved.
+- **Evaluation.** `09_eval_cvae_baseline.py --split combo`: 200 generated cells per pair, generation seed 0, each pair's top 20 genes, pairs with at least 20 held-out cells. Calibration with `10_eval_calibration.py --model vae`, 200 cells, nominal coverage $0.80$. The contrast with `12_compare_arms.py`, which writes `output/vae_encoder_ablation_compare.json`; its max-$t$ critical value is $2.121$.
+- **Compute.** One A40 GPU, about 7.5 minutes per run for the six runs. Grading ran locally on a CPU.
+
 **The pre-committed endpoint.** Both forms were trained in this round, at seeds 0, 1 and 2, with everything else identical, so the contrast is within the round. The primary endpoint is $\Delta r$ on the twenty held-out combinations, contrast conditioned minus blind, by joint paired bootstrap with a simultaneous interval. Calibration metrics are secondary and reported as intervals only. The decision rule, fixed before any numbers: if the conditioned encoder scores significantly higher, it becomes the bar.
 
 **Verdict: the conditioned encoder wins, and the bar rises to $0.858$.**

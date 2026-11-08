@@ -10,6 +10,23 @@ $$
 
 lower being better. Predicting no change at all, $\hat{\Delta}_p = 0$, gives $e_p = 1$. For the additive reference $e_p$ is exactly round 4's relative interaction $\mathrm{rel}_{\mathrm{GI}}$, the size of the measured departure from additivity as a fraction of the whole change.
 
+## Experimental settings
+
+| arm | role | experiments | kind |
+|---|---|---|---|
+| additive reference | primary | `norman_additive` | additive |
+| conditioned NB-VAE | primary | `norman_vae_cond_s{0,1,2}` | vae |
+| transport flow | primary | `norman_sweep_control_s{0,1,2}` | flow |
+| condition-blind NB-VAE | exploratory | `norman_vae_blind_s{0,1,2}` | vae |
+| Gaussian flow, noise to outcome | exploratory | `norman_sweep_gaussian_s{0,1,2}` | flow |
+| one average training effect | exploratory | `norman_additive` | average |
+
+- **Nothing was trained.** Every learned arm is a checkpoint from an earlier round: the NB-VAEs from round 6, the flows from the round-1 seed sweep, the Gaussian flow trained with `--flow-base gaussian`. Flows read out through the shared count decoder of `norman_flow_control`, md5 `52a44337`, byte-identical across all flow runs.
+- **Scoring each run.** [`19_score_interaction.py`](../../19_score_interaction.py) regenerates each run's predictions exactly as its own evaluation did: 200 cells per pair, generation seed 0, and for flows 100 Euler steps with guidance 1. It stops unless every pair's $\Delta r$ reproduces the run's stored report to $10^{-9}$, and all 14 scoring jobs reproduced it exactly. Each model's own singles, used by one secondary, come from a separate generator seeded 1.
+- **Definitions.** $a_p = \Delta_A + \Delta_B$ is the additive prediction and $I_p = \Delta_p - a_p$ the measured interaction. The scale $\lambda_p$ reproduces round 4's on every pair to $3 \times 10^{-7}$. The split-half floor divides each pair's held-out cells in two with a random permutation, seed 0, and is $\tfrac{1}{2} \lVert \bar{x}_1 - \bar{x}_2 \rVert / \lVert \Delta_p \rVert$ on the same genes. The strong-interaction stratum is the 10 pairs with the largest $\mathrm{rel}_{\mathrm{GI}}$, resampled on their own.
+- **Statistics.** Per pair and seed, then the seed mean per pair, then the mean over pairs. A joint paired bootstrap of 10,000 resamples with seed 0, shared by the primary and the secondaries; the max-$t$ critical value is $2.317$. A verdict needs at least 18 of the 20 pairs; all 20 entered.
+- **Compute.** Locally on a CPU, the 14 scoring jobs in parallel, about 4.3 minutes in all.
+
 **What was known beforehand.** The protocol was frozen in the scoring script before scoring, and it says what had already been seen. The additive reference's value was known from round 4. A composition ablation scored two days earlier, [round 7b](round-07b-composition-deepsets.md), had reported this endpoint, descriptively, for both primary learned arms, on the same checkpoints and predictions. So the primary verdict below was not blind. What the pre-registration protected was the endpoint and the rule: both were written in this ledger before those numbers existed, and neither was changed. The exploratory arms, the scale and all-gene secondaries and the noise floor had not been seen, except one exploratory value printed by a smoke test and disclosed in the protocol.
 
 **The pre-committed endpoint.** Mean $e_p$ over the twenty pairs, seed-averaged per pair for the learned arms. Two contrasts in one max-$t$ family over a joint paired bootstrap: the conditioned NB-VAE minus additive, and the transport flow minus additive. A learned model improves on additivity in magnitude only if its simultaneous interval lies wholly below zero; wholly above zero means additivity is better.

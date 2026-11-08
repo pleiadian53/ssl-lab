@@ -28,7 +28,7 @@ We built the full stack and ran it on held-out two-gene combinations from Norman
 
 Chapter 6 nominated two levers for closing the gap to the baseline, and these chapters develop them. They are complementary: the operator makes the transition model the change directly, and the decoder fixes make the measurement trustworthy so an operator improvement can reach the scoreboard.
 
-Both levers have since been built and measured, in Rounds 2 through 4 of the [results ledger](../results/index.md), and neither closed the gap. The action operator ties the transport flow, its group-composition algebra does not predict epistasis, and the decoder round aimed its dispersion lever the wrong way and is being re-run. The [action-operator series](../action-operator/index.md) rebuilds the operator from first principles in light of those results.
+Both levers have since been built and measured, in Rounds 2 through 4 of the [results ledger](../results/index.md), and neither closed the gap. The action operator ties the transport flow, its group-composition algebra does not predict epistasis, and the decoder round aimed its dispersion lever the wrong way and has not yet been re-run. The [action-operator series](../action-operator/index.md) rebuilds the operator from first principles in light of those results.
 
 Chapter 9 then turns from *building* the transition to *justifying* it, taking up the first of the four questions Chapter 7 deferred. It is theory rather than a lever, and it is where the operator's central assumption is finally stated as a premise that can be checked instead of an intuition that can be argued.
 
