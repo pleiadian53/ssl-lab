@@ -94,3 +94,56 @@ def test_trained_encoder_round_trips_through_save_and_load(tmp_path):
     jepa.eval()
     with torch.no_grad():
         assert torch.allclose(jepa.embed(tokens), again.embed(tokens))
+
+
+# --------------------------------------------------------------------------- #
+# Round 11: the library size in the likelihood, and how sampled counts are normalized.
+# --------------------------------------------------------------------------- #
+from ssllab.generative.count_decoder import library_size_of, normalize_sampled
+
+
+def test_library_size_of_reads_the_right_total():
+    batch = {"libsize": torch.tensor([30.0, 60.0]), "counts": torch.tensor([[1, 2, 7], [0, 5, 5]])}
+    assert torch.equal(library_size_of(batch, "all"), torch.tensor([30.0, 60.0]))
+    assert torch.equal(library_size_of(batch, "hvg"), torch.tensor([10.0, 10.0]))
+    with pytest.raises(ValueError):
+        library_size_of(batch, "genes")
+
+
+def test_depth_normalization_is_the_published_formula_and_data_normalization_matches_the_cache():
+    counts = torch.tensor([[1.0, 3.0, 0.0], [4.0, 4.0, 2.0]])
+    ls = torch.tensor([20.0, 20.0])
+    assert torch.equal(normalize_sampled(counts, ls, "depth"), torch.log1p(1e4 * counts / ls.unsqueeze(-1)))
+    data = normalize_sampled(counts, ls, "data")
+    assert torch.allclose(torch.expm1(data).sum(1), torch.full((2,), 1e4))   # CP10K per cell, as the cache
+
+
+def test_hvg_library_size_trains_and_is_recorded(tmp_path):
+    train, path, n_genes = _setup(tmp_path)
+    jepa = prepare_jepa(load_jepa(path), "dec", "cpu")
+    hist = train_coadapt(jepa, CountDecoder(latent_dim=32, n_genes=n_genes), train,
+                         CoadaptConfig(mode="dec", epochs=1, library_size="hvg"), "cpu")
+    assert torch.isfinite(torch.tensor(hist[0]["nb_loss"]))
+    with pytest.raises(ValueError):
+        CoadaptConfig(library_size="genes")
+
+
+def test_cvae_records_library_size_and_depth_generation_is_unchanged():
+    from ssllab.generative.cvae import ConditionalNBVAE
+    pert_gene = torch.tensor([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]])
+    torch.manual_seed(0)
+    m = ConditionalNBVAE(n_genes=6, pert_gene=pert_gene, latent_dim=4, cond_dim=4, gene_dim=4, hidden=8,
+                         library_size="hvg")
+    ck = {"state": m.state_dict(), "n_genes": 6, "pert_gene": pert_gene, "latent_dim": 4, "cond_dim": 4,
+          "gene_dim": 4, "hidden": 8, "compose": "additive", "library_size": "hvg"}
+    again = ConditionalNBVAE.from_checkpoint(ck)
+    assert again.library_size == "hvg"
+    old = {k: v for k, v in ck.items() if k != "library_size"}
+    assert ConditionalNBVAE.from_checkpoint(old).library_size == "all"
+    ls = torch.full((5,), 100.0)
+    # The Gamma-Poisson draws use the global RNG (only z uses the generator), so reseed both.
+    torch.manual_seed(7)
+    a = m.generate_population(1, 5, ls, generator=torch.Generator().manual_seed(3))
+    torch.manual_seed(7)
+    b = m.generate_population(1, 5, ls, generator=torch.Generator().manual_seed(3), normalize="depth")
+    assert torch.equal(a, b)

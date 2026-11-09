@@ -67,6 +67,16 @@ def parse_args() -> argparse.Namespace:
                    help="path to a count_decoder.pt to REUSE. A Stage-B lever (flow or "
                         "operator) does not change the readout, so the decoder is reused "
                         "rather than retrained. Defaults to this experiment\'s own.")
+    p.add_argument("--normalize", type=str, default="depth", choices=["depth", "data"],
+                   help="how sampled counts become log1p-CP10K: divide by the sampling depth (the "
+                        "published behavior) or each sampled cell by its own total over the modeled "
+                        "genes, as the measured expression was normalized")
+    p.add_argument("--depth", type=float, default=None,
+                   help="sampling depth for every generated cell (default: the median all-gene "
+                        "library size, the published depth)")
+    p.add_argument("--report-name", type=str, default=None,
+                   help="report file name under reports/ (default calibration_<model>), so a "
+                        "non-default depth or normalization never overwrites the published report")
     p.add_argument("--top-k", type=int, default=20)
     p.add_argument("--min-test-cells", type=int, default=20)
     p.add_argument("--seed", type=int, default=0)
@@ -92,20 +102,23 @@ def main() -> None:
 
         def predict_pop(pid: int, name: str):
             return predicted_population(bundle, decoder, pid, args.n, libsize,
-                                        guidance=args.guidance, steps=args.steps, device=device, generator=gen)
+                                        guidance=args.guidance, steps=args.steps, device=device, generator=gen,
+                                        normalize=args.normalize)
     else:
         ck = torch.load(exp.checkpoints / "cvae_baseline.pt", map_location=device)
         model = ConditionalNBVAE.from_checkpoint(ck, device)
 
         def predict_pop(pid: int, name: str):
-            return model.generate_population(pid, args.n, libsize, device=device, generator=gen)
+            return model.generate_population(pid, args.n, libsize, device=device, generator=gen,
+                                             normalize=args.normalize)
 
     cache = load_cache(Path(args.data_dir) / args.artifact)
     split_col = cache.split_cells if args.split == "cells" else cache.split_combo
     # Representative sequencing depth for the sampled counts (sets the technical-noise level).
-    med_libsize = float(np.median(np.asarray(cache.libsize)))
+    med_libsize = float(np.median(np.asarray(cache.libsize))) if args.depth is None else float(args.depth)
     libsize = torch.full((args.n,), med_libsize)
-    logger.info("sampling counts at median library size %.0f", med_libsize)
+    logger.info("sampling counts at depth %.0f (%s), normalization %s", med_libsize,
+                "median all-gene library size" if args.depth is None else "given", args.normalize)
     per_pert, summary = run_calibration_eval(
         predict_pop,
         hvg_X=cache.hvg_X, pert_names=cache.pert_names, pert_id=cache.pert_id,
@@ -116,11 +129,13 @@ def main() -> None:
                 args.model, args.split, summary["mean_spread_r"], summary["mean_coverage"],
                 summary["nominal_coverage"], summary["mean_wasserstein"], summary["n_perturbations"])
 
-    exp.write_report(f"calibration_{args.model}", {
+    report_name = args.report_name or f"calibration_{args.model}"
+    exp.write_report(report_name, {
         "model": args.model, "split": args.split, "n_generated": args.n, "top_k": args.top_k,
+        "depth": med_libsize, "normalize": args.normalize,
         **summary, "per_pert": per_pert,
     })
-    logger.info("wrote report -> %s", exp.reports / f"calibration_{args.model}.json")
+    logger.info("wrote report -> %s", exp.reports / f"{report_name}.json")
 
 
 if __name__ == "__main__":

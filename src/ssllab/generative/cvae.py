@@ -46,7 +46,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from ssllab.generative.condition import GeneSetEmbedding
-from ssllab.generative.count_decoder import nb_nll
+from ssllab.generative.count_decoder import nb_nll, normalize_sampled
 
 
 class ConditionalNBVAE(nn.Module):
@@ -60,10 +60,14 @@ class ConditionalNBVAE(nn.Module):
         hidden: int = 512,
         compose: str = "additive",
         encoder_cond: bool = False,
+        library_size: str = "all",
     ) -> None:
         super().__init__()
         self.latent_dim = latent_dim
         self.encoder_cond = encoder_cond
+        # Which total the likelihood was trained with (``count_decoder.LIBRARY_SIZES``); recorded
+        # so evaluation knows the scale, it does not change the forward pass.
+        self.library_size = library_size
         self.cond = GeneSetEmbedding(pert_gene, gene_dim=gene_dim, out_dim=cond_dim, compose=compose)
         enc_in = n_genes + (cond_dim if encoder_cond else 0)
         self.enc = nn.Sequential(
@@ -90,6 +94,7 @@ class ConditionalNBVAE(nn.Module):
             n_genes=ck["n_genes"], pert_gene=ck["pert_gene"], latent_dim=ck["latent_dim"],
             cond_dim=ck["cond_dim"], gene_dim=ck["gene_dim"], hidden=ck["hidden"],
             compose=ck["compose"], encoder_cond=ck.get("encoder_cond", False),
+            library_size=ck.get("library_size", "all"),
         ).to(device)
         model.load_state_dict(ck["state"])
         model.eval()
@@ -143,6 +148,7 @@ class ConditionalNBVAE(nn.Module):
     def generate_population(
         self, pert_id: int, n: int, library_size: torch.Tensor,
         device: torch.device | str = "cpu", generator: torch.Generator | None = None,
+        normalize: str = "depth",
     ) -> torch.Tensor:
         """Per-cell predicted log1p-CP10K expression ``(n, G)``, **sampling counts** from the NB
         so the population carries realistic technical noise (for calibration)."""
@@ -154,4 +160,4 @@ class ConditionalNBVAE(nn.Module):
         kappa = out["kappa"].expand_as(mu)
         lam = torch.distributions.Gamma(kappa, kappa / (mu + 1e-8)).sample()   # NB = Gamma-Poisson
         counts = torch.poisson(lam)
-        return torch.log1p(1e4 * counts / ls.unsqueeze(-1))
+        return normalize_sampled(counts, ls, normalize)

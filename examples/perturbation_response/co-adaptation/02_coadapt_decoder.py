@@ -85,6 +85,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--encoder-lr", type=float, default=1e-4, help="encoder (and predictor) learning rate")
     p.add_argument("--clip", type=float, default=5.0)
     p.add_argument("--anchor-batches", type=int, default=20)
+    p.add_argument("--library-size", type=str, default="all", choices=["all", "hvg"],
+                   help="total the NB likelihood multiplies the rate by: all measured genes (the "
+                        "published convention) or the modeled genes only")
     p.add_argument("--limit", type=int, default=None, help="cap training cells (smoke only)")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--device", type=str, default="auto")
@@ -114,7 +117,7 @@ def main() -> None:
     n_genes = train_loader.meta["n_hvg"]
     decoder = CountDecoder(latent_dim=jepa.cfg.embed_dim, n_genes=n_genes).to(device)
     cfg = CoadaptConfig(mode=args.mode, epochs=args.epochs, lr=args.lr, encoder_lr=args.encoder_lr,
-                        clip=args.clip, anchor_batches=args.anchor_batches)
+                        clip=args.clip, anchor_batches=args.anchor_batches, library_size=args.library_size)
     logger.info("mode=%s  encoder %s (md5 %s)  genes=%d  train cells=%d  device=%s",
                 args.mode, enc_path, _md5(enc_path)[:8], n_genes, len(train_loader.dataset), device)
 
@@ -136,9 +139,10 @@ def main() -> None:
     enc_out = save_jepa(jepa, exp.checkpoints / "encoder.pt")
     dec_out = exp.checkpoints / "count_decoder.pt"
     torch.save({"state": decoder.state_dict(), "latent_dim": jepa.cfg.embed_dim, "n_genes": n_genes,
-                "zinb": False, "anchored_mean": False, "state_dispersion": False}, dec_out)
+                "zinb": False, "anchored_mean": False, "state_dispersion": False,
+                "library_size": args.library_size}, dec_out)
     exp.write_report("coadapt", {
-        "mode": args.mode, "seed": args.seed, "split": args.split,
+        "mode": args.mode, "seed": args.seed, "split": args.split, "library_size": args.library_size,
         "train_cells": len(train_loader.dataset), "limit": args.limit,
         "init_encoder": str(enc_path), "init_encoder_md5": _md5(enc_path),
         "encoder_md5": _md5(enc_out), "decoder_md5": _md5(dec_out),

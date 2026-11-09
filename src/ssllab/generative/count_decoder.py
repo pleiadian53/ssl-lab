@@ -34,6 +34,36 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+#: Which total the NB likelihood multiplies the rate profile by, ``mu = library_size * rho``.
+#: ``all`` is the total UMI over every measured gene (``batch["libsize"]``), the convention every
+#: model up to round 10 was trained with. ``hvg`` is the total over the modeled genes
+#: (``batch["counts"].sum(1)``), the only scale on which a softmax ``rho`` that sums to 1 can match
+#: the observed counts; under ``all`` the likelihood is fit with means about 3.2 times the counts.
+LIBRARY_SIZES = ("all", "hvg")
+
+#: How sampled counts are turned back into log1p-CP10K. ``depth`` divides by the sampling depth
+#: (the behavior of every published population metric); ``data`` divides each sampled cell by its
+#: own total over the modeled genes, which is how the measured expression was normalized.
+NORMALIZATIONS = ("depth", "data")
+
+
+def library_size_of(batch: dict, kind: str = "all") -> torch.Tensor:
+    """The library size ``(B,)`` the NB likelihood uses for a loader batch (see ``LIBRARY_SIZES``)."""
+    if kind == "all":
+        return batch["libsize"].float()
+    if kind == "hvg":
+        return batch["counts"].float().sum(-1).clamp_min(1.0)
+    raise ValueError(f"library size must be one of {LIBRARY_SIZES}, got {kind!r}")
+
+
+def normalize_sampled(counts: torch.Tensor, library_size: torch.Tensor, how: str = "depth") -> torch.Tensor:
+    """Sampled counts ``(n, G)`` to log1p-CP10K (see ``NORMALIZATIONS``)."""
+    if how == "depth":
+        return torch.log1p(1e4 * counts / library_size.unsqueeze(-1))
+    if how == "data":
+        return torch.log1p(1e4 * counts / counts.sum(-1, keepdim=True).clamp_min(1.0))
+    raise ValueError(f"normalization must be one of {NORMALIZATIONS}, got {how!r}")
+
 
 def nb_nll(x: torch.Tensor, mu: torch.Tensor, kappa: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
     """Negative-binomial negative log-likelihood of observed counts, averaged over cells.

@@ -32,6 +32,7 @@ if str(_SRC) not in sys.path:
 from ssllab.data.perturbseq import get_perturbseq_dataloaders
 from ssllab.experiment import experiment
 from ssllab.generative.condition import build_pert_gene_matrix
+from ssllab.generative.count_decoder import library_size_of
 from ssllab.generative.cvae import ConditionalNBVAE
 from ssllab.utils import get_device, set_seed
 
@@ -60,6 +61,9 @@ def parse_args() -> argparse.Namespace:
                    help="textbook cVAE: the encoder also reads the condition, q(z | x, c); "
                         "default is the condition-blind q(z | x) (see ConditionalNBVAE)")
     p.add_argument("--grad-clip", type=float, default=5.0, help="max grad norm (VAE stability)")
+    p.add_argument("--library-size", type=str, default="all", choices=["all", "hvg"],
+                   help="total the NB likelihood multiplies the rate by: all measured genes (the "
+                        "published convention) or the modeled genes only (see count_decoder.LIBRARY_SIZES)")
     p.add_argument("--limit", type=int, default=None)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--device", type=str, default="auto")
@@ -81,7 +85,7 @@ def main() -> None:
     model = ConditionalNBVAE(
         n_genes=n_genes, pert_gene=pert_gene, latent_dim=args.latent_dim,
         cond_dim=args.cond_dim, gene_dim=args.gene_dim, hidden=args.hidden, compose=args.compose,
-        encoder_cond=args.encoder_cond,
+        encoder_cond=args.encoder_cond, library_size=args.library_size,
     ).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr)
     logger.info("cvae baseline: genes=%d latent=%d cond=%d genes_vocab=%d compose=%s encoder=%s split=%s cells=%d",
@@ -95,7 +99,7 @@ def main() -> None:
         for batch in train_loader:
             x = batch["features"].float().to(device)
             counts = batch["counts"].float().to(device)
-            libsize = batch["libsize"].to(device)
+            libsize = library_size_of(batch, args.library_size).to(device)
             pid = batch["pert_id"].to(device)
             loss, _ = model.loss(x, counts, libsize, pid, beta=args.beta)
             opt.zero_grad()
@@ -111,9 +115,11 @@ def main() -> None:
         "state": model.state_dict(), "n_genes": n_genes, "latent_dim": args.latent_dim,
         "cond_dim": args.cond_dim, "gene_dim": args.gene_dim, "hidden": args.hidden,
         "compose": args.compose, "pert_gene": pert_gene, "encoder_cond": args.encoder_cond,
+        "library_size": args.library_size,
     }, out)
     exp.write_report("baseline_cvae", {"final_loss": avg, "split": args.split, "beta": args.beta,
                                        "compose": args.compose, "encoder_cond": args.encoder_cond,
+                                       "library_size": args.library_size,
                                        "train_cells": len(train_loader.dataset)})
     logger.info("saved cvae baseline -> %s", out)
 

@@ -63,7 +63,7 @@ from dataclasses import asdict, dataclass
 import torch
 
 from ssllab.eval.collapse import collapse_report
-from ssllab.generative.count_decoder import CountDecoder
+from ssllab.generative.count_decoder import LIBRARY_SIZES, CountDecoder, library_size_of
 from ssllab.jepa.ema import EMA
 from ssllab.jepa.model import JEPA
 
@@ -82,10 +82,13 @@ class CoadaptConfig:
     clip: float = 5.0           # gradient-norm clip over every trainable parameter, in every mode
     anchor_batches: int = 20    # batches used to fix the anchor weight
     anchor_weight: float | None = None  # set by the rule before training (joint_anchor only)
+    library_size: str = "all"   # the total the NB likelihood uses (count_decoder.LIBRARY_SIZES)
 
     def __post_init__(self) -> None:
         if self.mode not in MODES:
             raise ValueError(f"mode must be one of {MODES}, got {self.mode!r}")
+        if self.library_size not in LIBRARY_SIZES:
+            raise ValueError(f"library_size must be one of {LIBRARY_SIZES}, got {self.library_size!r}")
         if self.epochs < 1 or self.lr <= 0 or self.encoder_lr <= 0 or self.clip <= 0:
             raise ValueError("epochs must be >= 1 and lr, encoder_lr and clip must be positive")
 
@@ -110,9 +113,9 @@ def prepare_jepa(jepa: JEPA, mode: str, device: torch.device | str) -> JEPA:
     return jepa
 
 
-def _nb_loss(jepa: JEPA, decoder: CountDecoder, batch: dict, device) -> torch.Tensor:
+def _nb_loss(jepa: JEPA, decoder: CountDecoder, batch: dict, device, library_size: str = "all") -> torch.Tensor:
     z = jepa.embed(batch["tokens"].to(device))
-    return decoder.loss(z, batch["counts"].float().to(device), batch["libsize"].to(device))
+    return decoder.loss(z, batch["counts"].float().to(device), library_size_of(batch, library_size).to(device))
 
 
 @torch.no_grad()
@@ -185,7 +188,7 @@ def train_coadapt(
                     z = jepa.embed(batch["tokens"].to(device))
             else:
                 z = jepa.embed(batch["tokens"].to(device))
-            nb = decoder.loss(z, batch["counts"].float().to(device), batch["libsize"].to(device))
+            nb = decoder.loss(z, batch["counts"].float().to(device), library_size_of(batch, cfg.library_size).to(device))
             loss = nb
             if cfg.mode == "joint_anchor":
                 jl = jepa(batch["tokens"].to(device))[0]
