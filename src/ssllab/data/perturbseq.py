@@ -320,6 +320,61 @@ def target_gene_support(
     return support
 
 
+def perturbation_support(
+    pert_id: np.ndarray, pert_names: np.ndarray, split_codes: np.ndarray
+) -> dict[str, dict[str, Any]]:
+    """One record per perturbation: its cells in each split, and what kind of label it is.
+
+    The perturbation-keyed counterpart of :func:`target_gene_support`. That function answers
+    "how much evidence trained the vector for gene *g*", which is the question the
+    gene-compositional condition raises. This one answers "what is perturbation *p*", which is
+    the question a metric raises: every per-perturbation number the evaluators report is an
+    estimate from this many cells, and under the combo split a held-out combination's cells are
+    the only cells that perturbation ever has.
+
+    Arguments
+        pert_id      ``(n,)`` perturbation index of every cell (index into ``pert_names``).
+        pert_names   ``(n_perts,)`` perturbation names, ``"+"``-joined for combinations.
+        split_codes  ``(n,)`` split code of every cell under one split scheme
+                     (``CacheBundle.split_combo`` or ``split_cells``).
+
+    Returns ``{name: record}`` over every perturbation in ``pert_names``, where ``record`` is
+
+        genes       the target genes, ``[]`` for ``"control"``
+        n_genes     ``len(genes)``; 0 control, 1 single, 2+ combination
+        kind        ``"control"`` / ``"single"`` / ``"combo"``
+        train, val, test   cells in that split
+        total       cells in all splits
+        split       the one split a perturbation's cells live in, or ``"mixed"`` when they are
+                    spread over more than one. Under the combo split every perturbation is
+                    pure, because the split is made at the perturbation level; under the cells
+                    split every perturbation is ``"mixed"``, because cells are drawn at random.
+
+    No expression data is touched, only the label arrays, so this is fast on the full dataset.
+    """
+    pert_id = np.asarray(pert_id)
+    split_codes = np.asarray(split_codes)
+    names = [str(n) for n in pert_names]
+    counts = {
+        split: np.bincount(pert_id[split_codes == code], minlength=len(names))
+        for split, code in _SPLIT_CODE.items()
+    }
+    out: dict[str, dict[str, Any]] = {}
+    for p, name in enumerate(names):
+        genes = target_genes(name)
+        per_split = {split: int(counts[split][p]) for split in _SPLIT_CODE}
+        present = [split for split, n in per_split.items() if n > 0]
+        out[name] = {
+            "genes": genes,
+            "n_genes": len(genes),
+            "kind": "control" if not genes else ("single" if len(genes) == 1 else "combo"),
+            **per_split,
+            "total": sum(per_split.values()),
+            "split": present[0] if len(present) == 1 else ("mixed" if present else "none"),
+        }
+    return out
+
+
 # --------------------------------------------------------------------------- #
 # Dataset + loaders.
 # --------------------------------------------------------------------------- #

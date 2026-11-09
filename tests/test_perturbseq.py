@@ -24,6 +24,7 @@ from ssllab.data.perturbseq import (
     detokenize_cells,
     get_perturbseq_dataloaders,
     make_gene_partition,
+    perturbation_support,
     target_gene_support,
     target_genes,
     token_dim_for,
@@ -176,6 +177,39 @@ def test_target_gene_support_counts_singles_and_combos():
     assert sup["B"]["test"]["total"] == 3 and sup["B"]["train"]["total"] == 1
     assert sup["C"]["val"]["combos"] == {"C+D": 1} and sup["D"]["val"]["total"] == 1
     assert target_genes("control") == [] and target_genes("A+B") == ["A", "B"]
+
+
+def test_perturbation_support_is_keyed_by_label_not_gene():
+    # Same fixture as the gene-support test, read the other way round.
+    pert_id = np.array([0, 1, 1, 2, 5, 5, 5, 6, 3, 4])
+    split = np.array([SPLIT_TRAIN] * 4 + [SPLIT_TEST] * 3 + [SPLIT_VAL] + [SPLIT_TRAIN] * 2)
+    sup = perturbation_support(pert_id, PERT_NAMES, split)
+
+    # Every perturbation in the vocabulary gets a record, including ones with no cells.
+    assert set(sup) == {str(n) for n in PERT_NAMES}
+
+    assert sup["A+B"]["kind"] == "combo" and sup["A+B"]["genes"] == ["A", "B"]
+    assert (sup["A+B"]["train"], sup["A+B"]["test"], sup["A+B"]["total"]) == (0, 3, 3)
+    assert sup["A+B"]["split"] == "test"          # pure: a perturbation-level split
+    assert sup["A"]["kind"] == "single" and sup["A"]["n_genes"] == 1 and sup["A"]["total"] == 2
+    assert sup["control"]["kind"] == "control" and sup["control"]["genes"] == []
+    assert sup["C+D"]["split"] == "val"
+
+    # The two support views must agree on totals, since they count the same cells.
+    genes = target_gene_support(pert_id, PERT_NAMES, split)
+    for g in genes:
+        from_perts = sum(r["total"] for r in sup.values() if g in r["genes"])
+        assert from_perts == sum(genes[g][s]["total"] for s in ("train", "val", "test"))
+
+
+def test_perturbation_support_marks_mixed_under_a_cell_split():
+    # A cell-level split spreads one perturbation over several splits.
+    pert_id = np.array([1, 1, 1, 1])
+    split = np.array([SPLIT_TRAIN, SPLIT_TRAIN, SPLIT_VAL, SPLIT_TEST])
+    sup = perturbation_support(pert_id, PERT_NAMES, split)
+    assert (sup["A"]["train"], sup["A"]["val"], sup["A"]["test"]) == (2, 1, 1)
+    assert sup["A"]["split"] == "mixed"
+    assert sup["B"]["split"] == "none"            # no cells at all
 
 
 def test_stage_a_wiring(tmp_path):

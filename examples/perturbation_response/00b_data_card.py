@@ -7,6 +7,16 @@ answers "what did the model actually see?" before any model output is read:
 * per target gene, the cells that carry it in each split: as a single, inside
   combinations, and in total
 * for one or more named genes (``--gene``), the breakdown by perturbation
+* for a named perturbation (``--perturbation CEBPE+RUNX1T1``), its own record: the
+  genes it targets, which split its cells live in, and how much evidence each of
+  its target genes has in training
+* ``--as-table`` prints one row per perturbation with the cell counts as columns,
+  which is the form to paste into a note or pipe to a file
+
+Two keys, two questions. The gene table answers "how much evidence trained the
+vector for gene g", which is what the gene-compositional condition raises. The
+perturbation table answers "what is perturbation p and how many cells is its
+score estimated from", which is what every per-perturbation metric raises.
 
 Why per gene. The gene-compositional condition embeds ``A+B`` as
 ``e(A) + e(B)`` from learned per-gene vectors, so ``e(CEBPE)`` is trained by every
@@ -24,6 +34,8 @@ Usage
     python examples/perturbation_response/00b_data_card.py                          # all target genes
     python examples/perturbation_response/00b_data_card.py --gene CEBPE              # one gene, by perturbation
     python examples/perturbation_response/00b_data_card.py --gene CEBPE --gene KLF1 --split cells
+    python examples/perturbation_response/00b_data_card.py --perturbation CEBPE+RUNX1T1
+    python examples/perturbation_response/00b_data_card.py --as-table --kind combo --in-split test
 
 Output
 ------
@@ -49,6 +61,7 @@ from ssllab.data.perturbseq import (
     SPLIT_TRAIN,
     SPLIT_VAL,
     TOKENS_NPZ,
+    perturbation_support,
     target_gene_support,
     target_genes,
 )
@@ -68,6 +81,15 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--artifact", type=str, default="norman2019", help="processed cache under <data-dir>/")
     p.add_argument("--split", type=str, default="combo", choices=["combo", "cells"],
                    help="which split scheme to count under (combo = the headline held-out combinations)")
+    p.add_argument("--perturbation", "-p", action="append", default=[],
+                   help="a perturbation label ('CEBPE' or 'CEBPE+RUNX1T1'); repeatable. "
+                        "Gene order does not matter, the label is alphabetized as in the cache")
+    p.add_argument("--as-table", action="store_true",
+                   help="one row per perturbation, cell counts as columns")
+    p.add_argument("--kind", type=str, default=None, choices=["control", "single", "combo"],
+                   help="restrict --as-table to one kind of label")
+    p.add_argument("--in-split", type=str, default=None, choices=["train", "val", "test"],
+                   help="restrict --as-table to perturbations whose cells are in this split")
     p.add_argument("--gene", action="append", default=[],
                    help="show this target gene by perturbation (repeatable; case-insensitive)")
     return p.parse_args()
@@ -154,16 +176,83 @@ def print_gene_detail(gene: str, rec: dict) -> None:
             print(f"           {name:<22} {n:>6,}")
 
 
+def resolve_perts(requested: list[str], known: list[str]) -> list[str]:
+    """Match requested perturbation labels to the cache's vocabulary.
+
+    Case-insensitive, and gene order is irrelevant: ``"runx1t1+cebpe"`` resolves to
+    ``"CEBPE+RUNX1T1"``, because the cache alphabetizes a combination's genes
+    (``normalize_label`` in ``00_process_norman.py``) and so must any lookup.
+    """
+    def key(name: str) -> str:
+        genes = target_genes(name)
+        return "+".join(sorted(g.upper() for g in genes)) if genes else name.upper()
+
+    by_key = {key(n): n for n in known}
+    resolved = []
+    for q in requested:
+        hit = by_key.get(key(q))
+        if hit is None:
+            close = difflib.get_close_matches(key(q), list(by_key), n=5)
+            hint = f"; close matches: {', '.join(by_key[c] for c in close)}" if close else ""
+            raise SystemExit(f"{q!r} is not a perturbation in this cache{hint}")
+        resolved.append(hit)
+    return resolved
+
+
+def print_pert_detail(name: str, rec: dict, support: dict) -> None:
+    """One perturbation: its own cells, then the training evidence for each target gene."""
+    print(f"\n{name}   ({rec['kind']}, {rec['n_genes']} target gene{'s' if rec['n_genes'] != 1 else ''})")
+    print(f"  cells   train {rec['train']:,}   val {rec['val']:,}   test {rec['test']:,}"
+          f"   total {rec['total']:,}   [{rec['split']}]")
+    if rec["split"] in ("val", "test"):
+        print(f"  held out under this split: these {rec['total']:,} cells are the only cells this "
+              f"perturbation has, and every score reported for it is estimated from them")
+    if not rec["genes"]:
+        return
+    print(f"\n  training evidence per target gene")
+    print(f"  {'gene':<10}  {'single':>8}  {'in combos':>10}  {'(n)':>4}  {'train total':>11}")
+    for g in rec["genes"]:
+        tr = support[g]["train"]
+        print(f"  {g:<10}  {tr['single']:>8,}  {tr['in_combos']:>10,}  {len(tr['combos']):>4}  "
+              f"{tr['total']:>11,}")
+
+
+def print_pert_table(perts: dict, kind: str | None, in_split: str | None) -> None:
+    """One row per perturbation, counts as columns, most cells first."""
+    rows = [(n, r) for n, r in perts.items()
+            if (kind is None or r["kind"] == kind) and (in_split is None or r["split"] == in_split)]
+    rows.sort(key=lambda kv: (-kv[1]["total"], kv[0]))
+    what = " ".join(x for x in [kind, f"in {in_split}" if in_split else None] if x) or "all"
+    print(f"\nPerturbations ({what}): {len(rows)} rows, sorted by total cells")
+    print(f"{'perturbation':<24}  {'kind':<7}  {'train':>8}  {'val':>6}  {'test':>6}  "
+          f"{'total':>8}  {'split':<6}")
+    for n, r in rows:
+        print(f"{n:<24}  {r['kind']:<7}  {r['train']:>8,}  {r['val']:>6,}  {r['test']:>6,}  "
+              f"{r['total']:>8,}  {r['split']:<6}")
+    if rows:
+        tot = sum(r["total"] for _, r in rows)
+        cells = [r["total"] for _, r in rows]
+        print(f"{'':<24}  {'':<7}  {'':>8}  {'':>6}  {'':>6}  {tot:>8,}  (min {min(cells):,} "
+              f"median {int(np.median(cells)):,} max {max(cells):,})")
+
+
 def main() -> None:
     args = parse_args()
     cache_dir = Path(args.data_dir) / args.artifact
     labels = load_labels(cache_dir, args.split)
     support = target_gene_support(labels["pert_id"], labels["pert_names"], labels["split_codes"])
+    perts = perturbation_support(labels["pert_id"], labels["pert_names"], labels["split_codes"])
     ov = overview(labels)
     genes = resolve_genes(args.gene, list(support))
+    named = resolve_perts(args.perturbation, list(perts))
 
     print_overview(ov, args.split)
-    if genes:
+    if named:
+        for n in named:
+            print_pert_detail(n, perts[n], support)
+    elif args.as_table:
+        print_pert_table(perts, args.kind, args.in_split)
+    elif genes:
         for g in genes:
             print_gene_detail(g, support[g])
     else:
@@ -175,6 +264,7 @@ def main() -> None:
         "split": args.split,
         "overview": ov,
         "target_genes": support,
+        "perturbations": perts,
     })
     logger.info("saved data card -> %s", path)
 
