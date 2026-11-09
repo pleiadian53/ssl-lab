@@ -88,7 +88,7 @@ The scripts are numbered `00` to `17` in the order they were written, which is n
 | script | answers |
 |---|---|
 | `00a_probe_hvg_coverage.py` | does the gene panel already contain the genes that respond? |
-| `00b_data_card.py` | how many cells carry each target gene in each split, as a single and inside combinations (`--gene CEBPE` for one gene)? |
+| `00b_data_card.py` | how many cells are in each split, per target gene (`--gene CEBPE`) or per perturbation (`--perturbation CEBPE+RUNX1T1`, or `--as-table --kind combo --in-split test` for the holdout as rows)? |
 | `00c_show_architecture.py` | what does a component (encoder, predictor, time or condition embedding, flow, decoder, ...) do, step by step, and what shape is the data after each step? Run with no arguments for the list of components; `--from-experiment NAME` shows a trained run with its own settings and weights |
 | `02_probe_cell_encoder.py` | is the frozen encoder any good, judged by a linear probe? |
 | `11_diagnose_variance.py` | how much of the predicted spread comes from the latent distribution, and how much from the decoder? |
@@ -190,6 +190,19 @@ Data preparation, tests and smoke runs happen locally on CPU. Training happens o
 | `03_coadapt_operator.py` | Phase 2, planned, now lower priority | the operator, under a linearizing objective |
 
 Its narrative companion is [co-adaptation/docs](co-adaptation/docs/index.md).
+
+### Understanding the data and the metrics
+
+[`data-science/`](data-science/README.md) holds runnable explainers: one script per conceptual question, each importing the production implementation from `src/ssllab` rather than restating it, so an explanation cannot drift from the code it explains. Nothing there trains a model or feeds a result into the ledger.
+
+| script | answers |
+|---|---|
+| `01_metric_energy_distance.py` | how is energy distance computed, what does the joint view buy over per-gene marginals, and why are there two estimators of it in the codebase? |
+| `02_metric_effect_size_and_ep.py` | how do Δr and `e_p` turn two populations into one number, what do the scale terms mean, and how well can a perfect predictor score? |
+| `03_holdout_power.py` | what is in the holdout, how unequal are the twenty contributions, and when is a wide simultaneous interval about the arms rather than about the family? |
+| `04_collapse_effective_rank.py` | what does effective rank measure that a standard deviation does not, and why does a random-slice isotropy penalty tolerate a rank-20 embedding? |
+
+Its narrative companion is [data-science/docs](data-science/docs/index.md), which sets the four endpoint families side by side.
 
 ## Design notes
 
