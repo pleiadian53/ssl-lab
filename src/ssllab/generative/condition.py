@@ -86,6 +86,9 @@ class GeneSetEmbedding(nn.Module):
         mh = self.pert_gene[pert_id]                      # (B, n_genes) multi-hot
         if self.compose == "additive":
             z_p = mh @ self.gene_emb.weight               # (B, gene_dim) = sum of present genes
+            # NOTE:
+            # 1. the product is exactly the sum of the rows of the targeted genes
+            # 2. control (no genes) -> zero vector, which is a nice inductive bias
         else:
             h = self.psi(self.gene_emb.weight)            # (n_genes, gene_dim)
             z_p = self.phi(mh @ h)                        # masked sum -> per-set MLP
