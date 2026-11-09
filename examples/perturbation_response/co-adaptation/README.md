@@ -4,7 +4,9 @@ This sub-program continues the perturbation-response work by **unfreezing the JE
 
 The references have moved since the program began. The strongest learned baseline, the from-scratch NB-VAE, stood at Δr = 0.766 through round 5. Round 6 let its encoder read the perturbation as well as the cell, which raised it to Δr = 0.858. Round 7 then scored a reference that needs no training, the **additive** prediction Δ(A) + Δ(B) from the two single-gene effects measured on the training cells, at Δr = 0.961, significantly above every learned model. That finding is scoped to these 20 combinations, to correlation on each pair's top 20 genes, and to additivity in log1p-CP10K. It does not mean the pairs do not interact, and it says nothing about generating cell populations, since the additive reference produces a mean profile and no cells.
 
-**How Phase 1 is judged.** On the existing Δ-correlation endpoint, Phase 1 is compared against both the additive reference (0.961) and the conditioned NB-VAE (0.858). An improvement over the VAE alone is an improvement over the strongest learned baseline, not over the strongest tested reference; a claim against additivity needs a simultaneous interval against the additive reference that excludes zero. On the population metrics (spread, coverage, Wasserstein and energy distance), where the additive reference has no score, the VAE remains the comparison. Because Δr leaves only 0.04 of room above the additive reference, the [results ledger](../docs/results/index.md) also proposes an endpoint that scores the size of the predicted change, open item 6, to be fixed before Phase 1 trains.
+**How Phase 1 is judged.** On the existing Δ-correlation endpoint, Phase 1 is compared against both the additive reference (0.961) and the conditioned NB-VAE (0.858). An improvement over the VAE alone is an improvement over the strongest learned baseline, not over the strongest tested reference; a claim against additivity needs a simultaneous interval against the additive reference that excludes zero. On the population metrics (spread, coverage, Wasserstein and energy distance), where the additive reference has no score, the VAE remains the comparison. Because Δr leaves only 0.04 of room above the additive reference, Phase 1 is also scored on the size-aware error of [round 8](../docs/results/round-08-size-aware-endpoint.md).
+
+**Phase 1 is on hold after round 10.** Phase 1 was motivated by the ceiling's 0.173 gap between the linear readout and the decoder. [Round 10](../docs/results/round-10-control-reference.md) found that gap only under the convention that takes every predicted change against the measured control mean: against each readout's own control prediction, no gap is established (−0.029, interval [−0.098, +0.041]), and what the decoder gets wrong is an offset in absolute expression shared by every condition. The Phase 1 trainer exists (`02_coadapt_decoder.py`, three modes: decoder only, joint, and joint while maintaining the JEPA predictive objective), and its launch waits for a re-planned endpoint.
 
 The narrative companion is the [co-adaptation series](docs/index.md).
 
@@ -24,7 +26,7 @@ Each phase unfreezes one more stage.
 | script | phase | trained jointly with the encoder | attributable? | status |
 |---|---|---|---|---|
 | `01_koopman_linearity_probe.py` | Phase 0, diagnostic | nothing; the encoder stays frozen | not applicable | **done** |
-| `02_coadapt_decoder.py` | Phase 1 | the NB count decoder, with the transition frozen | yes | planned, next |
+| `02_coadapt_decoder.py` | Phase 1 | the NB count decoder, with the transition frozen | yes | built; on hold after round 10 |
 | `03_coadapt_operator.py` | Phase 2 | the operator, under a Koopman objective | no, it gives attribution up | planned, lower priority |
 
 ## Phase 0: is the frozen latent space already linear?

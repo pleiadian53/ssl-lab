@@ -1,6 +1,6 @@
 # Round 9 — the encoder's regularizer: does SIGReg give a better cell representation than VICReg?
 
-*Part of [the results ledger](index.md), which holds the standing verdict, the scoreboard and the settings every round shares. Previous: [round 8](round-08-size-aware-endpoint.md).*
+*Part of [the results ledger](index.md), which holds the standing verdict, the scoreboard and the settings every round shares. Previous: [round 8](round-08-size-aware-endpoint.md) · Next: [round 10](round-10-control-reference.md).*
 
 **What changed.** Only the anti-collapse regularizer of Stage A. Every encoder so far used VICReg, which constrains second moments only: the spread of each embedding dimension and the covariance between dimensions. SIGReg, from LeJEPA (Balestriero and LeCun, 2025), asks the whole embedding distribution to look like an isotropic standard Gaussian. It projects the embeddings onto 1,024 random unit directions, redrawn every step, and penalizes each projection's departure from $\mathcal{N}(0, 1)$ with the Epps–Pulley statistic, a weighted distance between the empirical and the Gaussian characteristic functions. The predictor, the EMA teacher and the stop-gradient were kept, so any difference is the regularizer's. Three arms were trained at seeds 0, 1 and 2: VICReg retrained with its existing recipe, SIGReg on the context-token embeddings, and SIGReg on the cell vector, the mean of the context tokens. SIGReg used the paper's defaults untuned, weight $0.05$ in the convex form $0.95 \cdot \text{pred} + 0.05 \cdot \text{SIGReg}$. Nothing downstream was retrained: this round reads the encoder alone.
 
@@ -52,4 +52,4 @@ The simultaneous intervals include zero, so by the rule neither arm is formally 
 
 ---
 
-*Up: [the results ledger](index.md). Previous: [round 8](round-08-size-aware-endpoint.md).*
+*Up: [the results ledger](index.md). Previous: [round 8](round-08-size-aware-endpoint.md) · Next: [round 10](round-10-control-reference.md).*
