@@ -1,6 +1,6 @@
 # Round 10 — the control reference: is there a decoder gap once each readout is read against its own control?
 
-*Part of [the results ledger](index.md), which holds the standing verdict, the scoreboard and the settings every round shares. Previous: [round 9](round-09-sigreg-regularizer.md).*
+*Part of [the results ledger](index.md), which holds the standing verdict, the scoreboard and the settings every round shares. Previous: [round 9](round-09-sigreg-regularizer.md) · Next: [round 11](round-11-library-size.md).*
 
 **What changed.** Nothing was trained. Every round so far scored a learned model's predicted change as its predicted profile for a pair minus the *measured* control mean, against a true change that is the measured pair mean minus the same control mean. A readout through the negative-binomial count decoder reports $\log(1 + 10^4 \rho)$, the log of an expected rate, while the measured profile is the mean of $\log(1 + \cdot)$ of noisy normalized counts. The two can differ by an offset that is the same for every condition, and subtracting the measured control mean leaves that offset inside every predicted change. This round rescored existing checkpoints under two conventions. For a readout with predicted pair profile $P_p$, its own prediction for the control condition $C$, and the measured control mean $m$:
 
@@ -115,4 +115,4 @@ Under this reading the learned models are much closer to the data than the publi
 
 ---
 
-*Up: [the results ledger](index.md). Previous: [round 9](round-09-sigreg-regularizer.md).*
+*Up: [the results ledger](index.md). Previous: [round 9](round-09-sigreg-regularizer.md) · Next: [round 11](round-11-library-size.md).*
