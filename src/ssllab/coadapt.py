@@ -82,7 +82,7 @@ class CoadaptConfig:
     clip: float = 5.0           # gradient-norm clip over every trainable parameter, in every mode
     anchor_batches: int = 20    # batches used to fix the anchor weight
     anchor_weight: float | None = None  # set by the rule before training (joint_anchor only)
-    library_size: str = "all"   # the total the NB likelihood uses (count_decoder.LIBRARY_SIZES)
+    library_size: str = "hvg"   # the total the NB likelihood uses (count_decoder.LIBRARY_SIZES)
 
     def __post_init__(self) -> None:
         if self.mode not in MODES:

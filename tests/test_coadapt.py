@@ -128,7 +128,7 @@ def test_hvg_library_size_trains_and_is_recorded(tmp_path):
         CoadaptConfig(library_size="genes")
 
 
-def test_cvae_records_library_size_and_depth_generation_is_unchanged():
+def test_cvae_records_library_size_and_normalizations():
     from ssllab.generative.cvae import ConditionalNBVAE
     pert_gene = torch.tensor([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]])
     torch.manual_seed(0)
@@ -145,5 +145,13 @@ def test_cvae_records_library_size_and_depth_generation_is_unchanged():
     torch.manual_seed(7)
     a = m.generate_population(1, 5, ls, generator=torch.Generator().manual_seed(3))
     torch.manual_seed(7)
-    b = m.generate_population(1, 5, ls, generator=torch.Generator().manual_seed(3), normalize="depth")
-    assert torch.equal(a, b)
+    b = m.generate_population(1, 5, ls, generator=torch.Generator().manual_seed(3), normalize="data")
+    assert torch.equal(a, b)                                    # the default is data-like since round 11
+    torch.manual_seed(7)
+    c = m.generate_population(1, 5, ls, generator=torch.Generator().manual_seed(3), normalize="depth")
+    torch.manual_seed(7)
+    z = torch.randn(5, 4, generator=torch.Generator().manual_seed(3))
+    out = m.decode(z, torch.full((5,), 1, dtype=torch.long))
+    mu = ls.unsqueeze(-1) * out["rho"]
+    lam = torch.distributions.Gamma(out["kappa"].expand_as(mu), out["kappa"].expand_as(mu) / (mu + 1e-8)).sample()
+    assert torch.allclose(c, torch.log1p(1e4 * torch.poisson(lam) / ls.unsqueeze(-1)))   # the published formula

@@ -19,7 +19,7 @@ from ssllab.generative.condition import (
     GeneSetConditionEncoder,
     GeneSetEmbedding,
 )
-from ssllab.generative.count_decoder import CountDecoder, normalize_sampled
+from ssllab.generative.count_decoder import DEFAULT_NORMALIZATION, CountDecoder, normalize_sampled
 from ssllab.generative.flow import VelocityMLP, euler_sample
 
 
@@ -188,7 +188,7 @@ def predicted_expression(
 def predicted_population(
     bundle: dict, decoder: CountDecoder, pert_id: int, n: int, library_size: torch.Tensor,
     guidance: float = 1.0, steps: int = 100, device: torch.device | str = "cpu",
-    generator: torch.Generator | None = None, normalize: str = "depth",
+    generator: torch.Generator | None = None, normalize: str = DEFAULT_NORMALIZATION,
 ) -> torch.Tensor:
     """Per-cell predicted log1p-CP10K expression for a generated population ``(n, G)``.
 
@@ -200,6 +200,6 @@ def predicted_population(
     z = sample_perturbed_latents(bundle, pert_id, n, guidance, steps, device, generator)
     ls = library_size.to(device)
     counts = decoder.sample_counts(z, ls)                                  # (n, G)
-    # ``depth`` (default, the published behavior) divides by the sampling depth; ``data`` divides
-    # each sampled cell by its own total, as the measured expression was normalized.
+    # ``data`` (default since round 11) divides each sampled cell by its own total, as the measured
+    # expression was normalized; ``depth`` divides by the sampling depth (the published behavior).
     return normalize_sampled(counts, ls, normalize)                        # (n, G)

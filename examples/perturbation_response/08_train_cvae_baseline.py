@@ -61,9 +61,9 @@ def parse_args() -> argparse.Namespace:
                    help="textbook cVAE: the encoder also reads the condition, q(z | x, c); "
                         "default is the condition-blind q(z | x) (see ConditionalNBVAE)")
     p.add_argument("--grad-clip", type=float, default=5.0, help="max grad norm (VAE stability)")
-    p.add_argument("--library-size", type=str, default="all", choices=["all", "hvg"],
-                   help="total the NB likelihood multiplies the rate by: all measured genes (the "
-                        "published convention) or the modeled genes only (see count_decoder.LIBRARY_SIZES)")
+    p.add_argument("--library-size", type=str, default="hvg", choices=["all", "hvg"],
+                   help="total the NB likelihood multiplies the rate by: the modeled genes (default since "
+                        "round 11) or all measured genes (reproduces earlier runs) (see count_decoder.LIBRARY_SIZES)")
     p.add_argument("--limit", type=int, default=None)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--device", type=str, default="auto")

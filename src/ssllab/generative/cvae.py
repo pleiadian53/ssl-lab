@@ -46,7 +46,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from ssllab.generative.condition import GeneSetEmbedding
-from ssllab.generative.count_decoder import nb_nll, normalize_sampled
+from ssllab.generative.count_decoder import DEFAULT_NORMALIZATION, nb_nll, normalize_sampled
 
 
 class ConditionalNBVAE(nn.Module):
@@ -148,7 +148,7 @@ class ConditionalNBVAE(nn.Module):
     def generate_population(
         self, pert_id: int, n: int, library_size: torch.Tensor,
         device: torch.device | str = "cpu", generator: torch.Generator | None = None,
-        normalize: str = "depth",
+        normalize: str = DEFAULT_NORMALIZATION,
     ) -> torch.Tensor:
         """Per-cell predicted log1p-CP10K expression ``(n, G)``, **sampling counts** from the NB
         so the population carries realistic technical noise (for calibration)."""

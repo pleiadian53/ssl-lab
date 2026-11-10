@@ -85,9 +85,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--encoder-lr", type=float, default=1e-4, help="encoder (and predictor) learning rate")
     p.add_argument("--clip", type=float, default=5.0)
     p.add_argument("--anchor-batches", type=int, default=20)
-    p.add_argument("--library-size", type=str, default="all", choices=["all", "hvg"],
-                   help="total the NB likelihood multiplies the rate by: all measured genes (the "
-                        "published convention) or the modeled genes only")
+    p.add_argument("--library-size", type=str, default="hvg", choices=["all", "hvg"],
+                   help="total the NB likelihood multiplies the rate by: the modeled genes (default since "
+                        "round 11) or all measured genes (reproduces earlier runs)")
     p.add_argument("--limit", type=int, default=None, help="cap training cells (smoke only)")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--device", type=str, default="auto")

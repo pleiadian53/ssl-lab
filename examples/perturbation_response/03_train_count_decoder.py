@@ -32,7 +32,7 @@ if str(_SRC) not in sys.path:
 from ssllab.checkpoint import load_jepa
 from ssllab.data.perturbseq import get_perturbseq_dataloaders
 from ssllab.experiment import experiment
-from ssllab.generative.count_decoder import CountDecoder
+from ssllab.generative.count_decoder import CountDecoder, library_size_of
 from ssllab.utils import get_device, set_seed
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-7s  %(message)s", datefmt="%H:%M:%S")
@@ -58,6 +58,9 @@ def parse_args() -> argparse.Namespace:
                    help="B2: per-cell kappa head instead of one constant per gene")
     p.add_argument("--anchor-weight", type=float, default=0.1,
                    help="weight on the moment-of-moments dispersion anchor (state-dispersion only)")
+    p.add_argument("--library-size", type=str, default="hvg", choices=["all", "hvg"],
+                   help="total the NB likelihood multiplies the rate by: the modeled genes (default since "
+                        "round 11) or all measured genes (reproduces earlier decoders)")
     p.add_argument("--limit", type=int, default=None)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--device", type=str, default="auto")
@@ -99,7 +102,7 @@ def main() -> None:
             if not m.any():
                 continue
             c = batch["counts"][m].float()
-            ell = batch["libsize"][m].float().clamp_min(1.0)
+            ell = library_size_of(batch, args.library_size)[m].float().clamp_min(1.0)
             rate_sum += (c / ell.unsqueeze(-1)).sum(0)
             cnt_sum += c.sum(0)
             cnt_sumsq += (c ** 2).sum(0)
@@ -124,7 +127,7 @@ def main() -> None:
             with torch.no_grad():
                 z = jepa.embed(batch["tokens"].to(device))
             counts = batch["counts"].float().to(device)
-            libsize = batch["libsize"].to(device)
+            libsize = library_size_of(batch, args.library_size).to(device)
             loss = decoder.loss(z, counts, libsize, kappa_target=kappa_target,
                                  anchor_weight=args.anchor_weight if args.state_dispersion else 0.0)
             opt.zero_grad()
@@ -137,10 +140,12 @@ def main() -> None:
     out = exp.checkpoints / "count_decoder.pt"
     torch.save({"state": decoder.state_dict(), "latent_dim": jepa.cfg.embed_dim,
                 "n_genes": n_genes, "zinb": args.zinb,
-                "anchored_mean": args.anchored_mean, "state_dispersion": args.state_dispersion}, out)
+                "anchored_mean": args.anchored_mean, "state_dispersion": args.state_dispersion,
+                "library_size": args.library_size}, out)
     exp.write_report("stage_c_decoder", {"final_nb_nll": avg, "n_genes": n_genes, "zinb": args.zinb,
                                          "anchored_mean": args.anchored_mean,
                                          "state_dispersion": args.state_dispersion,
+                                         "library_size": args.library_size,
                                          "train_cells": len(train_loader.dataset)})
     logger.info("saved count decoder -> %s", out)
 

@@ -50,6 +50,7 @@ if str(_SRC) not in sys.path:
 
 from ssllab.data.perturbseq import SPLIT_TEST, load_cache
 from ssllab.experiment import experiment
+from ssllab.generative.count_decoder import median_modeled_depth
 from ssllab.generative.cvae import ConditionalNBVAE
 from ssllab.generative.perturb import load_cond_flow, load_count_decoder, load_operator, sample_perturbed_latents
 from ssllab.utils import set_seed
@@ -71,6 +72,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--n-latents", type=int, default=200, help="latents drawn per perturbation (the cloud)")
     p.add_argument("--n-reps", type=int, default=64, help="count draws PER latent (estimates Var(y|z))")
     p.add_argument("--steps", type=int, default=100)
+    p.add_argument("--normalize", type=str, default="data", choices=["data", "depth"],
+                   help="as 10_eval_calibration.py: each sampled cell by its own total (default since "
+                        "round 11) or by the sampling depth (published)")
+    p.add_argument("--depth", type=float, default=None,
+                   help="sampling depth (default: median real total over the modeled genes; published "
+                        "reports used 13921)")
+    p.add_argument("--report-name", type=str, default=None,
+                   help="report name (default variance_decomposition_<model>)")
     p.add_argument("--top-k", type=int, default=20)
     p.add_argument("--min-test-cells", type=int, default=20)
     p.add_argument("--seed", type=int, default=0)
@@ -86,6 +95,7 @@ def decompose(
     libsize: float,
     n_reps: int,
     generator: torch.Generator,
+    normalize: str = "data",
 ) -> tuple[np.ndarray, np.ndarray]:
     """Monte-Carlo estimate of (sigma2_dec, sigma2_bio) per scored gene.
 
@@ -96,19 +106,33 @@ def decompose(
     delta-method approximation through the log1p.
     """
     idx = torch.as_tensor(top_idx, dtype=torch.long)
-    rho_k = rho[:, idx]                                            # (L, K)
-    kap_k = kappa[:, idx] if kappa.dim() == 2 else kappa[idx]      # (L, K) or (K,)
-    mu_k = libsize * rho_k                                         # (L, K), constant library size
-
-    L, K = mu_k.shape
-    mu_e = mu_k.unsqueeze(1).expand(L, n_reps, K)                  # (L, R, K)
-    kap_e = (kap_k.unsqueeze(1).expand(L, n_reps, K) if kap_k.dim() == 2
-             else kap_k.view(1, 1, K).expand(L, n_reps, K))
-
-    # NB as a Gamma-Poisson mixture, matching CountDecoder.sample_counts exactly.
-    lam = torch._standard_gamma(kap_e.clamp_min(1e-8), generator=generator) * (mu_e / kap_e.clamp_min(1e-8))
-    counts = torch.poisson(lam, generator=generator)                # (L, R, K)
-    y = torch.log1p(1e4 * counts / libsize)                         # (L, R, K) the metric's space
+    if normalize == "depth":
+        # The published behavior: sample only the scored genes and divide by the sampling depth.
+        rho_k = rho[:, idx]                                            # (L, K)
+        kap_k = kappa[:, idx] if kappa.dim() == 2 else kappa[idx]      # (L, K) or (K,)
+        mu_k = libsize * rho_k                                         # (L, K), constant library size
+        L, K = mu_k.shape
+        mu_e = mu_k.unsqueeze(1).expand(L, n_reps, K)                  # (L, R, K)
+        kap_e = (kap_k.unsqueeze(1).expand(L, n_reps, K) if kap_k.dim() == 2
+                 else kap_k.view(1, 1, K).expand(L, n_reps, K))
+        # NB as a Gamma-Poisson mixture, matching CountDecoder.sample_counts exactly.
+        lam = torch._standard_gamma(kap_e.clamp_min(1e-8), generator=generator) * (mu_e / kap_e.clamp_min(1e-8))
+        counts = torch.poisson(lam, generator=generator)                # (L, R, K)
+        y = torch.log1p(1e4 * counts / libsize)                         # (L, R, K) the metric's space
+    elif normalize == "data":
+        # As the data was normalized: each sampled cell by its own total over every modeled gene,
+        # so every gene is sampled. Chunked over latents to bound memory.
+        ys = []
+        for i in range(rho.shape[0]):
+            mu = libsize * rho[i]                                       # (G,)
+            kap = kappa[i] if kappa.dim() == 2 else kappa               # (G,)
+            mu_e, kap_e = mu.expand(n_reps, -1), kap.expand(n_reps, -1)
+            lam = torch._standard_gamma(kap_e.clamp_min(1e-8), generator=generator) * (mu_e / kap_e.clamp_min(1e-8))
+            c = torch.poisson(lam, generator=generator)                 # (R, G)
+            ys.append(torch.log1p(1e4 * c[:, idx] / c.sum(1, keepdim=True).clamp_min(1.0)))
+        y = torch.stack(ys)                                             # (L, R, K)
+    else:
+        raise ValueError(f"normalize must be 'data' or 'depth', got {normalize!r}")
 
     m_i = y.mean(dim=1)                                             # (L, K) E(y|z) per latent
     v_i = y.var(dim=1, unbiased=True)                               # (L, K) Var(y|z) per latent
@@ -128,8 +152,8 @@ def main() -> None:
     cache = load_cache(Path(args.data_dir) / args.artifact)
     split_col = cache.split_cells if args.split == "cells" else cache.split_combo
     is_test = (split_col == SPLIT_TEST)
-    libsize = float(np.median(np.asarray(cache.libsize)))
-    logger.info("library size (median, as the calibration eval uses): %.0f", libsize)
+    libsize = median_modeled_depth(cache.counts) if args.depth is None else float(args.depth)
+    logger.info("sampling depth %.0f, normalization %s (as 10_eval_calibration.py)", libsize, args.normalize)
 
     names = np.asarray(cache.pert_names)
     de = cache.de_genes["per_pert"]
@@ -169,7 +193,7 @@ def main() -> None:
             continue
 
         rho, kappa = decode(pid)
-        s2_dec, s2_bio = decompose(rho.cpu(), kappa.cpu(), top_idx, libsize, args.n_reps, gen)
+        s2_dec, s2_bio = decompose(rho.cpu(), kappa.cpu(), top_idx, libsize, args.n_reps, gen, args.normalize)
         var_real = np.asarray(cache.hvg_X)[mask][:, top_idx].var(axis=0, ddof=1)
 
         # Aggregate the VARIANCES across genes first, then form ratios. Averaging per-gene
@@ -214,7 +238,8 @@ def main() -> None:
                 summary["residual_target"])
     logger.info("=" * 78)
 
-    exp.write_report(f"variance_decomposition_{args.model}", {
+    exp.write_report(args.report_name or f"variance_decomposition_{args.model}", {
+        "depth": libsize, "normalize": args.normalize,
         "experiment": args.experiment, "model": args.model, "split": args.split,
         "n_latents": args.n_latents, "n_reps": args.n_reps, "top_k": args.top_k,
         "libsize": libsize, **summary, "per_pert": per_pert,

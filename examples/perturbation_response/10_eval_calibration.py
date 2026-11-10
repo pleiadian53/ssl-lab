@@ -33,6 +33,7 @@ import numpy as np
 from ssllab.data.perturbseq import SPLIT_TEST, load_cache
 from ssllab.eval.calibration import run_calibration_eval
 from ssllab.experiment import experiment
+from ssllab.generative.count_decoder import median_modeled_depth
 from ssllab.generative.cvae import ConditionalNBVAE
 from ssllab.generative.perturb import (
     load_cond_flow,
@@ -67,13 +68,14 @@ def parse_args() -> argparse.Namespace:
                    help="path to a count_decoder.pt to REUSE. A Stage-B lever (flow or "
                         "operator) does not change the readout, so the decoder is reused "
                         "rather than retrained. Defaults to this experiment\'s own.")
-    p.add_argument("--normalize", type=str, default="depth", choices=["depth", "data"],
-                   help="how sampled counts become log1p-CP10K: divide by the sampling depth (the "
-                        "published behavior) or each sampled cell by its own total over the modeled "
-                        "genes, as the measured expression was normalized")
+    p.add_argument("--normalize", type=str, default="data", choices=["data", "depth"],
+                   help="how sampled counts become log1p-CP10K: each sampled cell by its own total over "
+                        "the modeled genes, as the measured expression was normalized (default since "
+                        "round 11), or divided by the sampling depth (the published behavior)")
     p.add_argument("--depth", type=float, default=None,
-                   help="sampling depth for every generated cell (default: the median all-gene "
-                        "library size, the published depth)")
+                   help="sampling depth for every generated cell (default: the median real total over "
+                        "the modeled genes). Published reports used --normalize depth with the median "
+                        "all-gene library size, --depth 13921")
     p.add_argument("--report-name", type=str, default=None,
                    help="report file name under reports/ (default calibration_<model>), so a "
                         "non-default depth or normalization never overwrites the published report")
@@ -115,10 +117,10 @@ def main() -> None:
     cache = load_cache(Path(args.data_dir) / args.artifact)
     split_col = cache.split_cells if args.split == "cells" else cache.split_combo
     # Representative sequencing depth for the sampled counts (sets the technical-noise level).
-    med_libsize = float(np.median(np.asarray(cache.libsize))) if args.depth is None else float(args.depth)
+    med_libsize = median_modeled_depth(cache.counts) if args.depth is None else float(args.depth)
     libsize = torch.full((args.n,), med_libsize)
     logger.info("sampling counts at depth %.0f (%s), normalization %s", med_libsize,
-                "median all-gene library size" if args.depth is None else "given", args.normalize)
+                "median real total over the modeled genes" if args.depth is None else "given", args.normalize)
     per_pert, summary = run_calibration_eval(
         predict_pop,
         hvg_X=cache.hvg_X, pert_names=cache.pert_names, pert_id=cache.pert_id,

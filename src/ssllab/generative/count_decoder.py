@@ -46,8 +46,20 @@ LIBRARY_SIZES = ("all", "hvg")
 #: own total over the modeled genes, which is how the measured expression was normalized.
 NORMALIZATIONS = ("depth", "data")
 
+#: Defaults since round 11 of the results ledger, which found the ``all`` convention compresses the
+#: decoder's rate profile and that ``depth`` normalization misstates a population's spread. Older
+#: checkpoints and published reports are reproduced with ``all`` and ``depth`` explicitly.
+DEFAULT_LIBRARY_SIZE = "hvg"
+DEFAULT_NORMALIZATION = "data"
 
-def library_size_of(batch: dict, kind: str = "all") -> torch.Tensor:
+
+def median_modeled_depth(counts) -> float:
+    """Median total count over the modeled genes per cell, the realistic sampling depth."""
+    import numpy as np
+    return float(np.median(np.asarray(counts).sum(1)))
+
+
+def library_size_of(batch: dict, kind: str = DEFAULT_LIBRARY_SIZE) -> torch.Tensor:
     """The library size ``(B,)`` the NB likelihood uses for a loader batch (see ``LIBRARY_SIZES``)."""
     if kind == "all":
         return batch["libsize"].float()
@@ -56,7 +68,7 @@ def library_size_of(batch: dict, kind: str = "all") -> torch.Tensor:
     raise ValueError(f"library size must be one of {LIBRARY_SIZES}, got {kind!r}")
 
 
-def normalize_sampled(counts: torch.Tensor, library_size: torch.Tensor, how: str = "depth") -> torch.Tensor:
+def normalize_sampled(counts: torch.Tensor, library_size: torch.Tensor, how: str = DEFAULT_NORMALIZATION) -> torch.Tensor:
     """Sampled counts ``(n, G)`` to log1p-CP10K (see ``NORMALIZATIONS``)."""
     if how == "depth":
         return torch.log1p(1e4 * counts / library_size.unsqueeze(-1))
