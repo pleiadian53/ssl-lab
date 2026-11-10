@@ -1,6 +1,6 @@
 # Why the Operator Is Linear: the Koopman Argument
 
-*A cell's response to a perturbation is a tangled nonlinear cascade, and we propose to model it with a matrix. That should bother you. This chapter is the defense, and it turns on a hundred-year-old idea: you do not linearize the dynamics, you choose coordinates in which they already are linear. It also names the premise our own encoder was never trained to satisfy, and reports what happened when we measured whether it holds anyway.*
+*A cell's response to a perturbation is a tangled nonlinear cascade, and we propose to model it with a matrix. That choice deserves suspicion. This chapter is the defense, and it borrows a move from classical mechanics, made by the mathematician Bernard Koopman in 1931: you do not linearize the dynamics, you choose coordinates in which they already are linear. It also names the premise our own encoder was never trained to satisfy, and reports what happened when we measured whether it holds anyway.*
 
 > **Recap: where this sits.** [Modeling the transition](07-modeling-the-transition-action-operators.md) built the action operator $A_p = \exp(M_p)$, which transports a control cell's latent to its perturbed counterpart, and showed in its §6 that this operator is not a rival to the transport flow but the *same flow with its velocity field restricted* to be linear in the state and constant in time. [Modeling the readout](08-modeling-the-readout-count-decoder.md) then answered the decoder handoff. Chapter 7 §8 left four things open, and this chapter takes the first: **why should the latent operator be linear at all, and why $\exp(M)$ specifically?**
 >
@@ -20,7 +20,9 @@ The answer is not "it is a reasonable approximation." The answer is that **the o
 
 ## 2. Koopman's move: change what you track
 
-In 1931 Bernard Koopman pointed out something that still sounds like a trick. Take any nonlinear dynamical system on a state $s$:
+The move comes from a short 1931 paper by Bernard Koopman on Hamiltonian mechanics. Quantum mechanics had just been rewritten in terms of linear operators acting on a space of functions, and Koopman showed that classical mechanics admits the same description: however nonlinear the motion of the state, the way that motion acts on *functions* of the state is linear. John von Neumann used the construction almost at once to prove his ergodic theorem, and for the next seventy years it lived mostly in pure mathematics. In the mid-2000s Igor Mezić and his collaborators revived it as a practical tool for modeling nonlinear systems from data, the line of work that leads to the deep Koopman methods of §6.
+
+The idea still sounds like a trick. Take any nonlinear dynamical system on a state $s$:
 
 $$s_{t+1} = F(s_t),$$
 

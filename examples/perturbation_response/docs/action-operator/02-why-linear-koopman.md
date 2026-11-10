@@ -1,6 +1,6 @@
 # 2. Why the operator is linear
 
-*A cell's response to an intervention is a tangled nonlinear cascade, and we propose to model it with a matrix. That should bother you. The defence turns on an idea from 1931: you do not linearize the dynamics, you change what you are tracking until they are already linear. This chapter derives that carefully, shows a case where it is exact, and then states the premise it rests on, which our own encoder was never trained to satisfy, and which a later measurement found it approximately satisfies anyway.*
+*A cell's response to an intervention is a tangled nonlinear cascade, and we propose to model it with a matrix. That choice deserves suspicion, and the defense is not that the cascade is roughly linear. It borrows a move from classical mechanics, made by the mathematician Bernard Koopman in 1931: instead of linearizing the dynamics, change what you track until the dynamics are already linear in it. This chapter derives that carefully, shows a case where it is exact, and then states the premise it rests on, which our own encoder was never trained to satisfy, and which a later measurement found it approximately satisfies anyway.*
 
 > **Where this sits.** [Chapter 1](01-what-an-operator-is.md) established *what* the latent operator is and *what makes it mean anything*: the commuting square, which forces the built operator to be the faithful image of the real one. It left the operator's **form** open. This chapter closes that: why $f_\theta$ should be linear at all. The two turn out to be the same equation read twice, which is §6.
 
@@ -16,7 +16,9 @@ The answer is not "it is a reasonable approximation." The answer is that **the o
 
 ## 2. Koopman's move: track functions, not states
 
-In 1931 Bernard Koopman pointed out something that still reads like sleight of hand. Take any dynamical system on a state $s$,
+The move comes from a short 1931 paper by Bernard Koopman on Hamiltonian mechanics. Quantum mechanics had just been rewritten in terms of linear operators acting on a space of functions, and Koopman showed that classical mechanics admits the same description: however nonlinear the motion of the state, the way that motion acts on *functions* of the state is linear. John von Neumann used the construction almost at once to prove his ergodic theorem, and for the next seventy years it lived mostly in pure mathematics. In the mid-2000s Igor Mezić and his collaborators revived it as a practical tool for modeling nonlinear systems from data, the line of work that leads to the deep Koopman methods of §9.
+
+The idea still reads like sleight of hand. Take any dynamical system on a state $s$,
 
 $$s_{t+1} = F(s_t),$$
 
