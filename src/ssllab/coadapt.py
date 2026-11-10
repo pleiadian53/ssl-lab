@@ -113,7 +113,7 @@ def prepare_jepa(jepa: JEPA, mode: str, device: torch.device | str) -> JEPA:
     return jepa
 
 
-def _nb_loss(jepa: JEPA, decoder: CountDecoder, batch: dict, device, library_size: str = "all") -> torch.Tensor:
+def _nb_loss(jepa: JEPA, decoder: CountDecoder, batch: dict, device, library_size: str = "hvg") -> torch.Tensor:
     z = jepa.embed(batch["tokens"].to(device))
     return decoder.loss(z, batch["counts"].float().to(device), library_size_of(batch, library_size).to(device))
 
@@ -121,19 +121,22 @@ def _nb_loss(jepa: JEPA, decoder: CountDecoder, batch: dict, device, library_siz
 @torch.no_grad()
 def anchor_weight_by_rule(
     jepa: JEPA, reference_decoder: CountDecoder, batches: Iterable[dict], device,
+    library_size: str = "hvg",
 ) -> dict[str, float]:
     """``w = mean NB loss of the reference decoder / mean JEPA loss`` over ``batches``.
 
     Both are measured before any update, on the same batches, with the loaded encoder. The
     reference is an already-trained decoder, so the two loss terms are equal at the scale the
     reconstruction loss will settle at rather than at a fresh decoder's much larger starting loss.
+    ``library_size`` must be the convention the reference decoder was trained with, which should
+    be the run's own (``count_decoder.LIBRARY_SIZES``).
     Returns the weight and the two means.
     """
     nb, jl, n = 0.0, 0.0, 0
     was_training = jepa.training
     jepa.eval()
     for batch in batches:
-        nb += float(_nb_loss(jepa, reference_decoder, batch, device))
+        nb += float(_nb_loss(jepa, reference_decoder, batch, device, library_size))
         jl += float(jepa(batch["tokens"].to(device))[0])
         n += 1
     jepa.train(was_training)

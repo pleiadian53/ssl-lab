@@ -76,8 +76,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--artifact", type=str, default="norman2019")
     p.add_argument("--encoder", type=str, default="output/norman_stage_a/checkpoints/encoder.pt",
                    help="the JEPA checkpoint the encoder starts from")
-    p.add_argument("--ref-decoder", type=str, default="output/norman_flow_control/checkpoints/count_decoder.pt",
-                   help="a trained decoder that sets the anchor weight's scale (joint_anchor only)")
+    p.add_argument("--ref-decoder", type=str, default="output/norman_r11_dec_hvg_s0/checkpoints/count_decoder.pt",
+                   help="a trained decoder that sets the anchor weight's scale (joint_anchor only); it must "
+                        "have been trained with the run's --library-size")
     p.add_argument("--split", type=str, default="combo", choices=["combo", "cells"])
     p.add_argument("--epochs", type=int, default=30)
     p.add_argument("--batch-size", type=int, default=256)
@@ -125,7 +126,10 @@ def main() -> None:
     if args.mode == "joint_anchor":
         ref = load_count_decoder(Path(args.ref_decoder), device)
         batches = [b for _, b in zip(range(args.anchor_batches), train_loader)]
-        rule = anchor_weight_by_rule(jepa, ref, batches, device)
+        if getattr(ref, "library_size", "all") != args.library_size:
+            raise SystemExit(f"--ref-decoder was trained with library size {getattr(ref, 'library_size', 'all')!r}, "
+                             f"but this run uses {args.library_size!r}")
+        rule = anchor_weight_by_rule(jepa, ref, batches, device, args.library_size)
         rule["ref_decoder"] = str(args.ref_decoder)
         rule["ref_decoder_md5"] = _md5(Path(args.ref_decoder))
         cfg.anchor_weight = rule["anchor_weight"]

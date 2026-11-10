@@ -109,6 +109,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--split", type=str, default="combo", choices=["combo", "cells"])
     p.add_argument("--arms", type=str, nargs="+", default=list(ARMS), choices=list(ARMS))
     p.add_argument("--ridge-lambda", type=float, default=1.0, help="L2 for the linear readout arm")
+    p.add_argument("--ridge-max-cells", type=int, default=None,
+                   help="smoke only: fit the ridge on a random subset of this many training cells "
+                        "(default: every training cell, as every reported number used)")
     p.add_argument("--batch-size", type=int, default=256)
     # These three MUST match the harness the published numbers were graded on.
     p.add_argument("--top-k", type=int, default=20)
@@ -200,6 +203,8 @@ def main() -> None:
     ridge = None
     if "linear" in args.arms:
         train_rows = np.flatnonzero(split_col == SPLIT_TRAIN)
+        if args.ridge_max_cells and len(train_rows) > args.ridge_max_cells:
+            train_rows = np.sort(np.random.default_rng(0).choice(train_rows, args.ridge_max_cells, replace=False))
         Z_tr = encode_rows(jepa, hvg, partition, train_rows, device, args.batch_size)
         Y_tr = torch.from_numpy(np.ascontiguousarray(hvg[train_rows]))
         ridge = fit_ridge(Z_tr, Y_tr, args.ridge_lambda)
