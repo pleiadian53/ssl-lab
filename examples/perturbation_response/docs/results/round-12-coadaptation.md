@@ -1,6 +1,6 @@
 # Round 12 — co-adaptation Phase 1: does training the encoder and the decoder together raise the stack's readout ceiling?
 
-*Part of [the results ledger](index.md), which holds the standing verdict, the scoreboard and the settings every round shares. Previous: [round 11](round-11-library-size.md) · Companion: [the re-baseline after round 11](rebaseline-after-round-11.md).*
+*Part of [the results ledger](index.md), which holds the standing verdict, the scoreboard and the settings every round shares. Previous: [round 11](round-11-library-size.md) · Next: [round 13](round-13-random-start.md) · Companion: [the re-baseline after round 11](rebaseline-after-round-11.md).*
 
 **What changed.** Until now the JEPA encoder was frozen after pretraining, and the count decoder learned to read whatever representation it was handed. This round lets the two shape each other. Starting from the pretrained encoder, a fresh count decoder and the encoder are trained together by reconstruction, with the negative-binomial likelihood and the library size corrected in [round 11](round-11-library-size.md). A second arm does the same while maintaining the JEPA predictive objective during reconstruction fine-tuning. The flow is not co-trained; it is retrained afterwards on each moved encoder's latents, with the round-1 recipe.
 
@@ -107,7 +107,7 @@ The anchored arm stayed close to where it started. At the weight the rule fixed,
 
 ## What it does not mean
 
-- It does not show that JEPA pretraining helped. The joint encoder started from the pretrained one, but no arm trained the same encoder by reconstruction from a random start, so the round cannot separate the pretraining's contribution from the fine-tuning's.
+- It does not show that JEPA pretraining helped. The joint encoder started from the pretrained one, but no arm trained the same encoder by reconstruction from a random start, so the round cannot separate the pretraining's contribution from the fine-tuning's. [Round 13](round-13-random-start.md) ran that arm, and the pretraining's contribution is not established.
 - It does not show a gain above $0.02$ in the readout ceiling. The rule establishes a positive gain; the lower bound is $0.010$.
 - The readout ceiling is a diagnostic handed real held-out cells, not a model. The full pipeline is the model, and its gain is a secondary result.
 - No learned model passes additivity. The joint pipeline sits $0.061$ below it in $\Delta r$, and its $e_p$ is $0.183$ higher.
@@ -127,4 +127,4 @@ The anchored arm stayed close to where it started. At the weight the rule fixed,
 
 ---
 
-*Up: [the results ledger](index.md). Previous: [round 11](round-11-library-size.md) · Companion: [the re-baseline after round 11](rebaseline-after-round-11.md).*
+*Up: [the results ledger](index.md). Previous: [round 11](round-11-library-size.md) · Next: [round 13](round-13-random-start.md) · Companion: [the re-baseline after round 11](rebaseline-after-round-11.md).*
