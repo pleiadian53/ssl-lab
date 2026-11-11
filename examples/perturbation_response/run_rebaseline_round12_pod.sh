@@ -18,6 +18,12 @@ OUT="${OUT:-$VOL/output}"
 EP=examples/perturbation_response
 SMOKE="$VOL/smoke_r12/output"
 
+echo "==== preflight: inputs on the volume ===="
+for f in norman_additive/reports/effect_size_additive.json norman_ceiling_r10/reports/ceiling.json \
+         norman_r11_vae_hvg_s0/reports/effect_size_cvae.json; do
+  [ -f "$OUT/$f" ] || { echo "PREFLIGHT FAILED: missing $OUT/$f"; exit 1; }
+done
+
 echo "==== 0. smoke on the pod ===="
 rm -rf "$VOL/smoke_r12"; mkdir -p "$SMOKE"
 for d in norman_stage_a/checkpoints norman_r11_dec_hvg_s0/checkpoints norman_r11_vae_hvg_s0/checkpoints \
