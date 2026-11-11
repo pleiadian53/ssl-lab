@@ -80,22 +80,31 @@ These are **secondary endpoints**. The intervals are reported; no significance i
 
 Three things to read here, in descending order of confidence.
 
-**Every model is badly under-dispersed.** Coverage sits between $0.33$ and $0.38$ against a nominal $0.80$, meaning each model's predicted $80\%$ interval captures only about a third of the real cells. The predicted populations are far *too narrow*. This is the single most robust fact on the calibration axis and it applies to the flow and the VAE alike, so it is a property of the count decoders that both read out through rather than of the flow.
+**Every model looked badly under-dispersed, and that turned out to be mostly the measurement.** Coverage sat between $0.33$ and $0.38$ against a nominal $0.80$, meaning each model's predicted $80\%$ interval captured only about a third of the real cells. It applied to the flow and the VAE alike, which pointed at something they share. [Round 11](../results/round-11-library-size.md) found it in two shared conventions. Generated cells had been normalized by a fixed sampling depth rather than, as the real cells were, by each cell's own total. And the count decoder's likelihood counted the library size over all measured genes rather than the 5,000 it models, which made its sampled totals vary far more from cell to cell than real cells' do. Normalized like the data, with the library size corrected, every model covers between $0.73$ and $0.80$, and the transport flow $0.77$ ([the re-baseline](../results/rebaseline-after-round-11.md)).
 
-**The VAE tracks per-gene variability much better.** Its spread correlation of $0.522$ against the transport flow's $0.234$ says it is substantially better at knowing *which* genes vary in a response. The contrast is $-0.288$ with an interval of $[-0.429, -0.136]$, which does not go near zero.
+**The VAE tracks per-gene variability much better.** Its spread correlation of $0.522$ against the transport flow's $0.234$ says it is substantially better at knowing *which* genes vary in a response. The contrast is $-0.288$ with an interval of $[-0.429, -0.136]$, which does not go near zero. Under the corrected conventions both rise, to $0.733$ and $0.660$, and the VAE still leads.
 
-**The flow's apparent advantage on joint structure does not resolve.** The transport flow posts the best joint energy distance, $3.578$ against the VAE's $3.962$, and the energy distance is precisely the metric built to see the gene-gene structure a flow should capture and a marginal metric cannot. It is tempting to call this the flow earning its keep. But the contrast is $-0.383$ with an interval of $[-0.960, +0.172]$, which **crosses zero**. On twenty perturbations this difference is not resolvable, and it is a secondary endpoint besides. It is a hypothesis worth testing on a larger held-out set, and nothing more than that today.
+**The flow's apparent advantage on joint structure does not resolve.** The transport flow posts the best joint energy distance, $3.578$ against the VAE's $3.962$, and the energy distance is precisely the metric built to see the gene-gene structure a flow should capture and a marginal metric cannot. It is tempting to call this the flow earning its keep. But the contrast is $-0.383$ with an interval of $[-0.960, +0.172]$, which **crosses zero**. On twenty perturbations this difference is not resolvable, and it is a secondary endpoint besides. Under the corrected conventions the transport flow still sits below this condition-blind NB-VAE, $0.919$ against $1.028$, untested. The NB-VAE whose encoder also reads the condition, the stronger baseline of round 6, sits far below both at $0.355$ ([the re-baseline](../results/rebaseline-after-round-11.md)).
 
 ## Where the predicted spread actually goes
 
-The under-dispersion is worth one more measurement, because it says which component is responsible. By the law of total variance, a generated population's per-gene variance splits exactly into two parts: the count noise the decoder adds around each cell's own mean, and the spread of the decoded mean across the latent cloud. The second is the latent distribution's entire contribution, and it is the only part the flow and the VAE do differently.
+The predicted spread is worth one more measurement, because it says which component supplies it. By the law of total variance, a generated population's per-gene variance splits exactly into two parts: the count noise the decoder adds around each cell's own mean, and the spread of the decoded mean across the latent cloud. The second is the latent distribution's entire contribution, and it is the only part the flow and the VAE do differently.
+
+As first measured:
 
 | | real variance | predicted total | $\sigma^2_{\text{dec}}$ (decoder) | $\sigma^2_{\text{bio}}$ (latent) | latent's share |
 |---|---|---|---|---|---|
 | transport flow | 0.824 | 0.678 (0.84×) | 0.538 | 0.140 | 22% |
 | NB-VAE | 0.824 | 0.355 (0.46×) | 0.226 | 0.128 | 38% |
 
-Both models under-produce total spread, the VAE more severely than the flow. The latent distribution contributes a real but minority share in both, and the two models' latent contributions are close ($0.140$ against $0.128$). The gap between the models is therefore not a gap in what their latent distributions do; it is mostly in the decoder each learned. This is the measurement that tells the decoder work in [Chapter 8](08-modeling-the-readout-count-decoder.md) which direction to push, and the answer is *more* dispersion, not less.
+Under the corrected conventions ([the re-baseline](../results/rebaseline-after-round-11.md); ratio and share computed pair by pair and averaged):
+
+| | real variance | predicted total | $\sigma^2_{\text{dec}}$ (decoder) | $\sigma^2_{\text{bio}}$ (latent) | latent's share |
+|---|---|---|---|---|---|
+| transport flow | 0.824 | 0.774 (0.97×) | 0.518 | 0.256 | 32% |
+| NB-VAE, encoder blind to the condition | 0.824 | 0.631 (0.82×) | 0.419 | 0.212 | 33% |
+
+As first measured, both models under-produced total spread. Under the corrected conventions the flow's total is close to the real variance and the VAE's somewhat short of it. In both readings the latent distribution contributes a real but minority share, and the two models' latent contributions are close ($0.256$ against $0.212$ under the corrected conventions). The gap between the models is therefore not mainly a gap in what their latent distributions do; it is mostly in the decoder each learned. Where a shortfall remains, it tells the decoder work in [Chapter 8](08-modeling-the-readout-count-decoder.md) which direction to push: *more* dispersion, not less.
 
 ## The honest scoreboard
 

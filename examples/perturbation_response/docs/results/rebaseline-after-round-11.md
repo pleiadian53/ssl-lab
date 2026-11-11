@@ -94,7 +94,9 @@ The transition's headroom under the ceiling is still about $0.03$. What changes 
 
 Per gene, the variance of a model's sampled cells splits into the count noise the decoder adds around each decoded mean, $\sigma^2_{\text{dec}}$, and the variance of the decoded means across the model's latents, $\sigma^2_{\text{bio}}$. The real cells' per-gene variance on the same genes is $0.824$, averaged over the top 20 genes of each pair.
 
-| model, seed 0 | $\sigma^2_{\text{dec}}$ | $\sigma^2_{\text{bio}}$ | latent share | predicted / real |
+The last column is each pair's predicted variance over its real variance, averaged over the pairs, the convention the published $0.84$ used; the other columns average the variances first.
+
+| model, seed 0 | $\sigma^2_{\text{dec}}$ | $\sigma^2_{\text{bio}}$ | latent share | predicted / real, per pair |
 |---|---|---|---|---|
 | Gaussian flow | 0.504 | 0.195 | 0.27 | 0.89 |
 | transport flow | 0.518 | 0.256 | 0.32 | 0.97 |
@@ -104,7 +106,7 @@ Per gene, the variance of a model's sampled cells splits into the count noise th
 | NB-VAE, encoder blind | 0.419 | 0.212 | 0.33 | 0.82 |
 | NB-VAE, encoder reads the condition | 0.424 | 0.203 | 0.32 | 0.80 |
 
-As published, the transport flow's sampled variance was $0.678$, made of $0.538$ of count noise and $0.140$ from the latents, about $0.84$ of the real variance. Under the corrected conventions the total is $0.774$, $0.97$ of the real variance, and the latents' contribution has nearly doubled, from $0.140$ to $0.256$, while the count noise is about the same. The flow's populations are no longer short of variance in total. Count noise still makes up about two-thirds of it, as in every model here.
+As published, the transport flow's sampled variance was $0.678$, made of $0.538$ of count noise and $0.140$ from the latents, and pair by pair it was about $0.84$ of the real variance. Under the corrected conventions the total is $0.774$ against the real $0.824$, and $0.97$ of the real variance pair by pair, and the latents' contribution has nearly doubled, from $0.140$ to $0.256$, while the count noise is about the same. The flow's populations are no longer short of variance in total. Count noise still makes up about two-thirds of it, as in every model here.
 
 ## What it means
 
