@@ -1,6 +1,6 @@
 # Round 11 — decoder calibration: does counting the library size over the modeled genes fix the decoder?
 
-*Part of [the results ledger](index.md), which holds the standing verdict, the scoreboard and the settings every round shares. Previous: [round 10](round-10-control-reference.md).*
+*Part of [the results ledger](index.md), which holds the standing verdict, the scoreboard and the settings every round shares. Previous: [round 10](round-10-control-reference.md) · Next: [the re-baseline](rebaseline-after-round-11.md), [round 12](round-12-coadaptation.md).*
 
 **What changed.** One thing: the total that the negative-binomial count decoder multiplies its rate profile by. The decoder models the 5,000 highly variable genes with a softmax rate profile $\rho$ that sums to one, and its likelihood uses the mean $\mu = L \cdot \rho$. Every decoder before this round set $L$ to the total count over *all* measured genes, which is about $3.2$ times the total over the 5,000 genes it models. With $\rho$ forced to sum to one, the likelihood is then fitted with means about three times the observed counts. This round sets $L$ to the total over the modeled genes, the only scale on which a profile that sums to one can match the counts. Everything else is unchanged.
 
@@ -118,4 +118,4 @@ The decoder's calibration error came from a training convention, the library siz
 
 ---
 
-*Up: [the results ledger](index.md). Previous: [round 10](round-10-control-reference.md).*
+*Up: [the results ledger](index.md). Previous: [round 10](round-10-control-reference.md) · Next: [the re-baseline](rebaseline-after-round-11.md), [round 12](round-12-coadaptation.md).*
