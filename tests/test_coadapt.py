@@ -155,3 +155,28 @@ def test_cvae_records_library_size_and_normalizations():
     mu = ls.unsqueeze(-1) * out["rho"]
     lam = torch.distributions.Gamma(out["kappa"].expand_as(mu), out["kappa"].expand_as(mu) / (mu + 1e-8)).sample()
     assert torch.allclose(c, torch.log1p(1e4 * torch.poisson(lam) / ls.unsqueeze(-1)))   # the published formula
+
+
+def test_random_start_is_fresh_and_draws_like_a_pretrained_load(tmp_path):
+    """--init random: fresh constructor weights, and the same RNG consumption as load_jepa."""
+    from ssllab.checkpoint import random_jepa_like
+    from ssllab.jepa.model import JEPA, JEPAConfig
+
+    _, path, _ = _setup(tmp_path)
+    loaded = load_jepa(path)
+
+    torch.manual_seed(7)
+    fresh = random_jepa_like(path)
+    after_random = torch.rand(3)
+    torch.manual_seed(7)
+    load_jepa(path)
+    after_load = torch.rand(3)
+    assert torch.equal(after_random, after_load)        # same draws afterwards: same decoder init
+
+    torch.manual_seed(7)
+    built = JEPA(JEPAConfig(**torch.load(str(path))["cfg"]))
+    assert _same(_snapshot(fresh.encoder), _snapshot(built.encoder))    # the constructor's own init
+    assert not _same(_snapshot(fresh.encoder), _snapshot(loaded.encoder))  # not the checkpoint
+    for ps, pt in zip(fresh.encoder.parameters(), fresh.ema.teacher.parameters()):
+        assert torch.equal(ps, pt)
+    assert not any(p.requires_grad for p in fresh.parameters())

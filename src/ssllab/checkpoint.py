@@ -40,3 +40,24 @@ def load_jepa(path: str | Path, device: torch.device | str = "cpu") -> JEPA:
     for p in jepa.parameters():
         p.requires_grad_(False)
     return jepa
+
+
+def random_jepa_like(path: str | Path, device: torch.device | str = "cpu") -> JEPA:
+    """A JEPA with the architecture of the checkpoint at ``path`` and freshly initialized weights.
+
+    Only the checkpoint's config is read; its weights are not. The model is built by the same
+    constructor ``load_jepa`` calls, so it draws from the global random-number generator exactly
+    as ``load_jepa`` does before loading weights. After the same ``set_seed``, everything drawn
+    afterwards (a decoder's initialization, shuffling) is therefore identical between a pretrained
+    start and a random one, and only the encoder's starting weights differ. The weights are the
+    constructor's own initialization, the one JEPA pretraining itself starts from. Returned like
+    ``load_jepa``: eval mode, every parameter frozen, a teacher that copies the encoder.
+    """
+    ck = torch.load(str(path), map_location="cpu")
+    jepa = JEPA(JEPAConfig(**ck["cfg"]))
+    jepa.ema = EMA(jepa.encoder, base=jepa.cfg.ema_base, final=jepa.cfg.ema_final)
+    jepa.to(device).eval()
+    jepa.ema.to(device)
+    for p in jepa.parameters():
+        p.requires_grad_(False)
+    return jepa

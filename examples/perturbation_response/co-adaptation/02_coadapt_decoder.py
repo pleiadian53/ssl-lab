@@ -9,6 +9,12 @@ modes that differ only in what is allowed to train (see :mod:`ssllab.coadapt`):
     joint          the encoder, initialized from its JEPA checkpoint, trains with the decoder
     joint_anchor   joint, maintaining the JEPA predictive objective during reconstruction fine-tuning
 
+``--init random`` (joint only) starts the encoder from freshly initialized weights of the same
+architecture instead of the JEPA checkpoint, which is then read only for its config: the control
+that separates what pretraining contributes from what joint training does on its own. Everything
+drawn after the encoder is built, the decoder's initialization included, is the same as under
+``--init pretrained`` at the same seed (see ``ssllab.checkpoint.random_jepa_like``).
+
 Everything else is the same recipe in every mode: the combo split's training cells, the decoder's
 negative-binomial loss on raw counts with each cell's library size (as ``03_train_count_decoder.py``
 uses), a fresh decoder of the default architecture, AdamW, gradient clipping. The transition
@@ -55,7 +61,7 @@ _SRC = Path(__file__).resolve().parents[3] / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-from ssllab.checkpoint import load_jepa, save_jepa
+from ssllab.checkpoint import load_jepa, random_jepa_like, save_jepa
 from ssllab.coadapt import CoadaptConfig, anchor_weight_by_rule, config_dict, prepare_jepa, train_coadapt
 from ssllab.data.perturbseq import get_perturbseq_dataloaders
 from ssllab.experiment import experiment
@@ -79,6 +85,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--ref-decoder", type=str, default="output/norman_r11_dec_hvg_s0/checkpoints/count_decoder.pt",
                    help="a trained decoder that sets the anchor weight's scale (joint_anchor only); it must "
                         "have been trained with the run's --library-size")
+    p.add_argument("--init", type=str, default="pretrained", choices=["pretrained", "random"],
+                   help="encoder start: the --encoder checkpoint's weights, or fresh weights of its "
+                        "architecture (joint only)")
     p.add_argument("--split", type=str, default="combo", choices=["combo", "cells"])
     p.add_argument("--epochs", type=int, default=30)
     p.add_argument("--batch-size", type=int, default=256)
@@ -110,7 +119,10 @@ def main() -> None:
     exp = experiment(args.experiment, args.output_root).ensure()
     enc_path = Path(args.encoder)
 
-    jepa = prepare_jepa(load_jepa(enc_path, device), args.mode, device)
+    if args.init == "random" and args.mode != "joint":
+        raise SystemExit("--init random is only defined for --mode joint")
+    start = load_jepa(enc_path, device) if args.init == "pretrained" else random_jepa_like(enc_path, device)
+    jepa = prepare_jepa(start, args.mode, device)
     train_loader, _, _ = get_perturbseq_dataloaders(
         batch_size=args.batch_size, data_dir=args.data_dir, artifact=args.artifact,
         split=args.split, limit=args.limit, seed=0,
@@ -119,8 +131,8 @@ def main() -> None:
     decoder = CountDecoder(latent_dim=jepa.cfg.embed_dim, n_genes=n_genes).to(device)
     cfg = CoadaptConfig(mode=args.mode, epochs=args.epochs, lr=args.lr, encoder_lr=args.encoder_lr,
                         clip=args.clip, anchor_batches=args.anchor_batches, library_size=args.library_size)
-    logger.info("mode=%s  encoder %s (md5 %s)  genes=%d  train cells=%d  device=%s",
-                args.mode, enc_path, _md5(enc_path)[:8], n_genes, len(train_loader.dataset), device)
+    logger.info("mode=%s  init=%s  encoder %s (md5 %s)  genes=%d  train cells=%d  device=%s",
+                args.mode, args.init, enc_path, _md5(enc_path)[:8], n_genes, len(train_loader.dataset), device)
 
     rule = None
     if args.mode == "joint_anchor":
@@ -146,7 +158,7 @@ def main() -> None:
                 "zinb": False, "anchored_mean": False, "state_dispersion": False,
                 "library_size": args.library_size}, dec_out)
     exp.write_report("coadapt", {
-        "mode": args.mode, "seed": args.seed, "split": args.split, "library_size": args.library_size,
+        "mode": args.mode, "init": args.init, "seed": args.seed, "split": args.split, "library_size": args.library_size,
         "train_cells": len(train_loader.dataset), "limit": args.limit,
         "init_encoder": str(enc_path), "init_encoder_md5": _md5(enc_path),
         "encoder_md5": _md5(enc_out), "decoder_md5": _md5(dec_out),
