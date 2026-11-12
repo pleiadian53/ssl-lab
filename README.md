@@ -41,20 +41,29 @@ JEPA is a *representation learner*: it learns by predicting the embeddings of ma
 
 **1. Generative JEPA: make the representation *sampleable*.** *(method built + de-risked; design space mapped; applications WIP)* Add a prior over the latent and a decoder back to data space. The unconditional slice is verified end to end, with a rich, non-collapsed latent (strong linear-probe accuracy with no pretraining labels) and *genuinely novel* samples. A full **[Generative JEPA design-space survey](docs/generative_jepa/index.md)** then maps four routes for making JEPA generative: decode the latent, a variational posterior, conditioned diffusion, and planning on top. It adds the **conditional flow prior** that unifies them: generation *given an intervention*, with a decoder matched to the data's likelihood. The method is modality-agnostic, and the conditional `v(z, t, c)` path is de-risked as a method; the applications are where it earns its keep:
 
-- **Single-cell perturbation response** *(flagship, WIP)*: a staged "cell JEPA": intra-cell pretraining (Stage A) → variational / conditional-flow perturbation predictor (Stage B) → NB/ZINB count decoder (Stage C), on Norman-2019 Perturb-seq, graded on *effect size* (predicting unseen gene combinations) against a from-scratch CVAE baseline. An action-operator transition, an oracle ceiling, and an encoder co-adaptation program have since extended it; the from-scratch baseline still leads at full data, and the [results ledger](examples/perturbation_response/docs/results/index.md) tracks why.
+- **Single-cell perturbation response** *(flagship, WIP)*: a staged "cell JEPA": intra-cell pretraining (Stage A) → variational / conditional-flow perturbation predictor (Stage B) → NB/ZINB count decoder (Stage C), on Norman-2019 Perturb-seq, graded on *effect size* (predicting unseen gene combinations) against a from-scratch CVAE baseline. An action-operator transition, an oracle ceiling, a decoder calibration fix and an encoder co-adaptation program have since extended it. Training the encoder together with the decoder brought the full pipeline level with the from-scratch baseline on the size of the predicted change, though not yet on its correlation, and no learned model yet beats the training-free additive reference. The pretraining itself is not shown to contribute at full data, which leaves label- and data-scarce settings as the place where it has to earn its keep. The [results ledger](examples/perturbation_response/docs/results/index.md) tracks every round.
 - **Digital phenotyping**: e.g. diabetes monitoring and management, where the rollout becomes a *generative personal world model*: a fan of plausible future trajectories under an intervention (this is also where Direction 2's world model meets the generative line).
 - **Further modalities**: the core is a likelihood-matched conditional generator, so new domains drop in as data adapters; the [data-modalities primer](docs/generative_jepa/appendix-data-modalities.md) surveys single-cell counts, EHR codes, and wearable / CGM streams.
 
 **2. Action operators on JEPA: make prediction *active*.** *(research line: tutorial corpus written; theory still developing)* Go from passively in-filling hidden regions to *acting on* them. JEPA's predictor already *is* a latent operator, but its query is a **frozen, blind action**: it says only *where* or *when* to predict, never *what acted*. Promote that query to a **learned operator the model chooses and conditions on**, for both *sensing* ("where should I look?") and *perturbing* ("what happens under this intervention?"), and the passive predictor becomes a controllable **world model**: it can roll futures forward, run counterfactuals ("what if more sleep?"), and surface change that known interventions don't explain. This builds on the **action-operator** formalism from the sibling project [GRL](https://github.com/pleiadian53/GRL), and spans two application poles: continuous behavioral / mental-health monitoring (operator structure *learned*) and protein structure & dynamics (structure *given* by SE(3)).
 
 > 📄 **Tutorial series** (full math on the [documentation site](https://pleiadian53.github.io/ssl-lab/)): three parts, read in this order:
-> - **[Time-Series JEPA](docs/time_series_jepa/index.md)**: the substrate, covering JEPA pointed at time series, multimodal channels, and the one blind spot that motivates operators.
+> - **[Time-Series JEPA](docs/time_series_jepa/index.md)**: the substrate, covering JEPA pointed at time series, multimodal channels, and the one blind spot that motivates operators. Its first runnable instance is the [ECG rhythm study](examples/ecg_rhythm/README.md).
 > - **[Action Operators](docs/action_operator/00-from-actions-to-operators.md)**: the foundation, covering what an action operator is, why JEPA benefits from one, and a gallery of concrete operators.
 > - **[Operator World Models](docs/operator_world_models/index.md)**: the synthesis, which conditions the predictor on *what acted* for counterfactual rollout, composable interventions, and a sharpened change signal.
 >
 > *Status: an actively developing theoretical line whose operator formalism is still being worked out, not settled. It now reaches into Direction 1. The [Generative JEPA series](docs/generative_jepa/index.md) treats action-conditioning as the bridge: the conditional flow prior's condition can be an action, and Route D's planner is an action operator, so the generative and world-model lines are converging on one substrate.*
 
 A concrete motivation in genomics: given an RNA sequence, *sense* to localize candidate splice sites, then *perturb* (in-silico edits / mutations) to learn what they do to splicing. That is the kind of active, hypothesis-driven understanding passive prediction alone can't reach.
+
+## Studies so far
+
+Two applied studies test the same question from opposite ends: what does JEPA pretraining buy over training the same model from scratch? Each is pre-registered, compares arms within one study, and reports uncertainty alongside every number.
+
+- **[Single-cell perturbation response](examples/perturbation_response/README.md)** (Norman 2019 Perturb-seq, twenty held-out two-gene combinations). The generative stack, a JEPA cell encoder with a conditional flow and a count decoder, is graded against a from-scratch conditional NB-VAE and a training-free additive reference. At full data, the from-scratch baseline and additivity lead, and an encoder trained jointly with the decoder from random weights does at least as well as one started from the JEPA weights. The [results ledger](examples/perturbation_response/docs/results/index.md) holds every round.
+- **[ECG rhythm classification](examples/ecg_rhythm/README.md)** (PTB-XL, 21,799 twelve-lead ECGs). Span-masked JEPA pretraining is compared with the same encoder trained from scratch, at nested label budgets. With labels for 5% of training patients, pretraining adds 0.078 macro AUROC, and the advantage shrinks to a tie when every patient is labelled ([results](examples/ecg_rhythm/results/01-jepa-label-efficiency/README.md)).
+
+Read together, the two studies point the same way. Pretraining pays off when labels are scarce and fades when they are plentiful, so label and data efficiency is the axis on which the perturbation study's pretraining is still to be tested.
 
 ## Related projects
 
@@ -66,7 +75,9 @@ ssl-lab sits in a small constellation of related work:
 
 - **[GRL](https://github.com/pleiadian53/GRL)**: origin of the action-operator formalism that grounds the action-operator research direction above.
 
-- **protein-ml-lab** *(sibling, not yet public)*: a first-principles depth study of the protein-ML stack (ESM, the AlphaFold lineage, RFdiffusion / ProteinMPNN / Chroma). It is the natural home for the action operator's **"given" pole**: here rotations and translations are honest **SE(3)** group elements, equivariance is *demanded* rather than learned, and frame-based structure prediction and generation are *operators on SE(3)* made literal (AlphaFold's residue frames, FrameDiff/RFdiffusion flows). Where ssl-lab's operators are **learned** from data, protein-ml-lab's are **given** by physics. These are the two poles of the same expressiveness↔structure dial, in two sibling repos.
+- **[protein-ml-lab](https://github.com/pleiadian53/protein-ml-lab)** *(sibling, early work in progress)*: a first-principles depth study of the protein-ML stack (ESM, the AlphaFold lineage, RFdiffusion / ProteinMPNN / Chroma). It is the natural home for the action operator's **"given" pole**: here rotations and translations are honest **SE(3)** group elements, equivariance is *demanded* rather than learned, and frame-based structure prediction and generation are *operators on SE(3)* made literal (AlphaFold's residue frames, FrameDiff/RFdiffusion flows). Where ssl-lab's operators are **learned** from data, protein-ml-lab's are **given** by physics. These are the two poles of the same expressiveness↔structure dial, in two sibling repos.
+
+- **[tabular-icl-lab](https://github.com/pleiadian53/tabular-icl-lab)** *(sibling, early work in progress)*: tabular foundation models and in-context learning (TabPFN) for computational biology, as strong small-data references, evaluation probes and carriers of domain priors. Its first route asks whether a tabular in-context learner can predict what additivity misses in the perturbation study.
 
 ## Layout
 
@@ -74,7 +85,8 @@ This project follows a use-case-driven R&D convention: reusable primitives in `s
 
 ```
 src/ssllab/
-  data/        image-proxy + single-cell Perturb-seq adapters -> modality-agnostic token tensors
+  data/        image-proxy, single-cell Perturb-seq and PTB-XL ECG adapters -> modality-agnostic
+               token tensors (signal geometry in physical time; a checksummed WFDB reader)
   models/      TinyViT backbone, JEPA encoder/predictor, latent decoder
   jepa/        block masking, EMA target, the assembled JEPA module
   objectives/  prediction loss + VICReg collapse regularizer
@@ -82,7 +94,10 @@ src/ssllab/
                NB/ZINB count decoder, condition encoder, CVAE baseline,
                perturbation action operator (+ operator algebra)
   action_operator/  context-conditioned latent operators — generator bases, exp(M)
-  eval/        collapse diagnostics, linear probe, image-grid viz
+  eval/        collapse diagnostics, linear probe, effect size, calibration and population metrics,
+               interaction scores, joint paired bootstrap with max-t intervals, image-grid viz
+  coadapt.py   joint encoder + decoder training (decoder only, joint, joint with the JEPA anchor)
+  anatomy/     step-by-step shape traces of every component, for the architecture viewer
   utils/       seeding, device selection
 examples/
   jepa_basics/          01 train JEPA · 02 linear probe
@@ -91,8 +106,12 @@ examples/
   perturbation_response/  cell-JEPA perturbation pipeline (WIP): process Norman ->
                         Stage A pretrain -> count decoder -> conditional flow
                         or action operator -> sample -> effect-size eval
-                        (+ CVAE baseline, ceiling analysis);
-                        co-adaptation/ unfreezes the encoder one stage at a time
+                        (+ CVAE and additive references, ceiling analysis, one scoring
+                        script per pre-registered round); co-adaptation/ trains the encoder
+                        with the stages that read it
+  ecg_rhythm/           PTB-XL: process -> data card -> labelled-patient subsets -> span-masked
+                        JEPA pretraining -> scratch / fine-tune / probe arms -> paired
+                        patient-cluster bootstrap -> results page
 ```
 
 ## Setup

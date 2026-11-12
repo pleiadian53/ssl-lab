@@ -16,29 +16,37 @@ The stack is compared against two references. The first is a from-scratch condit
 
 The full scoreboard is in the [results ledger](docs/results/index.md), and every experiment has its own page there with its settings, its pre-committed endpoint and its result. The short version follows, with Δr meaning the effect-size correlation on the twenty held-out combinations.
 
-| | Δr | what it says |
-|---|---|---|
-| Additive reference, the sum of the two single-gene effects | **0.961** | the reference on Δr since round 7; no training, a mean profile and no population |
-| Conditional NB-VAE whose encoder reads the perturbation | **0.858** | the strongest learned baseline, since round 6; seeds 0.852 to 0.862 |
-| Conditional NB-VAE with a condition-blind encoder | 0.766 | the learned baseline for rounds 1 to 5, scored in round 1; seed spread 0.006 |
-| Transport flow, control to perturbed | 0.648 | the best generative configuration built so far |
-| Action operator | 0.645 | a dead tie with the flow |
-| One average training effect, predicted for every pair | *0.711* | an exploratory reference that ignores which pair is asked |
-| Oracle Stage B, handed the real held-out latents | *0.679* | a ceiling, not a model |
-| Linear readout of the frozen latents | *0.852* | a diagnostic, not a model |
+| | Δr | e_p | what it says |
+|---|---|---|---|
+| Additive reference, the sum of the two single-gene effects | **0.961** | **0.289** | the reference on effect size since round 7; no training, a mean profile and no population |
+| Conditional NB-VAE whose encoder reads the perturbation | **0.939** | 0.455 | the strongest learned model, with round 11's corrected likelihood |
+| Transport flow on an encoder trained jointly with the decoder from random weights | 0.921 | 0.461 | the best full pipeline, round 13 |
+| Transport flow on the JEPA encoder fine-tuned jointly with the decoder | 0.900 | 0.472 | round 12 |
+| Conditional NB-VAE with a condition-blind encoder | 0.880 | 0.609 | the learned baseline of rounds 1 to 5, re-read under the corrected likelihood |
+| Action operator on the frozen JEPA encoder | 0.848 | 0.579 | round 3's operator, re-read under the corrected decoder; within the flow family's cluster, not contrasted with the flow since round 3's tie |
+| Transport flow on the frozen JEPA encoder | 0.837 | 0.591 | the method as first built, read through the corrected decoder |
+| Readout ceiling: real held-out cells through encoder and decoder | *0.865 / 0.936 / 0.948–0.961* | | the frozen JEPA encoder, round 12's jointly trained encoder, and round 13's two random-start ones; a diagnostic, not a model |
 
-Eight findings carry the story so far, read under the measured-control convention that every published number uses. [Round 11](docs/results/round-11-library-size.md) then found and fixed the cause of the decoder's offset, a library size counted over all measured genes rather than the 5,000 modeled ones: with that one change the conditioned NB-VAE reaches Δr 0.939 (size-aware error 0.455), the transport flow read through the corrected decoder 0.837, and the readout gap disappears. Additivity (0.961, 0.289) still leads. The numbers below are the published ones from before that correction.
+Δr is the effect-size correlation and e_p the size-aware error of the predicted change, where predicting no change scores 1. Every number is under the corrected conventions of [round 11](docs/results/round-11-library-size.md) and the measured control, averaged over three seeds; the published numbers from before that correction are kept in the ledger.
+
+Three recent rounds changed the picture, and they lead the findings:
+
+- **The decoder's loss had one cause, and fixing it lifted every model.** [Round 11](docs/results/round-11-library-size.md) found that the count decoder's likelihood counted each cell's library size over all measured genes rather than the 5,000 it models. Counting it over the modeled genes removed the decoder's offset and raised every decoder-based model by 0.08 to 0.20 in Δr, with the order of the models unchanged ([the re-baseline](docs/results/rebaseline-after-round-11.md)). The same round found that the populations' apparent under-dispersion came mostly from how sampled counts were normalized; normalized like the data, coverage sits near its nominal 0.80.
+- **Training the encoder together with the decoder raises the ceiling.** [Round 12](docs/results/round-12-coadaptation.md) fine-tuned the JEPA encoder jointly with a fresh decoder by reconstruction. The readout ceiling rose from 0.865 to 0.936, and a flow retrained on the new latents reached 0.900, level with the conditioned NB-VAE on the size-aware error but still below it in Δr.
+- **The JEPA pretraining is not shown to contribute.** [Round 13](docs/results/round-13-random-start.md) ran the same joint training from random weights and reached a readout ceiling of 0.948 to 0.961 and a full pipeline of 0.909 to 0.921. The pretrained start is not established to help, and every seed of the random start scored above it. The JEPA encoder was pretrained on the same training cells, so the premise that pretraining pays off when labels or data are scarce is still untested here.
+
+The findings below were measured before round 11's correction and keep their published numbers. Where a later round changed one, the finding says so.
 
 - **No learned model has yet predicted mean effects better than additivity.** Round 7 scored the additive reference with the same harness as every model. It reaches 0.961, significantly above the conditioned NB-VAE (by 0.103) and the transport flow (by 0.313). The flow also falls below a reference that ignores which combination it is asked about, predicting one average training effect for every pair (0.711, exploratory). The finding is scoped to these twenty combinations, to correlation on each pair's top 20 genes, and to additivity in log1p-CP10K expression. It does not mean the pairs do not interact: an earlier round measured interactions of 17% to 54% of the effect on these same pairs, which the correlation metric largely cannot see because it ignores the size of the change. And it does not settle whether a model can generate useful, calibrated populations of cells, which the additive reference cannot do at all.
 - **The method loses to its learned baseline, by more than first measured.** Every generative configuration lands between 0.61 and 0.65. In round 1 that put the best flow 0.118 below the condition-blind NB-VAE, a gap that survived simultaneous confidence intervals over the whole family of comparisons. Round 6 then let the baseline's encoder read the perturbation, which added a significant 0.083 and raised the bar to 0.858. Read across rounds through the bar, the transport flow now trails it by about 0.21.
 - **The transition was never the bottleneck.** A Stage B that is perfect by construction reaches only 0.679 through the current decoder, so improving the flow could gain at most 0.03. Three rounds spent on the transition (the flow variants, the action operator, the operator algebra) were bounded by that ceiling from the start.
-- **The decoder is where the effect is lost.** A plain linear readout of the frozen latents scores 0.852, above the original baseline's 0.766, just below the conditioned VAE's 0.858, and 0.11 below the additive reference. It is a diagnostic handed real latents, not a model. The representation holds the signal, and the trained count decoder throws away 0.173 of it. [Round 10](docs/results/round-10-control-reference.md) qualified this: the 0.173 appears only when every predicted change is taken against the measured control mean. Against the decoder's own control prediction, no gap is established, and what the decoder gets wrong is an offset in absolute expression shared by every condition. Under that convention every learned model sits much closer to the data, the conditioned NB-VAE's size-aware error falling from 1.05 to 0.50, though still above additivity's 0.29.
+- **The decoder is where the effect is lost.** A plain linear readout of the frozen latents scores 0.852, above the original baseline's 0.766, just below the conditioned VAE's 0.858, and 0.11 below the additive reference. It is a diagnostic handed real latents, not a model. The representation holds the signal, and the trained count decoder throws away 0.173 of it. [Round 10](docs/results/round-10-control-reference.md) qualified this: the 0.173 appears only when every predicted change is taken against the measured control mean. Against the decoder's own control prediction, no gap is established, and what the decoder gets wrong is an offset in absolute expression shared by every condition. Under that convention every learned model sits much closer to the data, the conditioned NB-VAE's size-aware error falling from 1.05 to 0.50, though still above additivity's 0.29. Round 11 then removed the offset at its cause, and the decoder now reads the frozen latents slightly better than the linear map does (0.865 against 0.852).
 - **The operator-algebra hypothesis is refuted.** The idea that how far two single-gene operators fail to commute predicts the pair's genetic interaction failed every test it was given.
 - **On the size of the change, additivity is far ahead.** Correlation ignores how large the predicted change is, so round 8 scored the error of the predicted change relative to the measured one, where predicting no change at all scores 1. Additivity scores 0.29, the conditioned NB-VAE 1.05 and the transport flow 1.26, and additivity is better on every one of the twenty pairs. The learned models predict only about 60% of the change along the direction the single genes point.
 - **Two further levers did not help.** A non-additive DeepSets embedding of the gene pair (round 7b) did not improve interaction prediction in the flow and made the conditioned NB-VAE about 13% worse. Replacing the encoder's VICReg regularizer with SIGReg from LeJEPA (round 9) left the representation with about twenty dimensions of variance instead of over two hundred, and lowered its linear readout from 0.853 to about 0.75.
 - **Two flow design choices are settled.** Transporting from a real control latent beats generating from noise (+0.036, significant). Optimal-transport coupling of the pairs makes things worse (−0.021, significant), even though it lowers the training loss.
 
-**What comes next** is the [co-adaptation](co-adaptation/README.md) program, which unfreezes the encoder one stage at a time. Its Phase 0 diagnostic has run. On the frozen latents, a nonlinear map from control to perturbed explains only about 1.5% more of the response than an affine map does, across the principal directions that can be measured reliably. The latent response is therefore close to affine, which lowers the priority of reshaping the encoder's geometry for the operator. Phase 1 trains the encoder jointly with the decoder, which targets the 0.173 directly while keeping the transition frozen so the result remains attributable. On the Δr endpoint it is compared against both the additive reference (0.961) and the conditioned NB-VAE (0.858). Beating the VAE alone would be an improvement over the strongest learned baseline, not over the strongest tested reference. Because Δr leaves only 0.04 of room above the additive reference, Phase 1 is also scored on round 8's size-aware error, on which every learned model is still far from additivity.
+**What comes next** is open, and the options pull in different directions. The best full pipeline sits 0.017 below the conditioned NB-VAE and 0.039 below additivity in Δr, with about 0.04 of headroom between its flow and its readout ceiling. A condition-aware decoder, as the NB-VAE has, aims at the first gap. A data-efficiency ladder, comparing a pretrained and a random start as the training cells shrink, is the test of what the pretraining is for, and the same question can be put to a large pretrained single-cell model's embeddings in place of Stage A. The [co-adaptation](co-adaptation/README.md) program and the ledger's open items keep the list.
 
 ## Where to read
 
@@ -81,7 +89,8 @@ The scripts are numbered `00` to `17` in the order they were written, which is n
 | `06_eval_effect_size.py` | the primary benchmark, Δr on the held-out combinations; `--stage-b` picks which Stage B to grade |
 | `09_eval_cvae_baseline.py` | the same metric through the same harness, for the baseline |
 | `18_eval_additive_baseline.py` | the same metric for the training-free additive reference, Δ(A) + Δ(B) from the training singles |
-| `10_eval_calibration.py` | the distributional axis: spread correlation, interval coverage, Wasserstein distance |
+| `10_eval_calibration.py` | the distributional axis: spread correlation, interval coverage, Wasserstein and energy distance |
+| `19_score_interaction.py` | the same predictions on the size of the change and on its departure from additivity, including the size-aware error e_p |
 
 **Diagnose** where the loss lives. These train nothing, run in minutes, and several of them changed the direction of the project.
 
@@ -101,6 +110,7 @@ The scripts are numbered `00` to `17` in the order they were written, which is n
 |---|---|
 | `12_compare_arms.py` | a verdict on a family of comparisons, from a joint bootstrap with simultaneous intervals |
 | `17_eval_bracket_epistasis.py` | the pre-registered test of whether operator non-commutativity predicts epistasis, against a permutation null |
+| `20_compare_composition.py` to `27_score_round13.py` | one script per round from 7b on, whose docstring is that round's protocol, frozen before any run; each checks its inputs against the stored reports, then writes the round's verdict and secondaries |
 
 **Vary** one lever at a time on the GPU pod. Each `run_*_pod.sh` wrapper reuses every artifact it can and retrains only the stage under test. The decoder and operator wrappers also open with a preflight that checks their staged inputs and stops within seconds, naming whatever is missing, before any training starts.
 
@@ -181,12 +191,12 @@ Data preparation, tests and smoke runs happen locally on CPU. Training happens o
 
 ## Co-adaptation
 
-[`co-adaptation/`](co-adaptation/README.md) is the next round. Every earlier round froze the encoder, which is what made a difference between two arms attributable to the one thing that changed. Co-adaptation relaxes that freeze one stage at a time, and its results join the same ledger as Round 5 onward, on the same twenty held-out combinations and against the same NB-VAE bar.
+[`co-adaptation/`](co-adaptation/README.md) trains the encoder with the stages that read it. Every round before 12 froze the encoder, which is what made a difference between two arms attributable to the one thing that changed. Co-adaptation relaxes that freeze one stage at a time, and its results join the same ledger as Round 5 onward, on the same twenty held-out combinations and against the same NB-VAE bar.
 
 | script | phase | trained jointly with the encoder |
 |---|---|---|
 | `01_koopman_linearity_probe.py` | Phase 0, diagnostic, done | nothing; it measures whether the frozen latents respond affinely |
-| `02_coadapt_decoder.py` | Phase 1, planned | the count decoder, with the transition frozen |
+| `02_coadapt_decoder.py` | Phase 1, done in rounds 12 and 13 | the count decoder, with the transition retrained afterwards; `--init random` starts the encoder from fresh weights |
 | `03_coadapt_operator.py` | Phase 2, planned, now lower priority | the operator, under a linearizing objective |
 
 Its narrative companion is [co-adaptation/docs](co-adaptation/docs/index.md).
