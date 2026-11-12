@@ -4,11 +4,15 @@
 
 📖 **Documentation site (full math rendering):** <https://pleiadian53.github.io/ssl-lab/>
 
-A research lab for **self-supervised learning (SSL)**. The aim is to track the state of the art across the SSL families and selectively go deep on the methods most worth mastering, staying at or ahead of the frontier rather than covering everything shallowly.
+ssl-lab develops new methods for **generating biological data that can be trusted like measured data**. Generative models already produce convincing images and video. The goal here is the same capability for experiments: given a biological system and an intervention, generate the dataset the experiment would have produced, accurately enough to explore, prioritize and partly replace work that today needs new sequencing runs or extra assays.
 
-**Current focus: JEPA.** The first research line studies JEPA (joint-embedding predictive architectures) and extends it into a *sampleable generative model*. JEPA learns a representation by predicting the *embeddings* of masked/target regions from context embeddings, with no pixel reconstruction and no likelihood. It is a representation learner, not a generative model. To *sample* data you add two pieces: a **prior** over the latent and a **decoder** back to data space.
+The flagship target is **single-cell perturbation data**. Given a population of cells and a genetic perturbation, possibly a combination nobody has run, the model generates the perturbed population: which genes move, by how much, and how much the response varies from cell to cell. The same aim carries to other modalities, including physiological signals, health records and molecular structure.
 
-The starting point is the simplest such slice: an *unconditional* flow-matching prior over a frozen JEPA latent, decoded back to data, built and verified end to end as a modality-agnostic proof of concept. From there the line has grown into a **design-space survey** of how to make JEPA generative, whose recommended build is a **conditional flow prior**: generation *given a condition*, such as a class, a perturbation, or an intervention, paired with a decoder matched to the data. That conditional architecture is the one shown below, and the one this lab is building toward.
+**Reliable is measured, not assumed.** Generated data are scored on the direction and the size of the effects they predict and on whether the generated populations are calibrated, always against strong references: a model of the same task trained from scratch, and a training-free baseline that a useful generator must beat.
+
+**The method line: self-supervised representations made generative.** The current build starts from JEPA (joint-embedding predictive architectures), a state-of-the-art self-supervised learner that predicts the *embeddings* of masked regions from their context instead of reconstructing raw data. On its own JEPA learns representations and cannot generate. To sample data the lab adds a **prior** over the latent and a **decoder** back to data space, matched to the data's likelihood. JEPA is the starting point because it is the frontier most worth extending, not a fixed commitment: each component is kept only where it earns its place against those references, and the aim is methods at and beyond the state of the art in both self-supervised learning and generative modeling.
+
+A design-space survey of how to make JEPA generative recommends a **conditional flow prior**: generation *given a condition*, such as a perturbation or an intervention, paired with a decoder matched to the data. That conditional architecture is the one shown below.
 
 ```mermaid
 flowchart LR
@@ -33,7 +37,7 @@ This *generative* slice is one of **two complementary extensions of JEPA** the l
 
 ## Why ssl-lab exists
 
-ssl-lab is a spin-off of its sibling project [genai-lab](https://github.com/pleiadian53/genai-lab) (generative AI for computational biology). It's a focused R&D sandbox for state-of-the-art self-supervised learning, namely JEPA and new ideas built around it. The work is kept deliberately **modality-agnostic**: method first, validated on a simple proof-of-concept before it meets real data. The aim is to mature these methods here and bring them back to genai-lab to develop more meaningful **genomic generative models**.
+ssl-lab is a spin-off of its sibling project [genai-lab](https://github.com/pleiadian53/genai-lab) (generative AI for computational biology). It is where new methods for self-supervised and generative modeling are developed and stress-tested, starting from JEPA and the ideas built around it. The core is kept deliberately **modality-agnostic**, so a method proven on one kind of biological data can move to the next through a data adapter. Methods mature here and return to genai-lab as **genomic generative models** that can stand in for, and help plan, real experiments.
 
 ## Research directions
 
@@ -58,9 +62,9 @@ A concrete motivation in genomics: given an RNA sequence, *sense* to localize ca
 
 ## Studies so far
 
-Two applied studies test the same question from opposite ends: what does JEPA pretraining buy over training the same model from scratch? Each is pre-registered, compares arms within one study, and reports uncertainty alongside every number.
+Two applied studies have run so far. Each is pre-registered, compares arms within one study, and reports uncertainty alongside every number. Besides their own questions, together they answer a narrower one: what JEPA pretraining buys over training the same model from scratch.
 
-- **[Single-cell perturbation response](examples/perturbation_response/README.md)** (Norman 2019 Perturb-seq, twenty held-out two-gene combinations). The generative stack, a JEPA cell encoder with a conditional flow and a count decoder, is graded against a from-scratch conditional NB-VAE and a training-free additive reference. At full data, the from-scratch baseline and additivity lead, and an encoder trained jointly with the decoder from random weights does at least as well as one started from the JEPA weights. The [results ledger](examples/perturbation_response/docs/results/index.md) holds every round.
+- **[Single-cell perturbation response](examples/perturbation_response/README.md)** (Norman 2019 Perturb-seq, twenty held-out two-gene combinations). The task is to generate the perturbed cell population for gene combinations never measured. The generative stack, a JEPA cell encoder with a conditional flow and a count decoder, is graded against a from-scratch conditional NB-VAE and a training-free additive reference. At full data, the from-scratch baseline and additivity lead, and an encoder trained jointly with the decoder from random weights does at least as well as one started from the JEPA weights. The [results ledger](examples/perturbation_response/docs/results/index.md) holds every round.
 - **[ECG rhythm classification](examples/ecg_rhythm/README.md)** (PTB-XL, 21,799 twelve-lead ECGs). Span-masked JEPA pretraining is compared with the same encoder trained from scratch, at nested label budgets. With labels for 5% of training patients, pretraining adds 0.078 macro AUROC, and the advantage shrinks to a tie when every patient is labelled ([results](examples/ecg_rhythm/results/01-jepa-label-efficiency/README.md)).
 
 Read together, the two studies point the same way. Pretraining pays off when labels are scarce and fades when they are plentiful, so label and data efficiency is the axis on which the perturbation study's pretraining is still to be tested.
