@@ -17,7 +17,7 @@ Requires the single-cell extra (this is the *only* script in the repo that does)
 
 Usage
 -----
-    # real run (multi-GB download, CPU, no pod); needs SSLLAB_DATA_ROOT for lake-staging
+    # real run (multi-GB download, CPU, no pod); needs DATA_LAKE_ROOT for lake-staging
     python examples/perturbation_response/00_process_norman.py --source pertpy --n-hvg 5000
 
     # from a pinned local .h5ad instead of pertpy auto-fetch

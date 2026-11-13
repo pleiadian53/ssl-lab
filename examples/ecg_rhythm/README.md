@@ -31,16 +31,16 @@ Span-masked JEPA pretraining helps most when labels are scarce. With labels for 
 The data is open access; no credentials are needed. The AWS open-data mirror is much faster than the PhysioNet zip:
 
 ```bash
-export SSLLAB_DATA_ROOT=~/work/data
-aws s3 sync --no-sign-request s3://physionet-open/ptb-xl/1.0.3/ $SSLLAB_DATA_ROOT/ecg/ptbxl/raw/1.0.3/
+export DATA_LAKE_ROOT=~/work/data
+aws s3 sync --no-sign-request s3://physionet-open/ptb-xl/1.0.3/ $DATA_LAKE_ROOT/ecg/ptbxl/raw/1.0.3/
 # PhysioNet's SHA256SUMS.txt uses one space between hash and name; shasum wants two
-(cd $SSLLAB_DATA_ROOT/ecg/ptbxl/raw/1.0.3 && sed -E 's/^([0-9a-f]{64}) /\1  /' SHA256SUMS.txt | shasum -a 256 -c --quiet)
+(cd $DATA_LAKE_ROOT/ecg/ptbxl/raw/1.0.3 && sed -E 's/^([0-9a-f]{64}) /\1  /' SHA256SUMS.txt | shasum -a 256 -c --quiet)
 ```
 
 Build the 100 Hz cache in the lake and link it into `data/`:
 
 ```bash
-python examples/ecg_rhythm/00_process_ptbxl.py --fs 100 --out-dir $SSLLAB_DATA_ROOT/ecg/ptbxl/cache100
+python examples/ecg_rhythm/00_process_ptbxl.py --fs 100 --out-dir $DATA_LAKE_ROOT/ecg/ptbxl/cache100
 python -c "from ops.datasets import link_dataset; link_dataset('ecg/ptbxl/cache100', link_name='ptbxl100')"
 
 # no network, seconds: a synthetic PhysioNet-shaped tree through the same code path

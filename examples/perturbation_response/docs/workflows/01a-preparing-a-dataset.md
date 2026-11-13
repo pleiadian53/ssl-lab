@@ -78,7 +78,7 @@ python examples/perturbation_response/00_process_norman.py \
 
 Three costs to know before starting.
 
-**Memory is the likely blocker.** [`load_cache`](../../../../src/ssllab/data/perturbseq.py) uses plain `np.load` with no `mmap_mode`, so `hvg_X` (float32) and `counts` (int32) both land fully in RAM: $109{,}737 \times 10{,}000 \times 8 = 8.8$ GB, up from $4.4$ GB. Processing peak is worse, since step 8 densifies both matrices while the AnnData is still live. Budget around $20$ GB transient, and stage the result under `SSLLAB_DATA_ROOT` rather than in the repo tree.
+**Memory is the likely blocker.** [`load_cache`](../../../../src/ssllab/data/perturbseq.py) uses plain `np.load` with no `mmap_mode`, so `hvg_X` (float32) and `counts` (int32) both land fully in RAM: $109{,}737 \times 10{,}000 \times 8 = 8.8$ GB, up from $4.4$ GB. Processing peak is worse, since step 8 densifies both matrices while the AnnData is still live. Budget around $20$ GB transient, and stage the result under `DATA_LAKE_ROOT` rather than in the repo tree.
 
 **Effect-size numbers stop being comparable to every existing result.** DE is computed *within* the panel, so a $10{,}000$-gene panel produces a different scored gene set per perturbation. A $10$k effect size of $0.65$ and a $5$k effect size of $0.65$ are not the same measurement. The oracle ceiling of $0.679$, the flow-versus-VAE table, the $0.852$ linear readout: none of them transfer. A wider-panel run needs its own re-derived baselines, which roughly doubles the experiment rather than adding one arm to it.
 
@@ -178,7 +178,7 @@ This is the payoff of keeping the scoring seam in its own file, out of the train
 2. **Check whether `--de-only` is enough.** If only the scoring genes are in question, stop here.
 3. **Diagnose before building.** Run [`00a_probe_hvg_coverage.py`](../../00a_probe_hvg_coverage.py). Coverage of full-transcriptome DE genes by the current panel answers the wider-panel question in one CPU run instead of a few days. This is the same lesson [Build](01-build.md) opens with and the one this project learned three times.
 4. **Budget the memory.** Roughly $H \times N \times 8$ bytes resident, and about twice that transient during processing.
-5. **Stage it in the data lake.** `SSLLAB_DATA_ROOT`, symlinked in with `ops.datasets.link_dataset`, not committed into the repo tree.
+5. **Stage it in the data lake.** `DATA_LAKE_ROOT`, symlinked in with `ops.datasets.link_dataset`, not committed into the repo tree.
 6. **Smoke test the chain first.** `--smoke --data-dir /tmp/smoke --artifact smoke_test` runs the entire pipeline on synthetic data in about a minute and catches an environment problem before a multi-hour run does.
 7. **Declare the fork.** A new cache means new baselines. Record in the [ledger](../results/index.md) that the scoreboard restarted, because numbers from two panels sitting in one table are not a comparison.
 

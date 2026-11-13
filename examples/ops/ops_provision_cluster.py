@@ -88,7 +88,7 @@ def main() -> None:
 
     if args.dry_run:
         print_dry_run(config, infra, infra.output_local)
-        print(f"Data dir       : {infra.local_data_dir}/  (set $SSLLAB_DATA_ROOT to link shared datasets)")
+        print(f"Data dir       : {infra.local_data_dir}/  (set $DATA_LAKE_ROOT to link shared datasets)")
         print("Remove --dry-run to provision this A40 pod for real." if infra.gpu == "a40"
               else f"Remove --dry-run to provision this {infra.gpu} pod for real.")
     else:

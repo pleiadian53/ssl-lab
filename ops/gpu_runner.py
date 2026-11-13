@@ -5,7 +5,7 @@ We never call the RunPod API directly — we emit provider-neutral SkyPilot conf
 and let SkyPilot translate. ``sky`` is imported lazily inside :func:`launch` so
 that compute-check and dry-run work without SkyPilot installed.
 
-Intentionally lean: no per-model pip registry — ssl-lab's remote setup is a plain
+Intentionally lean: no per-model pip registry — the project's remote setup is a plain
 install of the SSL library.
 """
 
@@ -74,13 +74,28 @@ GENERATED_DIR = _default_config_dir() / "skypilot" / "generated"
 # --------------------------------------------------------------------------
 
 
+PROJECT_DIR_TOKEN = "{project_dir}"
+
+
 @dataclass
 class InfraConfig:
+    """Remote-training settings, read from ``configs/gpu_config.yaml``.
+
+    ``project`` names the project that uses this copy of ``ops``. Pods share one
+    network volume across projects, so each project keeps its files in its own
+    folder on it, ``<volume_mount>/<project>`` (``project_dir``). Config values may
+    write that folder as the placeholder ``{project_dir}``; ``from_yaml`` fills it
+    in, so moving ``ops`` to another project means changing ``project`` alone.
+    ``job_prefix`` starts every derived SkyPilot job name (``<prefix>-<script>``).
+    """
+
+    project: str = ""
+    job_prefix: str = "job"
     gpu: str = "a40"
     cloud: str = "runpod"
     docker_image: str = "nvcr.io/nvidia/pytorch:25.02-py3"
     use_volume: bool = False
-    volume_name: str = "ssl-lab volume"
+    volume_name: str = "shared volume"
     volume_mount: str = "/runpod-volume"
     workdir: str = "."
     data_path: str = "data"
@@ -97,7 +112,15 @@ class InfraConfig:
         extra = {k: v for k, v in data.items() if k not in known}
         cfg = cls(**kwargs)
         cfg._extra = extra
+        cfg.setup_cmd = cfg.setup_cmd.replace(PROJECT_DIR_TOKEN, cfg.project_dir)
+        cfg.output_remote = cfg.output_remote.replace(PROJECT_DIR_TOKEN, cfg.project_dir)
         return cfg
+
+    @property
+    def project_dir(self) -> str:
+        """This project's folder on the shared volume, ``<volume_mount>/<project>``."""
+        mount = self.volume_mount.rstrip("/")
+        return f"{mount}/{self.project}" if self.project else mount
 
     def apply_overrides(self, **kwargs: Any) -> None:
         """Apply non-None CLI overrides onto the config in place."""
@@ -126,10 +149,10 @@ class InfraConfig:
     def local_data_dir(self) -> str:
         """The project's local input directory (where datasets are referenced).
 
-        Always ``data_path``. The shared-lake env var ``SSLLAB_DATA_ROOT`` is
-        consumed only by the per-dataset linker (``ops.datasets``), not here —
-        ssl-lab's own data stays local; only specific large datasets are linked
-        into this dir from the lake.
+        Always ``data_path``. The shared-lake env var (``DATA_LAKE_ROOT``) is
+        consumed only by the per-dataset linker (``ops.datasets``), not here:
+        a project's own small data stays local, and only specific large datasets
+        are linked into this dir from the lake.
         """
         return self.data_path
 
@@ -139,8 +162,8 @@ class InfraConfig:
 # --------------------------------------------------------------------------
 
 
-def _derive_job_name(run_command: str) -> str:
-    """Derive a job name from the script in a 'python path/to/NN_name.py ...' command."""
+def _derive_job_name(run_command: str, prefix: str = "job") -> str:
+    """Derive a job name, ``<prefix>-<script>``, from a 'python path/to/NN_name.py ...' command."""
     for tok in shlex.split(run_command):
         if tok.endswith(".py"):
             stem = Path(tok).stem
@@ -148,23 +171,23 @@ def _derive_job_name(run_command: str) -> str:
             parts = stem.split("_")
             if parts and parts[0].isdigit():
                 stem = "_".join(parts[1:]) or stem
-            return "ssl-" + stem.replace("_", "-")
-    return "ssl-job"
+            return f"{prefix}-" + stem.replace("_", "-")
+    return f"{prefix}-job"
 
 
 def build_skypilot_config(
     infra: InfraConfig, run_command: str, job_name: str | None = None
 ) -> dict[str, Any]:
     """Assemble a SkyPilot task config (a dict ready for ``yaml.dump``)."""
-    job_name = job_name or _derive_job_name(run_command)
+    job_name = job_name or _derive_job_name(run_command, infra.job_prefix)
 
     run_lines = [
         "set -e",  # fail the job if the command fails (don't let trailing echoes mask it)
         f"mkdir -p {infra.output_remote}",
         run_command,
         'echo "=================================================="',
-        f'echo "[ssl-ops] job {job_name} done. Results in {infra.output_remote}"',
-        f'echo "[ssl-ops] fetch with: rsync -Pavz <cluster>:{infra.output_remote}/ {infra.output_local}/"',
+        f'echo "[ops] job {job_name} done. Results in {infra.output_remote}"',
+        f'echo "[ops] fetch with: rsync -Pavz <cluster>:{infra.output_remote}/ {infra.output_local}/"',
     ]
 
     config: dict[str, Any] = {
@@ -209,7 +232,7 @@ def print_dry_run(config: dict[str, Any], infra: InfraConfig, output_local: str 
     path = _write_generated(config, job_name)
     bar = "=" * 64
     print(bar)
-    print(f"[ssl-ops] DRY RUN — job '{job_name}'  (no pod launched)")
+    print(f"[ops] DRY RUN — job '{job_name}'  (no pod launched)")
     print(bar)
     print(dump_yaml(config).rstrip())
     print(bar)
@@ -257,7 +280,7 @@ def _cluster_is_up(name: str) -> bool:
 
 
 def _run(cmd: list[str]) -> subprocess.CompletedProcess:
-    print(f"[ssl-ops] $ {' '.join(cmd)}")
+    print(f"[ops] $ {' '.join(cmd)}")
     return subprocess.run(cmd, check=True)
 
 
@@ -308,18 +331,18 @@ def launch(
             f"{cluster_name}:{infra.output_remote}/",
             f"{output_local}/",
         ])
-        print(f"[ssl-ops] results -> {output_local}/  (--update: newer local files were kept)")
+        print(f"[ops] results -> {output_local}/  (--update: newer local files were kept)")
     finally:
         if not launched:
             # Provisioning never succeeded, so there is no pod. Saying otherwise turns a
             # failure into something that reads like a success.
-            print(f"[ssl-ops] cluster '{cluster_name}' was NOT provisioned; nothing to tear down.")
+            print(f"[ops] cluster '{cluster_name}' was NOT provisioned; nothing to tear down.")
         elif teardown:
             # check=False: a teardown hiccup must not mask the original error.
             subprocess.run(["sky", "down", cluster_name, "-y"], check=False)
-            print(f"[ssl-ops] torn down cluster '{cluster_name}'")
+            print(f"[ops] torn down cluster '{cluster_name}'")
         else:
-            print(f"[ssl-ops] pod '{cluster_name}' left running "
+            print(f"[ops] pod '{cluster_name}' left running "
                   f"(ssh {cluster_name}); tear down with: sky down {cluster_name} -y")
 
 
@@ -330,7 +353,7 @@ def launch(
 
 def keepalive_config(infra: InfraConfig, name: str) -> dict[str, Any]:
     """A SkyPilot task that just sets up the env and stays available for SSH/jobs."""
-    config = build_skypilot_config(infra, 'echo "[ssl-ops] workspace ready"', job_name=name)
+    config = build_skypilot_config(infra, 'echo "[ops] workspace ready"', job_name=name)
     return config
 
 
@@ -339,8 +362,8 @@ def provision(config: dict[str, Any], name: str) -> None:  # pragma: no cover - 
     _require_sky()
     yaml_path = _write_generated(config, name)
     _run(["sky", "launch", str(yaml_path), "-c", name, "-y"])
-    print(f"[ssl-ops] cluster '{name}' up. SSH: ssh {name}")
-    print(f"[ssl-ops] run jobs on it: ops_run_pipeline.py --execute --cluster {name} --no-teardown -- <cmd>")
+    print(f"[ops] cluster '{name}' up. SSH: ssh {name}")
+    print(f"[ops] run jobs on it: ops_run_pipeline.py --execute --cluster {name} --no-teardown -- <cmd>")
 
 
 def status() -> None:  # pragma: no cover - needs SkyPilot

@@ -32,8 +32,30 @@ def test_apply_overrides_validates_gpu():
 
 
 def test_derive_job_name_strips_milestone_prefix():
-    name = _derive_job_name("python examples/jepa_basics/01_train_jepa_mnist.py --epochs 5")
+    name = _derive_job_name("python examples/jepa_basics/01_train_jepa_mnist.py --epochs 5", "ssl")
     assert name == "ssl-train-jepa-mnist"
+    assert _derive_job_name("bash run.sh", "proj") == "proj-job"
+
+
+def test_project_dir_fills_the_placeholders():
+    infra = InfraConfig.from_yaml(DEFAULT_CONFIG_PATH)
+    assert infra.project == "ssl-lab" and infra.job_prefix == "ssl"
+    assert infra.project_dir == "/runpod-volume/ssl-lab"
+    assert infra.output_remote == "/runpod-volume/ssl-lab/output"
+    assert "PIP_CACHE_DIR=/runpod-volume/ssl-lab/pip-cache" in infra.setup_cmd
+    assert "{project_dir}" not in infra.setup_cmd + infra.output_remote
+
+
+def test_another_project_changes_one_field(tmp_path):
+    text = (DEFAULT_CONFIG_PATH.read_text()
+            .replace("project: ssl-lab", "project: side-proj")
+            .replace("job_prefix: ssl ", "job_prefix: side "))
+    cfg_path = tmp_path / "gpu_config.yaml"
+    cfg_path.write_text(text)
+    infra = InfraConfig.from_yaml(cfg_path)
+    assert infra.output_remote == "/runpod-volume/side-proj/output"
+    assert "/runpod-volume/side-proj/pip-cache" in infra.setup_cmd
+    assert build_skypilot_config(infra, "python x/02_fit_model.py")["name"] == "side-fit-model"
 
 
 def test_build_skypilot_config_shape():

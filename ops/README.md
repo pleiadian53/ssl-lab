@@ -55,13 +55,14 @@ nothing to dedup. For **large datasets shared across projects**, keep a single
 physical copy in a project-neutral "data lake" and link only what you use:
 
 ```bash
-export SSLLAB_DATA_ROOT=~/work/_datalake          # the shared lake (not any one project)
+export DATA_LAKE_ROOT=~/work/data               # the shared lake (not any one project)
 python -c "from ops.datasets import link_dataset; link_dataset('GRCh38')"
-# -> data/GRCh38 symlinks into $SSLLAB_DATA_ROOT/GRCh38
+# -> data/GRCh38 symlinks into $DATA_LAKE_ROOT/GRCh38
 ```
 
-`SSLLAB_DATA_ROOT` carries the "shared lake" semantics, so ssl-lab never hard-codes
-another project's name. Only the datasets you actually reuse get linked, keeping
+`DATA_LAKE_ROOT` carries the "shared lake" semantics, so no project hard-codes
+another project's name; the older name `SSLLAB_DATA_ROOT` is still read if the new one
+is unset. Only the datasets you actually reuse get linked, keeping
 the dependency explicit. The local input dir is the `data_path` field in
 [configs/gpu_config.yaml](configs/gpu_config.yaml) (default `data`).
 
@@ -79,6 +80,15 @@ ops/
 examples/ops/            thin drivers: ops_compute_check · ops_run_pipeline · ops_provision_cluster · ops_stage_data
 ```
 
+## Reusing ops in another project
+
+Copy the `ops/` folder, and the `examples/ops/` drivers if you want them, into the other repository's root, then edit two lines at the top of [configs/gpu_config.yaml](configs/gpu_config.yaml):
+
+- `project`: the name of the folder this project uses on the shared pod volume. Outputs, the pip cache and staged data all go under `<volume_mount>/<project>/`, written in the config as `{project_dir}`, so several projects can share one volume without overwriting each other.
+- `job_prefix`: the start of every job name derived from a script, for example `ssl-train-jepa-mnist`.
+
+Nothing else in `ops` names a project. The data lake is shared by all projects, so its variable, `DATA_LAKE_ROOT`, is the same everywhere. The rest of the config (GPU, docker image, setup commands) describes how the project installs itself on the pod, so check `setup_cmd` too.
+
 ## Configure
 
 Edit [configs/gpu_config.yaml](configs/gpu_config.yaml) for defaults, or override
@@ -88,4 +98,4 @@ rates against live RunPod pricing before relying on cost estimates.
 
 ## Data
 
-Two pieces handle large inputs. Locally, `datasets.link_dataset` symlinks a dataset from the shared data lake, the directory named by `SSLLAB_DATA_ROOT`, into `data/`, so several projects can share one copy instead of duplicating it. For the pod, `examples/ops/ops_stage_data.py` copies local datasets and checkpoints to the running pod's network volume with rsync, under `/runpod-volume/ssl-lab/`, where they persist across pod lifecycles and the pod's jobs read them.
+Two pieces handle large inputs. Locally, `datasets.link_dataset` symlinks a dataset from the shared data lake, the directory named by `DATA_LAKE_ROOT`, into `data/`, so several projects can share one copy instead of duplicating it. For the pod, `examples/ops/ops_stage_data.py` copies local datasets and checkpoints to the running pod's network volume with rsync, under `/runpod-volume/ssl-lab/`, where they persist across pod lifecycles and the pod's jobs read them.

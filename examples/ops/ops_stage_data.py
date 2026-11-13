@@ -3,7 +3,7 @@
 
 Generalizes the data-staging pattern: rsync any local path(s) to the RunPod network volume of
 a *running* SkyPilot cluster, mirroring the repo-relative layout under the project namespace
-``/runpod-volume/ssl-lab/<path>``. The pod entrypoints read their inputs from those absolute
+``<volume_mount>/<project>/<path>`` (``/runpod-volume/ssl-lab/<path>`` for this repository; both come from ``ops/configs/gpu_config.yaml``). The pod entrypoints read their inputs from those absolute
 volume paths, so nothing large has to ride in the workdir (``.skyignore`` excludes ``/data``
 and ``/output``, and datasets/checkpoints are too big or too transient to commit).
 
@@ -43,7 +43,13 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-7s  %(
 logger = logging.getLogger(__name__)
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-_DEFAULT_VOLUME_PREFIX = "/runpod-volume/ssl-lab"   # project namespace on the shared volume
+if str(_REPO_ROOT) not in sys.path:      # ops is a top-level package, not an installed one
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from ops.gpu_runner import DEFAULT_CONFIG_PATH, InfraConfig  # noqa: E402
+
+# This project's folder on the shared volume, <volume_mount>/<project> from gpu_config.yaml.
+_DEFAULT_VOLUME_PREFIX = InfraConfig.from_yaml(DEFAULT_CONFIG_PATH).project_dir
 
 
 def _run(cmd: list[str], check: bool = True) -> int:

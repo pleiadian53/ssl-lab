@@ -12,14 +12,14 @@ Acquire the raw tree once (open access, no credentials). The AWS mirror is much
 faster than the PhysioNet zip::
 
     aws s3 sync --no-sign-request s3://physionet-open/ptb-xl/1.0.3/ \\
-        $SSLLAB_DATA_ROOT/ecg/ptbxl/raw/1.0.3/
-    (cd $SSLLAB_DATA_ROOT/ecg/ptbxl/raw/1.0.3 && sed -E 's/^([0-9a-f]{64}) /\\1  /' SHA256SUMS.txt | shasum -a 256 -c --quiet)
+        $DATA_LAKE_ROOT/ecg/ptbxl/raw/1.0.3/
+    (cd $DATA_LAKE_ROOT/ecg/ptbxl/raw/1.0.3 && sed -E 's/^([0-9a-f]{64}) /\\1  /' SHA256SUMS.txt | shasum -a 256 -c --quiet)
 
 Usage
 -----
     # real run: 100 Hz cache straight into the lake, then link it into data/
     python examples/ecg_rhythm/00_process_ptbxl.py --fs 100 \\
-        --out-dir $SSLLAB_DATA_ROOT/ecg/ptbxl/cache100
+        --out-dir $DATA_LAKE_ROOT/ecg/ptbxl/cache100
     python -c "from ops.datasets import link_dataset; link_dataset('ecg/ptbxl/cache100', link_name='ptbxl100')"
 
     # tiny synthetic smoke run (no network, seconds): fake PhysioNet tree -> cache
@@ -50,14 +50,15 @@ logger = logging.getLogger(__name__)
 
 
 def _default_raw_dir() -> Path | None:
-    root = os.environ.get("SSLLAB_DATA_ROOT")
+    # The shared data lake: $DATA_LAKE_ROOT, or the older name $SSLLAB_DATA_ROOT.
+    root = os.environ.get("DATA_LAKE_ROOT") or os.environ.get("SSLLAB_DATA_ROOT")
     return Path(root).expanduser() / "ecg" / "ptbxl" / "raw" / PTBXL_VERSION if root else None
 
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     p.add_argument("--raw-dir", type=Path, default=_default_raw_dir(),
-                   help="PhysioNet PTB-XL tree (default: $SSLLAB_DATA_ROOT/ecg/ptbxl/raw/1.0.3)")
+                   help="PhysioNet PTB-XL tree (default: $DATA_LAKE_ROOT/ecg/ptbxl/raw/1.0.3)")
     p.add_argument("--fs", type=int, default=100, choices=(100, 500), help="which official copy to cache")
     p.add_argument("--out-dir", type=Path, default=None, help="cache directory (default: data/ptbxl<fs>)")
     p.add_argument("--limit", type=int, default=None, help="first N records only (debugging)")
@@ -74,7 +75,7 @@ def main() -> None:
     else:
         raw = args.raw_dir
         if raw is None or not (raw / "ptbxl_database.csv").exists():
-            p.error(f"PTB-XL tree not found at {raw}; pass --raw-dir or set SSLLAB_DATA_ROOT")
+            p.error(f"PTB-XL tree not found at {raw}; pass --raw-dir or set DATA_LAKE_ROOT")
 
     logger.info("building %d Hz cache from %s -> %s", args.fs, raw, out_dir)
     m = build_cache_from_raw(raw, out_dir, fs=args.fs, limit=args.limit, verify=not args.no_verify, logger=logger)

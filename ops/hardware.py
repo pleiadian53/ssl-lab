@@ -80,7 +80,7 @@ def detect_hardware(path: str = ".") -> HardwareReport:
 def print_report(report: HardwareReport) -> None:
     bar = "=" * 56
     print(bar)
-    print("[ssl-ops] compute check")
+    print("[ops] compute check")
     print(bar)
     print(f"  platform   : {report.platform}")
     print(f"  backend    : {report.backend}")

@@ -153,9 +153,9 @@ If pertpy stores the perturbation label under a non-standard column, or joins co
 The processed cache is several gigabytes, so it lives in the project-neutral data lake rather than under `data/` in the repository. The `ops` helper links it in:
 
 ```bash
-export SSLLAB_DATA_ROOT=~/work/data
+export DATA_LAKE_ROOT=~/work/data
 python -c "from ops.datasets import link_dataset; link_dataset('scrna/perturb_seq/norman2019')"
-# -> data/norman2019 -> $SSLLAB_DATA_ROOT/scrna/perturb_seq/norman2019
+# -> data/norman2019 -> $DATA_LAKE_ROOT/scrna/perturb_seq/norman2019
 ```
 
 The lake is organized as `<modality>/<sub-topic>/<dataset>`, and the nested lake path becomes a flat local alias, `data/norman2019`, which is what the loader reads.

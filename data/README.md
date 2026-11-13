@@ -16,9 +16,9 @@ across projects**, do not duplicate them — keep a single physical copy in a
 project-neutral "data lake" and symlink only what you use:
 
 ```bash
-export SSLLAB_DATA_ROOT=/path/to/shared/data-lake
+export DATA_LAKE_ROOT=/path/to/shared/data-lake
 python -c "from ops.datasets import link_dataset; link_dataset('GRCh38')"
-# -> data/GRCh38 symlinks into $SSLLAB_DATA_ROOT/GRCh38
+# -> data/GRCh38 symlinks into $DATA_LAKE_ROOT/GRCh38
 ```
 
 This keeps the shared lake project-neutral and the dependency explicit. See

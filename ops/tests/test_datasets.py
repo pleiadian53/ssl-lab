@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from ops.datasets import DATA_ROOT_ENV, data_root, link_dataset
+from ops.datasets import DATA_ROOT_ENV, LEGACY_DATA_ROOT_ENVS, data_root, link_dataset
 from ops.gpu_runner import DEFAULT_CONFIG_PATH, InfraConfig
 
 
@@ -16,6 +16,8 @@ def test_infra_config_has_data_path():
 
 def test_data_root_reads_env(monkeypatch, tmp_path):
     monkeypatch.delenv(DATA_ROOT_ENV, raising=False)
+    for var in LEGACY_DATA_ROOT_ENVS:
+        monkeypatch.delenv(var, raising=False)
     assert data_root() is None
     monkeypatch.setenv(DATA_ROOT_ENV, str(tmp_path))
     assert data_root() == tmp_path
@@ -72,6 +74,8 @@ def test_link_dataset_nested_mirror_link_name(tmp_path, monkeypatch):
 
 def test_link_dataset_missing_lake(tmp_path, monkeypatch):
     monkeypatch.delenv(DATA_ROOT_ENV, raising=False)
+    for var in LEGACY_DATA_ROOT_ENVS:
+        monkeypatch.delenv(var, raising=False)
     with pytest.raises(RuntimeError):
         link_dataset("GRCh38", data_dir=tmp_path / "data")
 
@@ -91,3 +95,11 @@ def test_link_dataset_refuses_real_dir(tmp_path, monkeypatch):
     (local / "ds").mkdir(parents=True)  # a REAL dir already there
     with pytest.raises(IsADirectoryError):
         link_dataset("ds", data_dir=local)
+
+
+def test_legacy_env_var_still_works(monkeypatch, tmp_path):
+    monkeypatch.delenv(DATA_ROOT_ENV, raising=False)
+    monkeypatch.setenv(LEGACY_DATA_ROOT_ENVS[0], str(tmp_path))
+    assert data_root() == tmp_path
+    monkeypatch.setenv(DATA_ROOT_ENV, str(tmp_path / "new"))
+    assert data_root() == tmp_path / "new"          # the new name wins when both are set

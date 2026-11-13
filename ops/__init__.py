@@ -1,4 +1,4 @@
-"""ops — remote-training infrastructure for ssl-lab.
+"""ops — remote-training infrastructure: GPU pods, jobs, data staging.
 
 A top-level package of the repository, next to ``src/``, used from the repository
 root without being installed (the drivers in ``examples/ops/`` put the root on the
