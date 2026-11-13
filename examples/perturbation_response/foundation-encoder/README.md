@@ -23,6 +23,7 @@ Three practical consequences follow for this benchmark:
 | `01_build_cell_index.py` | maps each processed cell to its row in the raw file, with its label and split | locally, reads names only | **done** |
 | `02_embed_geneformer.py` | builds Geneformer's input, tokenizes, embeds with each model, re-orders by cell, reports cost and embedding shape | pod, needs CUDA | **done** for the 2,000-cell sample |
 | `run_geneformer_feasibility_pod.sh` | installs Geneformer at a pinned commit, runs a small smoke test, then embeds a 2,000-cell sample with every model | pod | **done** |
+| `03_reference_ranks.py` | the same effective-rank measure on the same 2,000 cells for our own JEPA encoder, an untrained copy of it, and its input | locally, CPU, about 20 seconds | **done** |
 
 The feasibility run compares four models: V1-10M (6 layers, 256-dimensional, pretrained on about 30 million cells), V2-104M (12 layers, 768-dimensional, about 104 million cells), V2-104M_CLcancer (the same model with continued pretraining on cancer cells, a relevant variant because Norman's K562 cells come from a leukemia line), and V2-316M (18 layers, 1,152-dimensional). It measures what the comparison will cost before anyone commits to it, not how well the embeddings predict.
 
@@ -44,7 +45,17 @@ Cost is not an obstacle. Every model and mode together comes to about 22 GPU-hou
 
 The input length matters more than the cost. A Norman cell expresses a median of about 3,120 genes that Geneformer has tokens for (5th to 95th percentile: about 1,940 to 4,360). The V1 model reads at most 2,048 of them, so it cuts 94% of cells short and never sees 36% of the expressed genes, always the ones lowest in each cell's ranking. The V2 models read up to 4,094 genes and cut 10% of cells, losing 1.1% of the genes.
 
-The effective rank counts how many directions an embedding actually spreads over: it is the exponential of the entropy of the normalized singular values of the centered embedding matrix, computed by the same function as the JEPA diagnostics. Its maximum is the smaller of the width and the number of cells, here 2,000. Every Geneformer embedding spreads over hundreds of directions. That says the embeddings are not collapsed, and nothing about whether those directions carry the perturbation response rather than technical variation such as sequencing depth. Only the comparison can say that.
+The effective rank counts how many directions an embedding actually spreads over: it is the exponential of the entropy of the normalized singular values of the centered embedding matrix, computed by the same function as the JEPA diagnostics. Its maximum is the smaller of the width and the number of cells, here 2,000, so embeddings of different widths are best compared by the rank as a fraction of that maximum. To give the Geneformer numbers a reference, `03_reference_ranks.py` applies the same measure to the same 2,000 cells for three representations we already have:
+
+| representation | width | effective rank | fraction of its maximum |
+|---|---|---|---|
+| the encoder's input, 5,000 log-normalized expression values | 5,000 | 1,729 | 0.86 |
+| our pretrained JEPA encoder (the published pipeline's latent) | 256 | 210 | 0.82 |
+| the same JEPA architecture, untrained (random weights) | 256 | 131 | 0.51 |
+| Geneformer V1-10M, mean over genes | 256 | 151 | 0.59 |
+| Geneformer V2 models, both modes | 768 to 1,152 | 404 to 657 | 0.50 to 0.59 |
+
+Every Geneformer embedding spreads over hundreds of directions, so none is collapsed. Relative to their width, they spread less evenly than our pretrained JEPA latent and about as evenly as an untrained network of the JEPA's shape. At equal width, V1-10M's 151 sits between the untrained JEPA's 131 and the pretrained JEPA's 210. This is not a ranking of quality. The raw input has the most even spread of all, largely because sampling noise in sparse counts points in every direction, and an encoder that discards that noise in favor of a few strong biological programs would score lower on this measure while being more useful. The effective rank says nothing about whether the directions carry the perturbation response rather than technical variation such as sequencing depth. Only the comparison can say that.
 
 ## What the comparison will look like
 

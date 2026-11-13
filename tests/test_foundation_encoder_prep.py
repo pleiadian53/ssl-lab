@@ -122,3 +122,13 @@ def test_describe_reports_rank_and_shape():
     d = embed.describe(z)
     assert d["dim"] == 8 and d["n"] == 200 and d["n_nonfinite"] == 0
     assert 6 < d["effective_rank"] <= 8
+
+
+def test_rank_entry_reports_fraction_of_ceiling():
+    ref = _load("gf_ref", "03_reference_ranks.py")
+    rng = np.random.default_rng(1)
+    wide = ref.rank_entry(rng.normal(size=(50, 80)), embed.describe)      # more columns than cells
+    assert wide["rank_ceiling"] == 50 and 0 < wide["rank_fraction_of_ceiling"] <= 1
+    narrow = ref.rank_entry(rng.normal(size=(300, 10)), embed.describe)
+    assert narrow["rank_ceiling"] == 10
+    assert np.isclose(narrow["rank_fraction_of_ceiling"], narrow["effective_rank"] / 10)
