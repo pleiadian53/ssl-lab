@@ -21,10 +21,30 @@ Three practical consequences follow for this benchmark:
 | script | what it does | where it runs | status |
 |---|---|---|---|
 | `01_build_cell_index.py` | maps each processed cell to its row in the raw file, with its label and split | locally, reads names only | **done** |
-| `02_embed_geneformer.py` | builds Geneformer's input, tokenizes, embeds with each model, re-orders by cell, reports cost and embedding shape | pod, needs CUDA | built |
-| `run_geneformer_feasibility_pod.sh` | installs Geneformer at a pinned commit, runs a small smoke test, then embeds a 2,000-cell sample with every model | pod | built |
+| `02_embed_geneformer.py` | builds Geneformer's input, tokenizes, embeds with each model, re-orders by cell, reports cost and embedding shape | pod, needs CUDA | **done** for the 2,000-cell sample |
+| `run_geneformer_feasibility_pod.sh` | installs Geneformer at a pinned commit, runs a small smoke test, then embeds a 2,000-cell sample with every model | pod | **done** |
 
 The feasibility run compares four models: V1-10M (6 layers, 256-dimensional, pretrained on about 30 million cells), V2-104M (12 layers, 768-dimensional, about 104 million cells), V2-104M_CLcancer (the same model with continued pretraining on cancer cells, a relevant variant because Norman's K562 cells come from a leukemia line), and V2-316M (18 layers, 1,152-dimensional). It measures what the comparison will cost before anyone commits to it, not how well the embeddings predict.
+
+## Feasibility: what embedding costs, and what the models see
+
+A random sample of 2,000 cells (seed 0; 205 of them unperturbed controls) was embedded on one NVIDIA A40 GPU with every model and mode. No cell was dropped and no embedding contained a non-finite value. The projected time for all 109,737 cells is the measured forward-pass time per cell multiplied out, so it excludes the one-off model loading.
+
+| model and mode | width | seconds per 1,000 cells | projected hours, all cells | peak GPU memory (GB) | effective rank on 2,000 cells |
+|---|---|---|---|---|---|
+| V1-10M, mean over genes | 256 | 7.6 | 0.23 | 3.7 | 151 |
+| V2-104M, `<cls>` token | 768 | 85 | 2.6 | 8.6 | 452 |
+| V2-104M, mean over genes | 768 | 84 | 2.6 | 8.8 | 404 |
+| V2-104M_CLcancer, `<cls>` token | 768 | 83 | 2.5 | 8.6 | 423 |
+| V2-104M_CLcancer, mean over genes | 768 | 84 | 2.6 | 8.8 | 406 |
+| V2-316M, `<cls>` token | 1,152 | 189 | 5.8 | 12.6 | 657 |
+| V2-316M, mean over genes | 1,152 | 191 | 5.8 | 12.9 | 572 |
+
+Cost is not an obstacle. Every model and mode together comes to about 22 GPU-hours, and the two modes of one model share the same forward pass, so computing both at once would roughly halve that. Memory is far below the A40's 48 GB at a batch of 16 cells.
+
+The input length matters more than the cost. A Norman cell expresses a median of about 3,120 genes that Geneformer has tokens for (5th to 95th percentile: about 1,940 to 4,360). The V1 model reads at most 2,048 of them, so it cuts 94% of cells short and never sees 36% of the expressed genes, always the ones lowest in each cell's ranking. The V2 models read up to 4,094 genes and cut 10% of cells, losing 1.1% of the genes.
+
+The effective rank counts how many directions an embedding actually spreads over: it is the exponential of the entropy of the normalized singular values of the centered embedding matrix, computed by the same function as the JEPA diagnostics. Its maximum is the smaller of the width and the number of cells, here 2,000. Every Geneformer embedding spreads over hundreds of directions. That says the embeddings are not collapsed, and nothing about whether those directions carry the perturbation response rather than technical variation such as sequencing depth. Only the comparison can say that.
 
 ## What the comparison will look like
 
