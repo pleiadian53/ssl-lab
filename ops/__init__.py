@@ -1,4 +1,8 @@
-"""ssllab-ops — remote-training infrastructure for ssl-lab.
+"""ops — remote-training infrastructure for ssl-lab.
+
+A top-level package of the repository, next to ``src/``, used from the repository
+root without being installed (the drivers in ``examples/ops/`` put the root on the
+import path; the tests get it from ``pythonpath`` in ``pyproject.toml``).
 
 Decoupled from the SSL library (`ssllab`): nothing here imports JEPA, and the
 SSL library never imports this. Cloud infra is necessary scaffolding for

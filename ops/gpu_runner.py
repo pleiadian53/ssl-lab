@@ -61,8 +61,8 @@ def dump_yaml(config: dict[str, Any]) -> str:
 
 
 def _default_config_dir() -> Path:
-    """The packaged ``configs/`` directory (sibling of the ``ops`` package)."""
-    return Path(__file__).resolve().parents[1] / "configs"
+    """The ``configs/`` directory inside the ``ops`` package."""
+    return Path(__file__).resolve().parent / "configs"
 
 
 DEFAULT_CONFIG_PATH = _default_config_dir() / "gpu_config.yaml"
@@ -244,7 +244,7 @@ def _require_sky() -> None:
         missing = "the `sky` CLI is not on PATH" if has_pkg else "SkyPilot is not installed"
         raise RuntimeError(
             f"Cannot launch: {missing}. Install the remote extra into this env:\n"
-            "    pip install -e 'ops/[remote]'\n"
+            "    pip install -e '.[remote]'\n"
             "and confirm the CLI is available:  sky --version"
         )
 

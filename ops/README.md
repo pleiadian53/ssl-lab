@@ -1,4 +1,4 @@
-# ssllab-ops — remote-training infrastructure
+# ops — remote-training infrastructure
 
 Cloud infra for training ssl-lab models that don't fit in your local environment. It is
 **deliberately decoupled** from the SSL library (`ssllab`): nothing here imports
@@ -11,9 +11,11 @@ value, not a hard-coded API client, so switching providers is a config change.
 
 ## Install
 
+`ops` is an optional helper: nothing in `src/` or `examples/` outside `examples/ops/` depends on it, and you need it only to train on a remote pod or to link shared datasets into `data/`. It is a top-level package of this repository, next to `src/`, and it is not installed: Python finds it whenever the repository root is on the import path. That is automatic for `python -c ...` and `python -m ...` run from the root, the drivers in `examples/ops/` add the root themselves, and the test suite adds it through `pythonpath` in `pyproject.toml`. Its few dependencies come as optional extras of the main project:
+
 ```bash
-pip install -e ops/            # compute-check + dry-run work with this alone
-pip install -e 'ops/[remote]'  # add SkyPilot when you actually launch pods
+pip install -e '.[ops]'      # PyYAML: compute check and dry runs
+pip install -e '.[remote]'   # adds SkyPilot, needed only to launch pods
 ```
 
 ## Workflow
@@ -67,24 +69,23 @@ the dependency explicit. The local input dir is the `data_path` field in
 
 ```
 ops/
-  ops/gpu_runner.py    InfraConfig · build_skypilot_config · print_dry_run · launch · provision/status/down
-  ops/hardware.py      detect_hardware · print_report (compute check)
+  gpu_runner.py          InfraConfig · build_skypilot_config · print_dry_run · launch · provision/status/down
+  hardware.py            detect_hardware · print_report (compute check)
+  datasets.py            link_dataset: symlink a dataset from the shared data lake into data/
   configs/
-    gpu_config.yaml    infra defaults (GPU, cloud, volume, setup, output paths)
+    gpu_config.yaml      infra defaults (GPU, cloud, volume, setup, output paths)
     skypilot/generated/  auto-written SkyPilot task YAMLs
-  tests/test_config.py
-examples/ops/          thin drivers: ops_compute_check · ops_run_pipeline · ops_provision_cluster
+  tests/                 test_config.py · test_datasets.py
+examples/ops/            thin drivers: ops_compute_check · ops_run_pipeline · ops_provision_cluster · ops_stage_data
 ```
 
 ## Configure
 
 Edit [configs/gpu_config.yaml](configs/gpu_config.yaml) for defaults, or override
 per-run with `--gpu`, `--use-volume`, etc. GPU choices and indicative hourly
-rates live in `GPU_SPECS` in [ops/gpu_runner.py](ops/gpu_runner.py) — verify
+rates live in `GPU_SPECS` in [gpu_runner.py](gpu_runner.py) — verify
 rates against live RunPod pricing before relying on cost estimates.
 
-## Deferred
+## Data
 
-Dataset staging (RunPod network volume + rsync + symlink manifest) is not built
-yet — ssl-lab's MNIST self-downloads on the pod. Add it when a bio modality
-needs real datasets staged.
+Two pieces handle large inputs. Locally, `datasets.link_dataset` symlinks a dataset from the shared data lake, the directory named by `SSLLAB_DATA_ROOT`, into `data/`, so several projects can share one copy instead of duplicating it. For the pod, `examples/ops/ops_stage_data.py` copies local datasets and checkpoints to the running pod's network volume with rsync, under `/runpod-volume/ssl-lab/`, where they persist across pod lifecycles and the pod's jobs read them.

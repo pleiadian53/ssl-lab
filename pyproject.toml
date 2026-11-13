@@ -23,10 +23,17 @@ dev = ["pytest"]
 # imported inside examples/perturbation_response/00_process_norman.py, never by
 # the loader or tests' light path. Install with: pip install -e ".[perturb]"
 perturb = ["anndata>=0.10", "scanpy>=1.10", "scikit-misc>=0.3", "pertpy>=0.9"]
+# Remote-training tooling, the top-level ``ops`` package (not installed; it is
+# imported from the repo root). ``ops`` covers compute checks and SkyPilot dry
+# runs; ``remote`` adds SkyPilot itself, needed only to launch pods.
+ops = ["pyyaml"]
+remote = ["pyyaml", "skypilot[runpod]>=0.7"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "ops/tests"]
+# The repo root, so the top-level ``ops`` package imports without being installed.
+pythonpath = ["."]
 addopts = "-q"

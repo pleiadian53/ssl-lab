@@ -13,6 +13,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
+from pathlib import Path
+
+# ``ops`` is a top-level package of this repository, not an installed one: put the
+# repo root on the path so this driver runs from any working directory.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 from ops.hardware import detect_hardware, print_report
 

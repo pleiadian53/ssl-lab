@@ -161,10 +161,10 @@ All scripts share an `--experiment` name (default `jepa_mnist`); pass a new name
 
 ## Remote training
 
-Models that don't fit in your local environment train on remote GPU pods. That infra lives in a separate, decoupled package [`ops/`](ops/) (SkyPilot + RunPod). The SSL library never imports it. Quick path:
+Models that don't fit in your local environment train on remote GPU pods. That infra lives in a separate, decoupled package [`ops/`](ops/) (SkyPilot + RunPod) at the repository root: the SSL library never imports it, and it is used from the root without being installed. Quick path:
 
 ```bash
-pip install -e ops/                          # compute-check + dry-run
+pip install -e '.[ops]'                      # PyYAML for compute-check + dry-run
 python examples/ops/ops_compute_check.py     # local vs pod?
 python examples/ops/ops_run_pipeline.py --gpu a40 -- \
     python examples/jepa_basics/01_train_jepa_mnist.py --epochs 50   # dry-run

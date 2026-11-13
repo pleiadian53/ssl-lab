@@ -1,10 +1,10 @@
 # examples/ops — remote-training drivers
 
-Thin drivers over the [`ssllab-ops`](../../ops/) package. Install it first:
+Thin drivers over the repository's [`ops`](../../ops/) package. Each driver puts the repository root on the import path itself, so `ops` needs no installation, only its dependencies:
 
 ```bash
-pip install -e ops/            # for compute-check + dry-run
-pip install -e 'ops/[remote]'  # add SkyPilot to launch real pods
+pip install -e '.[ops]'      # PyYAML: compute check and dry runs
+pip install -e '.[remote]'   # adds SkyPilot, to launch real pods
 ```
 
 | Script | Purpose |
