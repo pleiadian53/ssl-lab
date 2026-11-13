@@ -147,7 +147,30 @@ def describe(emb: np.ndarray) -> dict:
     return rep
 
 
-def tokenize(input_dir: Path, out_dir: Path, version: str, nproc: int) -> tuple[Path, dict]:
+def in_vocab_gene_counts(counts, ensembl_ids: np.ndarray, mapping: dict, vocab) -> np.ndarray:
+    """Expressed in-vocabulary genes per cell, selected as Geneformer's tokenizer selects them.
+
+    The tokenizer upper-cases each Ensembl ID, maps it through its mapping dictionary (which
+    also renames retired IDs), keeps only IDs in its token vocabulary (protein-coding and
+    microRNA genes), sums genes that map to the same ID, and turns each expressed gene into one
+    token. This counts those tokens per cell *before* the input is cut to 2,048 (V1) or 4,096
+    (V2) positions, which the tokenized dataset does not record unless asked to.
+    """
+    import scipy.sparse as sp
+
+    mapped = [mapping.get(str(e).upper()) for e in ensembl_ids]
+    cols = [j for j, m in enumerate(mapped) if m is not None and m in vocab]
+    tokens = {t: i for i, t in enumerate(sorted({mapped[j] for j in cols}))}
+    gene_to_token = sp.csr_matrix(
+        (np.ones(len(cols), dtype=np.float32), (cols, [tokens[mapped[j]] for j in cols])),
+        shape=(len(ensembl_ids), len(tokens)),
+    )
+    expressed = sp.csr_matrix(counts > 0, dtype=np.float32)
+    return np.asarray(((expressed @ gene_to_token) > 0).sum(axis=1)).ravel().astype(np.int64)
+
+
+def tokenize(input_dir: Path, out_dir: Path, version: str, nproc: int, counts, ensembl_ids: np.ndarray,
+             cell_idx: np.ndarray) -> tuple[Path, dict]:
     from datasets import load_from_disk
     from geneformer import TranscriptomeTokenizer
 
@@ -157,10 +180,14 @@ def tokenize(input_dir: Path, out_dir: Path, version: str, nproc: int) -> tuple[
     secs = time.perf_counter() - t0
     path = out_dir / f"tokens_{version}.dataset"
     ds = load_from_disk(str(path))
-    lengths = np.asarray(ds["length"])
-    uncropped = np.asarray(ds["length_uncropped"]) if "length_uncropped" in ds.column_names else lengths
+
     n_special = 2 if version == "V2" else 0
-    genes = uncropped - n_special
+    cap = INPUT_SIZE[version] - n_special
+    genes_all = in_vocab_gene_counts(counts, ensembl_ids, tk.gene_mapping_dict, set(tk.gene_token_dict))
+    # the dataset may drop empty cells and is in its own order: match by cell_idx
+    pos = {c: i for i, c in enumerate(cell_idx)}
+    genes = genes_all[[pos[c] for c in ds["cell_idx"]]]
+    kept = np.asarray(ds["length"]) - n_special
     stats = {
         "seconds": secs,
         "n_cells": int(len(ds)),
@@ -168,8 +195,10 @@ def tokenize(input_dir: Path, out_dir: Path, version: str, nproc: int) -> tuple[
         "genes_per_cell_p05": float(np.percentile(genes, 5)),
         "genes_per_cell_p95": float(np.percentile(genes, 95)),
         "input_size": INPUT_SIZE[version],
-        "frac_cells_truncated": float(np.mean(lengths < uncropped)),
-        "frac_genes_dropped_by_truncation": float(1 - (lengths - n_special).sum() / genes.sum()),
+        "frac_cells_truncated": float(np.mean(genes > cap)),
+        "frac_genes_dropped_by_truncation": float(1 - kept.sum() / genes.sum()),
+        # check that the count above replicates the tokenizer: kept tokens = min(count, cap)
+        "n_cells_count_mismatch": int(np.sum(kept != np.minimum(genes, cap))),
     }
     return path, stats
 
@@ -251,13 +280,15 @@ def main() -> None:
                        "n_control": int(index["is_control"][cells].sum()),
                        "split_counts": {int(s): int((index["split_combo"][cells] == s).sum()) for s in (0, 1, 2)}}
     print(json.dumps(report["input"], indent=2), flush=True)
-    del counts, adata
+    del adata
 
     # 2. tokenize once per model series
     datasets = {}
     for version in sorted({MODELS[m]["version"] for m in args.models}):
-        datasets[version], report["tokenization"][version] = tokenize(out / "input", out, version, args.nproc)
+        datasets[version], report["tokenization"][version] = tokenize(out / "input", out, version, args.nproc,
+                                                                      counts, ens, cells)
         print(version, json.dumps(report["tokenization"][version]), flush=True)
+    del counts
 
     # 3. embed, per model and mode
     for name in args.models:

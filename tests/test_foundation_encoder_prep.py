@@ -102,6 +102,20 @@ def test_build_index_maps_processed_to_raw(tmp_path):
         index_mod.build_index(raw, missing)
 
 
+def test_in_vocab_gene_counts_maps_merges_and_skips():
+    # genes: g0 in vocab; g1 retired ID renamed to g0's token (merges with g0); g2 out of vocab;
+    # g3 in vocab, lower-case in the data; g4 absent from the mapping dictionary
+    ens = np.array(["ENSG0", "ENSG_OLD", "ENSG2", "ensg3", "ENSG4"])
+    mapping = {"ENSG0": "ENSG0", "ENSG_OLD": "ENSG0", "ENSG2": "ENSG2", "ENSG3": "ENSG3"}
+    vocab = {"ENSG0", "ENSG3", "<cls>", "<eos>"}
+    counts = sp.csr_matrix(np.array([
+        [1, 1, 5, 2, 9],   # g0 + g1 merge to one token, g3 one token -> 2
+        [0, 3, 0, 0, 0],   # only the retired ID expressed -> 1 (via its new ID)
+        [0, 0, 4, 0, 7],   # nothing in vocab -> 0
+    ], dtype=np.float32))
+    assert list(embed.in_vocab_gene_counts(counts, ens, mapping, vocab)) == [2, 1, 0]
+
+
 def test_describe_reports_rank_and_shape():
     rng = np.random.default_rng(0)
     z = rng.normal(size=(200, 8)).astype(np.float32)
