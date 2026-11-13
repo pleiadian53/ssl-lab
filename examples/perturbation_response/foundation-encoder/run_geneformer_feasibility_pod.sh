@@ -37,11 +37,12 @@ echo "=============================================================="
 
 # ---- scientific stack: the image's torch is compiled against numpy 1.x ---------------------- #
 # Installing recent anndata/pandas pulls numpy 2, after which torch<->numpy calls fail
-# ("A module that was compiled using NumPy 1.x cannot be run in NumPy 2"). Every pip call
-# below uses these constraints, and the first one repairs a pod where numpy 2 got in already.
+# ("A module that was compiled using NumPy 1.x cannot be run in NumPy 2"). pyarrow 22 and
+# later also need numpy 2 (21.0.0 verified with numpy 1.26.4 and datasets 5.0.1). Every pip
+# call below uses these constraints, and the first one repairs a pod where numpy 2 got in.
 CONSTRAINTS="$LOGS/constraints.txt"
-printf '%s\n' "numpy<2" "pandas<3" > "$CONSTRAINTS"
-pip install -q -c "$CONSTRAINTS" "numpy<2" "pandas<3" anndata h5py huggingface_hub > "$LOGS/install.log" 2>&1 \
+printf '%s\n' "numpy<2" "pandas<3" "pyarrow<22" > "$CONSTRAINTS"
+pip install -q -c "$CONSTRAINTS" "numpy<2" "pandas<3" "pyarrow<22" anndata h5py huggingface_hub > "$LOGS/install.log" 2>&1 \
   || { echo "FATAL: base install (see $LOGS/install.log)"; tail -20 "$LOGS/install.log"; exit 1; }
 python -c "import numpy, torch; torch.from_numpy(numpy.zeros(2)); print('numpy', numpy.__version__, 'torch', torch.__version__, 'interop OK')" \
   || { echo "FATAL: numpy/torch interop"; exit 1; }
