@@ -35,6 +35,17 @@ echo "=============================================================="
 echo " R2.7 Geneformer feasibility  models: $MODELS  cells: $N_CELLS"
 echo "=============================================================="
 
+# ---- scientific stack: the image's torch is compiled against numpy 1.x ---------------------- #
+# Installing recent anndata/pandas pulls numpy 2, after which torch<->numpy calls fail
+# ("A module that was compiled using NumPy 1.x cannot be run in NumPy 2"). Every pip call
+# below uses these constraints, and the first one repairs a pod where numpy 2 got in already.
+CONSTRAINTS="$LOGS/constraints.txt"
+printf '%s\n' "numpy<2" "pandas<3" > "$CONSTRAINTS"
+pip install -q -c "$CONSTRAINTS" "numpy<2" "pandas<3" anndata h5py huggingface_hub > "$LOGS/install.log" 2>&1 \
+  || { echo "FATAL: base install (see $LOGS/install.log)"; tail -20 "$LOGS/install.log"; exit 1; }
+python -c "import numpy, torch; torch.from_numpy(numpy.zeros(2)); print('numpy', numpy.__version__, 'torch', torch.__version__, 'interop OK')" \
+  || { echo "FATAL: numpy/torch interop"; exit 1; }
+
 # ---- preflight ------------------------------------------------------------------------------ #
 fail=0
 python -c "import torch; assert torch.cuda.is_available(); print('cuda:', torch.cuda.get_device_name(0))" || { echo "FATAL: no CUDA"; fail=1; }
@@ -45,11 +56,9 @@ m=$(md5sum "$DATA/norman2019/raw/norman_2019.h5ad" 2>/dev/null | cut -d' ' -f1)
 echo "preflight OK"
 
 # ---- install: Geneformer source + weights at the pinned commit, then its requirements -------- #
-pip install -q huggingface_hub > "$LOGS/install.log" 2>&1 || { echo "FATAL: huggingface_hub install"; exit 1; }
 GF="$GF" GF_REPO="$GF_REPO" GF_REV="$GF_REV" MODELS="$MODELS" python - <<'PY' >> "$LOGS/install.log" 2>&1 || { echo "FATAL: download (see $LOGS/install.log)"; exit 1; }
 import os, sys
 from huggingface_hub import snapshot_download
-sys.path.insert(0, "examples/perturbation_response/foundation-encoder")
 import importlib.util
 spec = importlib.util.spec_from_file_location("e", "examples/perturbation_response/foundation-encoder/02_embed_geneformer.py")
 e = importlib.util.module_from_spec(spec); spec.loader.exec_module(e)
@@ -60,10 +69,9 @@ for d in dirs:
 p = snapshot_download(os.environ["GF_REPO"], revision=os.environ["GF_REV"], local_dir=os.environ["GF"], allow_patterns=pats)
 print("downloaded to", p)
 PY
-python -c "import numpy; print(f'numpy=={numpy.__version__}')" > "$LOGS/constraints.txt"
-pip install -q -r "$GF/requirements.txt" -c "$LOGS/constraints.txt" >> "$LOGS/install.log" 2>&1 \
+pip install -q -r "$GF/requirements.txt" -c "$CONSTRAINTS" >> "$LOGS/install.log" 2>&1 \
   || { echo "FATAL: Geneformer requirements (see $LOGS/install.log)"; tail -20 "$LOGS/install.log"; exit 1; }
-python -c "import sys; sys.path.insert(0, '$GF'); import geneformer, transformers, torch; print('geneformer OK, transformers', transformers.__version__, 'torch', torch.__version__)" \
+python -c "import sys; sys.path.insert(0, '$GF'); import geneformer, transformers, torch; import numpy; print('geneformer OK, transformers', transformers.__version__, 'torch', torch.__version__, 'numpy', numpy.__version__)" \
   || { echo "FATAL: geneformer import"; exit 1; }
 
 # ---- smoke: 64 cells, the smallest V1 and V2 models, separate output ------------------------ #
