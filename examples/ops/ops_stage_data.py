@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -89,14 +90,22 @@ def _resolve_cluster(explicit: str | None) -> str:
     sys.exit(1)
 
 
-def _rel_to_repo(path: Path) -> str:
-    """Repo-relative POSIX path, so the remote layout mirrors the local one."""
-    p = path.resolve()
-    try:
-        return p.relative_to(_REPO_ROOT).as_posix()
-    except ValueError:
-        # outside the repo (e.g. an absolute data-lake path): mirror by basename under data/
-        return f"data/{p.name}"
+def _rel_to_repo(path: Path, repo_root: Path = _REPO_ROOT) -> str:
+    """Repo-relative POSIX path, so the remote layout mirrors the local one.
+
+    The path is made absolute *without following symlinks*. Dataset folders such as
+    ``data/norman2019`` are symlinks into the shared data lake, so resolving first would carry
+    the path out of the repository and lose where it sits: ``data/norman2019/foundation`` would
+    be staged to ``data/foundation``. A path that really lies outside the repository (an absolute
+    data-lake path given directly) is mirrored by its basename under ``data/``.
+    """
+    p = Path(os.path.abspath(path))
+    for root in dict.fromkeys((Path(os.path.abspath(repo_root)), repo_root.resolve())):
+        try:
+            return p.relative_to(root).as_posix()
+        except ValueError:
+            continue
+    return f"data/{p.resolve().name}"
 
 
 def _dir_size_mb(path: Path) -> float:
