@@ -1,13 +1,13 @@
 # Perturbation response — data, method, and findings
 
-This folder documents the perturbation-response work end to end: the single-cell data that feeds the model, the method built on top of it, and what we actually found when we ran it. It is organized as three series. The first covers the data, the second the method and its results, and the third the action-operator idea that the later rounds tested as a replacement for the flow.
+This folder documents the perturbation-response work end to end: the single-cell data that feeds the model, the method built on top of it, and what we actually found when we ran it. It is organized as four series. The first covers the data, the second the method and its results, the third the action-operator idea that the later rounds tested as a replacement for the flow, and the fourth what changes when a pretrained foundation model takes the encoder's place.
 
 ## The results
 
 ### [The results ledger](results/index.md)
 Every experiment in one place. The front page holds the standing verdict, the running scoreboard, the settings every round shares and what comes next. Each round then has its own page with what changed, how it was run, the endpoint fixed before scoring, the verdict, the secondary results and the limits: from the first head-to-head against a from-scratch VAE, through the action operator, the additive reference and the size-aware endpoint, to the gene-set composition ablation and the SIGReg regularizer swap. Start here if you want the current state of play or the details of a particular experiment.
 
-## The three series
+## The four series
 
 ### [Reading Perturb-seq](reading-perturb-seq/index.md)
 A four-part primer on the data. What a single-cell perturbation experiment measures, what the intervention *is* biologically, how a cell becomes tokens the encoder reads, and how success is scored. Every number is real, drawn from a reproducible slice of Norman et al. 2019. Start here if the vocabulary of counts, dropout, and library size is new, or if you want to know exactly what the model is being asked to predict.
@@ -17,6 +17,9 @@ The method itself and its evaluation. The idea (a conditional flow prior over fr
 
 ### [Action operators: a development](action-operator/index.md)
 A careful build-up of the action-operator framework, in which a perturbation is a transformation applied to a cell's state rather than a label attached to it. It goes from what an operator is, through why it should be linear and why it is written as a matrix exponential, to how operators compose for two-gene perturbations and how the model is trained and applied. It was written after the operator rounds were measured and the operator-algebra claim was refuted, so it is explicit about which premises held and which did not, and its last chapter names what comes next.
+
+### [A foundation model as the encoder](foundation-encoder/index.md)
+Geneformer, pretrained on tens of millions of cells, in the place of our own JEPA encoder. How it reads a cell as an ordered list of genes, how embeddings that never saw an expression value can still be used to predict expression, which of the benchmark's scored genes it cannot see, and how a sampleable generative model is built on top of a pretrained encoder. The code and the feasibility measurements are in [`foundation-encoder/`](../foundation-encoder/README.md).
 
 ## Running it yourself
 
@@ -39,4 +42,4 @@ The next round lives in its own sub-program, [co-adaptation](../co-adaptation/RE
 
 ## The code
 
-All three series describe code that lives in this folder and in [`src/ssllab`](../../../src/ssllab/). The numbered scripts `00` to `17` in [`examples/perturbation_response`](../) cover building, scoring, diagnosing and comparing models, and the [Workflows](workflows/index.md) map sorts them by the kind of work each one does. The generative modules are under [`src/ssllab/generative`](../../../src/ssllab/generative/) and the evaluation under [`src/ssllab/eval`](../../../src/ssllab/eval/).
+All four series describe code that lives in this folder and in [`src/ssllab`](../../../src/ssllab/). The numbered scripts `00` to `17` in [`examples/perturbation_response`](../) cover building, scoring, diagnosing and comparing models, and the [Workflows](workflows/index.md) map sorts them by the kind of work each one does. The generative modules are under [`src/ssllab/generative`](../../../src/ssllab/generative/) and the evaluation under [`src/ssllab/eval`](../../../src/ssllab/eval/).
