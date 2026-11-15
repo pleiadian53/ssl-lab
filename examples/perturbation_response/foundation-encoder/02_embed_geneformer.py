@@ -35,9 +35,16 @@ cells are counted and reported, never filled in.
 
     input/norman.h5ad                 raw counts of the selected cells, Ensembl IDs, n_counts, cell_idx
     tokens_V1.dataset, tokens_V2.dataset    tokenized cells (Hugging Face datasets)
-    emb/<model>_<mode>.npy            float32 [n_kept, dim], rows ordered by cell_idx
-    emb/<model>_<mode>.cell_idx.npy   int64 [n_kept], the processed-cache position of each row
+    stores/<model>_<mode>/            one embedding store per model and mode (``ssllab.embeddings``):
+                                      embeddings.npy float32 [n_kept, dim] and row_idx.npy int64
+                                      [n_kept] (the processed-cache position of each row, sorted),
+                                      plus a manifest with the model, mode, layer, Geneformer
+                                      revision and the cache's fingerprint
+    emb/                              the extractor's own working files
     feasibility.json                  coverage, token lengths, timing, GPU memory, embedding shape
+
+The stores are what the count decoder, the flow and the ceiling analysis read with ``--latents``.
+Writing one needs the processed cache's fingerprint, read from ``<data-dir>/norman2019/tokens_meta.npz``.
 
 Requires the Geneformer package and CUDA (its extractor moves batches to ``cuda`` directly).
 The run script ``run_geneformer_feasibility_pod.sh`` installs it on the pod.
@@ -57,6 +64,13 @@ import time
 from pathlib import Path
 
 import numpy as np
+
+_SRC = Path(__file__).resolve().parents[3] / "src"
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+
+from ssllab.data.perturbseq import cache_fingerprint_from_dir  # noqa: E402
+from ssllab.embeddings import provenance, write_store  # noqa: E402
 
 # name -> folder in the Hugging Face repo, model series, embedding modes, embedding width
 MODELS: dict[str, dict] = {
@@ -250,6 +264,7 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--batch-size", type=int, default=16)
     ap.add_argument("--nproc", type=int, default=8)
+    ap.add_argument("--gf-revision", default=None, help="the Hugging Face commit of --gf-root, recorded in each store")
     args = ap.parse_args()
 
     import torch
@@ -260,6 +275,7 @@ def main() -> None:
 
     root = Path(args.data_dir) / "norman2019"
     index = np.load(root / "foundation" / "cell_index.npz")
+    fingerprint = cache_fingerprint_from_dir(root)          # every store is filed against this cache
     out = Path(args.out_dir)
     (out / "input").mkdir(parents=True, exist_ok=True)
     (out / "emb").mkdir(parents=True, exist_ok=True)
@@ -303,9 +319,16 @@ def main() -> None:
                 report["models"][key] = {"error": f"{type(e).__name__}: {e}"}
                 print("FAILED", key, e, flush=True)
                 continue
-            np.save(out / "emb" / f"{key}.npy", emb)
-            np.save(out / "emb" / f"{key}.cell_idx.npy", idx)
-            report["models"][key] = {**timing, **describe(emb), "n_dropped": int(len(cells) - len(idx))}
+            store = write_store(
+                out / "stores" / key, emb, idx,
+                source="geneformer", dataset_fingerprint=fingerprint,
+                model=name, mode=mode, layer="second-to-last (emb_layer=-1)", model_version=spec["version"],
+                input_size=INPUT_SIZE[spec["version"]], gf_revision=args.gf_revision,
+                n_cells_requested=int(len(cells)), n_dropped=int(len(cells) - len(idx)),
+                **provenance(__file__),
+            )
+            report["models"][key] = {**timing, **describe(emb), "n_dropped": int(len(cells) - len(idx)),
+                                     "store": str(store.path), "content_md5": store.manifest["content_md5"]}
             print(key, json.dumps(report["models"][key]), flush=True)
             (out / "feasibility.json").write_text(json.dumps(report, indent=2) + "\n")
 
