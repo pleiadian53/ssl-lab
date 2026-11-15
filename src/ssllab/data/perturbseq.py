@@ -33,9 +33,11 @@ the control grouping for baseline pairing), not just an image and a class.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
@@ -224,6 +226,35 @@ def load_cache(cache_dir: str | Path) -> CacheBundle:
     )
 
 
+def cache_fingerprint(bundle: CacheBundle) -> str:
+    """A short hash that identifies a cache's cell ordering.
+
+    Anything indexed by cache row, such as a precomputed embedding store
+    (:mod:`ssllab.embeddings`), records this value when it is written and is checked against it
+    when it is read, so that vectors computed on one version of the cache are never silently
+    looked up by the row numbers of another. It covers the number of cells and, in row order,
+    each cell's perturbation label, its combo-split assignment and its library size: a cache
+    rebuilt with different filtering, ordering or splits changes it.
+    """
+    h = hashlib.md5()
+    h.update(str(len(bundle.pert_id)).encode())
+    for arr, dtype in ((bundle.pert_id, np.int64), (bundle.split_combo, np.int8), (bundle.libsize, np.float32)):
+        h.update(np.ascontiguousarray(arr, dtype=dtype).tobytes())
+    return h.hexdigest()
+
+
+def cache_fingerprint_from_dir(cache_dir: str | Path) -> str:
+    """:func:`cache_fingerprint` reading only the three arrays it needs from the cache's npz.
+
+    The npz members are stored uncompressed and loaded one at a time, so this reads about 1 MB
+    rather than the 4.4 GB of expression matrices a full :func:`load_cache` reads. Producers of
+    embedding stores use it, since they need the fingerprint but not the expression.
+    """
+    npz = np.load(Path(cache_dir) / TOKENS_NPZ, allow_pickle=True)
+    view = SimpleNamespace(pert_id=npz["pert_id"], split_combo=npz["split_combo"], libsize=npz["libsize"])
+    return cache_fingerprint(view)  # type: ignore[arg-type]
+
+
 # --------------------------------------------------------------------------- #
 # Baseline pairing — population-level (cells are unpaired/destroyed on measure).
 # --------------------------------------------------------------------------- #
@@ -398,6 +429,7 @@ class PerturbDataset(Dataset):
     def __getitem__(self, i: int) -> dict[str, torch.Tensor]:
         r = int(self.rows[i])
         return {
+            "row": torch.tensor(r, dtype=torch.long),   # the cache row, for precomputed-latent lookup
             "feat": self._feat[r],
             "counts": self._counts[r],
             "libsize": self._libsize[r],
@@ -411,6 +443,7 @@ def _make_collate(partition: torch.Tensor, n_hvg: int):
     def collate(items: list[dict[str, torch.Tensor]]) -> dict[str, torch.Tensor]:
         feat = torch.stack([it["feat"] for it in items])
         return {
+            "row": torch.stack([it["row"] for it in items]),  # (B,) cache rows (embedding-store lookup)
             "tokens": tokenize_cells(feat, partition),       # (B, n_tokens, token_dim)
             "features": feat,                                # (B, n_hvg) normalized, for non-token heads (VAE baseline)
             "counts": torch.stack([it["counts"] for it in items]),
@@ -488,6 +521,7 @@ def get_perturbseq_dataloaders(
         "partition_seed": seed,
         "pert_names": list(bundle.pert_names),
         "split": split,
+        "fingerprint": cache_fingerprint(bundle),
     }
 
     def loader(rows: np.ndarray, shuffle: bool, drop_last: bool) -> DataLoader:

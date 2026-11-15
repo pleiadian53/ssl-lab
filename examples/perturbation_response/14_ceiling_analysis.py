@@ -51,6 +51,12 @@ project's next move:
 
 Nothing is trained here (the ridge is a closed-form solve). CPU, minutes.
 
+The latents normally come from running ``--encoder``. With ``--latents <store>`` they are looked up
+instead in a precomputed embedding store written by any encoder (:mod:`ssllab.embeddings`), such as
+Geneformer's cell embeddings; the decoder must have been trained on the same store. The
+ridge's ``--ridge-lambda`` is not scale-invariant, so on a store whose vectors have a different
+scale or width than the JEPA's, the ``linear`` arm's number is descriptive only.
+
 Usage
 -----
     python examples/perturbation_response/14_ceiling_analysis.py \
@@ -83,13 +89,14 @@ from ssllab.data.perturbseq import (
     DEFAULT_N_TOKENS,
     SPLIT_TEST,
     SPLIT_TRAIN,
+    cache_fingerprint,
     load_cache,
     make_gene_partition,
 )
+from ssllab.embeddings import JepaSource, PrecomputedSource, check_same_space
 from ssllab.eval.effect_size import run_effect_size_eval
 from ssllab.experiment import experiment
 from ssllab.generative.perturb import load_count_decoder
-from ssllab.latents import encode_rows
 from ssllab.utils import get_device, set_seed
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-7s  %(message)s", datefmt="%H:%M:%S")
@@ -105,6 +112,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--data-dir", type=str, default="data")
     p.add_argument("--artifact", type=str, default="norman2019")
     p.add_argument("--encoder", type=str, default="output/norman_stage_a/checkpoints/encoder.pt")
+    p.add_argument("--latents", type=str, default=None,
+                   help="read latents from this embedding store instead of running --encoder")
     p.add_argument("--decoder", type=str, default="output/norman_flow_control/checkpoints/count_decoder.pt")
     p.add_argument("--split", type=str, default="combo", choices=["combo", "cells"])
     p.add_argument("--arms", type=str, nargs="+", default=list(ARMS), choices=list(ARMS))
@@ -176,12 +185,12 @@ def main() -> None:
     device = get_device(args.device)
     exp = experiment(args.experiment, args.output_root).ensure()
 
-    enc_path, dec_path = Path(args.encoder), Path(args.decoder)
+    enc_path = None if args.latents else Path(args.encoder)
+    dec_path = Path(args.decoder)
     for p in (enc_path, dec_path):
-        if not p.exists():
+        if p is not None and not p.exists():
             raise FileNotFoundError(f"missing required checkpoint: {p}")
 
-    jepa = load_jepa(enc_path, device)
     decoder = load_count_decoder(dec_path, device)
     cache = load_cache(Path(args.data_dir) / args.artifact)
 
@@ -194,8 +203,14 @@ def main() -> None:
     partition = make_gene_partition(
         cache.n_hvg, int(tok.get("n_tokens", DEFAULT_N_TOKENS)), int(tok.get("partition_seed", 0))
     )
-
-    logger.info("encoder %s (md5 %s)", enc_path, _md5(enc_path)[:8])
+    # Every latent below comes from one source: the encoder run on the rows, or a store lookup.
+    if args.latents:
+        source = PrecomputedSource.open(args.latents, cache_fingerprint(cache))
+        logger.info("latents from store %s (%s, width %d)", args.latents, source.identity().get("source"), source.dim)
+    else:
+        source = JepaSource(load_jepa(enc_path, device), enc_path, hvg, partition, device, args.batch_size)
+        logger.info("encoder %s (md5 %s)", enc_path, _md5(enc_path)[:8])
+    check_same_space(getattr(decoder, "latent_source", None), source.identity(), "decoder and the latents it reads")
     logger.info("decoder %s (md5 %s)", dec_path, _md5(dec_path)[:8])
     logger.info("split=%s  %d test cells  %d genes", args.split, int(is_test.sum()), cache.n_hvg)
 
@@ -205,7 +220,7 @@ def main() -> None:
         train_rows = np.flatnonzero(split_col == SPLIT_TRAIN)
         if args.ridge_max_cells and len(train_rows) > args.ridge_max_cells:
             train_rows = np.sort(np.random.default_rng(0).choice(train_rows, args.ridge_max_cells, replace=False))
-        Z_tr = encode_rows(jepa, hvg, partition, train_rows, device, args.batch_size)
+        Z_tr = source.encode(train_rows)
         Y_tr = torch.from_numpy(np.ascontiguousarray(hvg[train_rows]))
         ridge = fit_ridge(Z_tr, Y_tr, args.ridge_lambda)
         logger.info("ridge readout fit on %d TRAIN cells (lambda=%.3g)", len(train_rows), args.ridge_lambda)
@@ -218,7 +233,7 @@ def main() -> None:
 
     def z_of(pid: int) -> torch.Tensor:
         if pid not in latents:
-            latents[pid] = encode_rows(jepa, hvg, partition, rows_of(pid), device, args.batch_size)
+            latents[pid] = source.encode(rows_of(pid))
         return latents[pid]
 
     def predictor(arm: str):
@@ -247,7 +262,7 @@ def main() -> None:
         if arm == "identity":
             return np.asarray(control_mean, dtype=np.float64)
         if not z_ctrl:
-            z_ctrl.append(encode_rows(jepa, hvg, partition, ctrl_rows, device, args.batch_size))
+            z_ctrl.append(source.encode(ctrl_rows))
         z = z_ctrl[0]
         if arm == "roundtrip":
             out = decode_mean(decoder, z, device)
@@ -297,7 +312,8 @@ def main() -> None:
         "top_k": args.top_k,
         "min_test_cells": args.min_test_cells,
         "ridge_lambda": args.ridge_lambda,
-        "encoder": str(enc_path), "encoder_md5": _md5(enc_path),
+        "encoder": str(enc_path) if enc_path else None, "encoder_md5": _md5(enc_path) if enc_path else None,
+        "latent_source": source.identity(),
         "decoder": str(dec_path), "decoder_md5": _md5(dec_path),
         "de_genes_ranked_by": cache.de_genes.get("ranked_by"),
         "arms": results,

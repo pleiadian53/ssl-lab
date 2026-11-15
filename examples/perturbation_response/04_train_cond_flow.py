@@ -11,6 +11,11 @@ Pipeline: freeze encoder -> precompute latents once -> standardize -> train the
 conditional flow (+ condition encoder) by flow-matching, with the baseline z_b
 drawn from the control-cell population each step.
 
+With ``--latents <store>`` the latents are not computed by the encoder but looked up by cache row
+in a precomputed embedding store written by any encoder (:mod:`ssllab.embeddings`), such as
+Geneformer's cell embeddings. The cells, their order and every training step are the same; only
+where each cell's vector comes from changes, and the flow's width is the store's.
+
 Usage
 -----
     python examples/perturbation_response/04_train_cond_flow.py --epochs 60
@@ -37,6 +42,7 @@ if str(_SRC) not in sys.path:
 
 from ssllab.checkpoint import load_jepa
 from ssllab.data.perturbseq import get_perturbseq_dataloaders
+from ssllab.embeddings import PrecomputedSource, file_md5, jepa_space_key
 from ssllab.experiment import experiment
 import torch.nn as nn
 
@@ -58,6 +64,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--experiment", type=str, default="norman_stage_a")
     p.add_argument("--output-root", type=str, default="output")
     p.add_argument("--encoder", type=str, default=None)
+    p.add_argument("--latents", type=str, default=None,
+                   help="read cell vectors from this embedding store instead of running the encoder")
     p.add_argument("--data-dir", type=str, default="data")
     p.add_argument("--artifact", type=str, default="norman2019")
     p.add_argument("--split", type=str, default="cells", choices=["combo", "cells"],
@@ -90,11 +98,11 @@ def parse_args() -> argparse.Namespace:
 
 
 @torch.no_grad()
-def precompute_latents(jepa, loader, device):
-    """Encode every cell once (frozen encoder) -> aligned (Z, pert_id, is_control)."""
+def precompute_latents(jepa, loader, device, source=None):
+    """Encode every cell once (frozen encoder, or a store lookup) -> aligned (Z, pert_id, is_control)."""
     Z, P, C = [], [], []
     for b in loader:
-        Z.append(jepa.embed(b["tokens"].to(device)).cpu())
+        Z.append(source.encode(b["row"]) if source is not None else jepa.embed(b["tokens"].to(device)).cpu())
         P.append(b["pert_id"])
         C.append(b["is_control"])
     return torch.cat(Z), torch.cat(P), torch.cat(C)
@@ -105,18 +113,27 @@ def main() -> None:
     set_seed(args.seed)
     device = get_device(args.device)
     exp = experiment(args.experiment, args.output_root).ensure()
-    encoder_path = args.encoder or (exp.checkpoints / "encoder.pt")
-
-    jepa = load_jepa(encoder_path, device)
+    jepa, source = None, None
+    if not args.latents:
+        encoder_path = args.encoder or (exp.checkpoints / "encoder.pt")
+        jepa = load_jepa(encoder_path, device)
     train_loader, _, _ = get_perturbseq_dataloaders(
         batch_size=args.batch_size, data_dir=args.data_dir, artifact=args.artifact,
         split=args.split, limit=args.limit, seed=0,
     )
-    dim = jepa.cfg.embed_dim
+    if args.latents:
+        source = PrecomputedSource.open(args.latents, train_loader.meta["fingerprint"])
+        identity = source.identity()
+        logger.info("latents from store %s (%s, width %d)", args.latents, identity.get("source"), source.dim)
+    else:
+        identity = {"kind": "jepa", "encoder": str(encoder_path), "encoder_md5": file_md5(encoder_path),
+                    "width": jepa.cfg.embed_dim, "space_key": jepa_space_key(jepa)}
+
+    dim = source.dim if source else jepa.cfg.embed_dim
     n_perts = len(train_loader.meta["pert_names"])
 
     # 1. Precompute frozen latents; standardize for the flow.
-    Z, pert_id, is_control = precompute_latents(jepa, train_loader, device)
+    Z, pert_id, is_control = precompute_latents(jepa, train_loader, device, source)
     mean, std = Z.mean(0), Z.std(0) + 1e-6
     Zn = (Z - mean) / std
     ctrl_pool = Zn[is_control.bool()]
@@ -184,12 +201,14 @@ def main() -> None:
         "pert_gene": pert_gene,  # multi-hot (geneset) or None (table); lets the loader rebuild cond
         "mean": mean, "std": std,
         "ctrl_pool": ctrl_pool.cpu(),  # standardized control latents, for sampling z_b (source or baseline)
+        "latent_source": identity,     # the latent space; a decoder paired with this flow must share it
     }, out)
     exp.write_report("stage_b_flow", {"final_cfm_loss": avg, "n_perts": n_perts, "cond_type": args.cond_type,
                                       "flow_base": args.flow_base,
                                       "coupling": args.coupling if args.flow_base == "control" else None,
                                       "compose": args.compose if args.cond_type == "geneset" else None,
-                                      "train_cells": len(Zn), "n_controls": int(is_control.sum())})
+                                      "train_cells": len(Zn), "n_controls": int(is_control.sum()),
+                                      "hidden": args.hidden, "dim": dim, "latent_source": identity})
     logger.info("saved conditional flow -> %s", out)
 
 

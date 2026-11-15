@@ -14,6 +14,7 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 
+from ssllab.embeddings.source import check_same_space
 from ssllab.generative.condition import (
     ConditionEncoder,
     GeneSetConditionEncoder,
@@ -70,6 +71,7 @@ def load_cond_flow(path: str | Path, device: torch.device | str = "cpu") -> dict
         "ctrl_pool": ck["ctrl_pool"].to(device), "dim": ck["dim"], "n_perts": ck["n_perts"],
         "cond_type": ck.get("cond_type", "table"), "compose": ck.get("compose", "additive"),
         "flow_base": ck.get("flow_base", "gaussian"),
+        "latent_source": ck.get("latent_source"),   # None for checkpoints written before it was recorded
     }
 
 
@@ -129,6 +131,7 @@ def load_count_decoder(path: str | Path, device: torch.device | str = "cpu") -> 
     dec.load_state_dict(ck["state"])
     dec.eval()
     dec.library_size = ck.get("library_size", "all")   # the convention it was trained with
+    dec.latent_source = ck.get("latent_source")         # the latent space it reads (None: older checkpoint)
     return dec
 
 
@@ -179,6 +182,7 @@ def predicted_expression(
     ``log1p(1e4 * rho)`` with no sampling — a clean estimate of the *mean* response (the
     effect-size metric). Per-cell *spread* needs count sampling; see :func:`predicted_population`.
     """
+    check_same_space(bundle.get("latent_source"), getattr(decoder, "latent_source", None))
     z = sample_perturbed_latents(bundle, pert_id, n, guidance, steps, device, generator)
     rho = decoder(z, library_size=torch.ones(n, device=device))["rho"]   # (n, G)
     return torch.log1p(1e4 * rho).mean(0)                                  # (G,)
@@ -197,6 +201,7 @@ def predicted_population(
     it a population of decoded rates is near-degenerate and no calibration is measurable.
     ``library_size`` ``(n,)`` sets the sequencing depth; counts are renormalized to log1p-CP10K.
     """
+    check_same_space(bundle.get("latent_source"), getattr(decoder, "latent_source", None))
     z = sample_perturbed_latents(bundle, pert_id, n, guidance, steps, device, generator)
     ls = library_size.to(device)
     counts = decoder.sample_counts(z, ls)                                  # (n, G)

@@ -15,6 +15,12 @@ that separates what pretraining contributes from what joint training does on its
 drawn after the encoder is built, the decoder's initialization included, is the same as under
 ``--init pretrained`` at the same seed (see ``ssllab.checkpoint.random_jepa_like``).
 
+``--latents <store>`` (dec only) trains the decoder on a precomputed embedding store instead of the
+JEPA encoder's vectors: each batch's cell vectors are looked up by cache row in a store written by
+any encoder (see :mod:`ssllab.embeddings`), such as Geneformer's cell embeddings. The store must have
+been computed on this cache (its dataset fingerprint is checked). No encoder is loaded or saved, and
+the decoder's width is the store's.
+
 Everything else is the same recipe in every mode: the combo split's training cells, the decoder's
 negative-binomial loss on raw counts with each cell's library size (as ``03_train_count_decoder.py``
 uses), a fresh decoder of the default architecture, AdamW, gradient clipping. The transition
@@ -35,6 +41,7 @@ is no resume: an interrupted run is restarted from scratch.
 Outputs, in the formats every downstream script already reads:
 
     output/<experiment>/checkpoints/encoder.pt         the (co-adapted or unchanged) encoder, save_jepa format
+                                                       (not written with --latents)
     output/<experiment>/checkpoints/count_decoder.pt   the decoder, the format of 03_train_count_decoder.py
     output/<experiment>/reports/coadapt.json           config, anchor rule, per-epoch history
 
@@ -64,6 +71,7 @@ if str(_SRC) not in sys.path:
 from ssllab.checkpoint import load_jepa, random_jepa_like, save_jepa
 from ssllab.coadapt import CoadaptConfig, anchor_weight_by_rule, config_dict, prepare_jepa, train_coadapt
 from ssllab.data.perturbseq import get_perturbseq_dataloaders
+from ssllab.embeddings import PrecomputedSource, jepa_space_key
 from ssllab.experiment import experiment
 from ssllab.generative.count_decoder import CountDecoder
 from ssllab.generative.perturb import load_count_decoder
@@ -82,6 +90,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--artifact", type=str, default="norman2019")
     p.add_argument("--encoder", type=str, default="output/norman_stage_a/checkpoints/encoder.pt",
                    help="the JEPA checkpoint the encoder starts from")
+    p.add_argument("--latents", type=str, default=None,
+                   help="dec only: an embedding store (ssllab.embeddings) to read cell vectors from, "
+                        "instead of running --encoder")
     p.add_argument("--ref-decoder", type=str, default="output/norman_r11_dec_hvg_s0/checkpoints/count_decoder.pt",
                    help="a trained decoder that sets the anchor weight's scale (joint_anchor only); it must "
                         "have been trained with the run's --library-size")
@@ -121,18 +132,30 @@ def main() -> None:
 
     if args.init == "random" and args.mode != "joint":
         raise SystemExit("--init random is only defined for --mode joint")
-    start = load_jepa(enc_path, device) if args.init == "pretrained" else random_jepa_like(enc_path, device)
-    jepa = prepare_jepa(start, args.mode, device)
+    if args.latents and args.mode != "dec":
+        raise SystemExit("--latents fixes the encoder, so it is only defined for --mode dec")
+    jepa, source = None, None
+    if not args.latents:
+        start = load_jepa(enc_path, device) if args.init == "pretrained" else random_jepa_like(enc_path, device)
+        jepa = prepare_jepa(start, args.mode, device)
     train_loader, _, _ = get_perturbseq_dataloaders(
         batch_size=args.batch_size, data_dir=args.data_dir, artifact=args.artifact,
         split=args.split, limit=args.limit, seed=0,
     )
+    if args.latents:
+        source = PrecomputedSource.open(args.latents, train_loader.meta["fingerprint"])
+    latent_dim = source.dim if source else jepa.cfg.embed_dim
     n_genes = train_loader.meta["n_hvg"]
-    decoder = CountDecoder(latent_dim=jepa.cfg.embed_dim, n_genes=n_genes).to(device)
+    decoder = CountDecoder(latent_dim=latent_dim, n_genes=n_genes).to(device)
     cfg = CoadaptConfig(mode=args.mode, epochs=args.epochs, lr=args.lr, encoder_lr=args.encoder_lr,
                         clip=args.clip, anchor_batches=args.anchor_batches, library_size=args.library_size)
-    logger.info("mode=%s  init=%s  encoder %s (md5 %s)  genes=%d  train cells=%d  device=%s",
-                args.mode, args.init, enc_path, _md5(enc_path)[:8], n_genes, len(train_loader.dataset), device)
+    if source:
+        logger.info("mode=dec  latents %s (%s, width %d)  genes=%d  train cells=%d  device=%s",
+                    args.latents, source.identity().get("source"), latent_dim, n_genes,
+                    len(train_loader.dataset), device)
+    else:
+        logger.info("mode=%s  init=%s  encoder %s (md5 %s)  genes=%d  train cells=%d  device=%s",
+                    args.mode, args.init, enc_path, _md5(enc_path)[:8], n_genes, len(train_loader.dataset), device)
 
     rule = None
     if args.mode == "joint_anchor":
@@ -149,23 +172,31 @@ def main() -> None:
                     rule["anchor_weight"], rule["ref_nb_loss"], rule["jepa_loss"], rule["n_batches"])
         del ref
 
-    history = train_coadapt(jepa, decoder, train_loader, cfg, device, log=logger.info)
+    history = train_coadapt(jepa, decoder, train_loader, cfg, device, log=logger.info, latents=source)
 
-    jepa.eval()
-    enc_out = save_jepa(jepa, exp.checkpoints / "encoder.pt")
+    enc_out = None
+    if source:
+        identity = source.identity()
+    else:
+        jepa.eval()
+        enc_out = save_jepa(jepa, exp.checkpoints / "encoder.pt")
+        # The space the decoder reads: the encoder as it is after training (unchanged under dec).
+        identity = {"kind": "jepa", "encoder": str(enc_out), "encoder_md5": _md5(enc_out),
+                    "width": latent_dim, "space_key": jepa_space_key(jepa)}
     dec_out = exp.checkpoints / "count_decoder.pt"
-    torch.save({"state": decoder.state_dict(), "latent_dim": jepa.cfg.embed_dim, "n_genes": n_genes,
+    torch.save({"state": decoder.state_dict(), "latent_dim": latent_dim, "n_genes": n_genes,
                 "zinb": False, "anchored_mean": False, "state_dispersion": False,
-                "library_size": args.library_size}, dec_out)
+                "library_size": args.library_size, "latent_source": identity}, dec_out)
     exp.write_report("coadapt", {
         "mode": args.mode, "init": args.init, "seed": args.seed, "split": args.split, "library_size": args.library_size,
         "train_cells": len(train_loader.dataset), "limit": args.limit,
-        "init_encoder": str(enc_path), "init_encoder_md5": _md5(enc_path),
-        "encoder_md5": _md5(enc_out), "decoder_md5": _md5(dec_out),
+        "init_encoder": None if source else str(enc_path), "init_encoder_md5": None if source else _md5(enc_path),
+        "encoder_md5": _md5(enc_out) if enc_out else None, "decoder_md5": _md5(dec_out),
+        "latent_source": identity,
         "config": config_dict(cfg), "anchor_rule": rule, "history": history,
         "final_nb_loss": history[-1]["nb_loss"],
     })
-    logger.info("saved encoder -> %s ; decoder -> %s", enc_out, dec_out)
+    logger.info("saved %sdecoder -> %s", f"encoder -> {enc_out} ; " if enc_out else "", dec_out)
 
 
 if __name__ == "__main__":

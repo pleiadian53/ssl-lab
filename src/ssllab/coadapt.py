@@ -159,15 +159,25 @@ def train_coadapt(
     cfg: CoadaptConfig,
     device: torch.device | str = "cpu",
     log: Callable[[str], None] | None = None,
+    latents=None,
 ) -> list[dict]:
     """Train for ``cfg.epochs`` and return one record per epoch.
 
-    Call :func:`prepare_jepa` first. Each record holds the mean NB loss, the mean JEPA loss and
-    the mean total under the anchor, and the effective rank and feature spread of the cell
+    ``latents`` (``dec`` mode only) is an :class:`ssllab.embeddings.LatentSource`, usually a
+    precomputed embedding store: each batch's cell vectors are then looked up by the batch's cache
+    rows instead of being computed by ``jepa``, which may be ``None``. This is how a decoder is
+    trained on another encoder's embeddings. Without it, the path is unchanged.
+
+    Call :func:`prepare_jepa` first (not needed when ``latents`` is given). Each record holds
+    the mean NB loss, the mean JEPA loss and the mean total under the anchor, and the effective rank and feature spread of the cell
     vectors produced during the epoch (on up to 4,096 cells, detached). In the joint modes it
     also holds ``grad_nb`` (and under the anchor ``grad_anchor``): the norm of the encoder
     gradient from each term, on the epoch's first batch, before clipping.
     """
+    if latents is not None and cfg.mode != "dec":
+        raise ValueError("precomputed latents fix the encoder, so they are only defined for mode 'dec'")
+    if latents is None and jepa is None:
+        raise ValueError("train_coadapt needs either a JEPA or a latent source")
     if cfg.mode == "joint_anchor" and cfg.anchor_weight is None:
         raise ValueError("joint_anchor needs cfg.anchor_weight; fix it with anchor_weight_by_rule first")
     groups = [{"params": list(decoder.parameters()), "lr": cfg.lr}]
@@ -186,7 +196,9 @@ def train_coadapt(
         zs, n_z, n_batches = [], 0, 0
         grad_norms: dict[str, float] = {}
         for batch in loader:
-            if cfg.mode == "dec":
+            if latents is not None:
+                z = latents.encode(batch["row"]).to(device)
+            elif cfg.mode == "dec":
                 with torch.no_grad():
                     z = jepa.embed(batch["tokens"].to(device))
             else:
