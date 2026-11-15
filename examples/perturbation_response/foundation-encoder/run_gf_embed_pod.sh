@@ -80,6 +80,11 @@ pip install -q -r "$GF/requirements.txt" -c "$CONSTRAINTS" >> "$LOGS/install.log
 python -c "import sys; sys.path.insert(0, '$GF'); import geneformer, transformers; print('geneformer OK, transformers', transformers.__version__)" \
   || { echo "FATAL: geneformer import"; exit 1; }
 
+# SKIP_EMBED=1 resumes after the Geneformer step when its stores are already on the volume.
+if [ "${SKIP_EMBED:-0}" = 1 ]; then
+  [ -f "$OUT/geneformer_full/feasibility.json" ] || { echo "FATAL: SKIP_EMBED=1 but no geneformer_full/feasibility.json"; exit 1; }
+  echo "skip smoke and Geneformer embedding: stores already written"
+else
 # ---- smoke: 64 cells, V1 and V2, stores must load ------------------------------------------- #
 python $FE/02_embed_geneformer.py --gf-root "$GF" --data-dir "$DATA" --out-dir "$OUT/geneformer_smoke_stores" --n-cells 64 \
   --models V1-10M V2-104M --batch-size "$BATCH" --gf-revision "$GF_REV" > "$LOGS/smoke.log" 2>&1 \
@@ -106,10 +111,12 @@ python $FE/02_embed_geneformer.py --gf-root "$GF" --data-dir "$DATA" --out-dir "
   --models $MODELS --batch-size "$BATCH" --nproc "${NPROC:-4}" --gf-revision "$GF_REV" > "$LOGS/full.log" 2>&1 \
   || { echo "FULL EMBEDDING FAILED"; tail -40 "$LOGS/full.log"; exit 1; }
 echo "geneformer stores written"
+fi
 
 # ---- 2. our JEPA encoder, same contract --------------------------------------------------------- #
+# On the CPU: GPU kernels make the latents depend on the batch shape by up to ~2e-3 (see 04).
 python $FE/04_export_jepa_latents.py --data-dir "$DATA" --encoder "$OUT/norman_stage_a/checkpoints/encoder.pt" \
-  --out "$OUT/embeddings/norman_jepa_stage_a" --device cuda > "$LOGS/jepa_export.log" 2>&1 \
+  --out "$OUT/embeddings/norman_jepa_stage_a" --device cpu > "$LOGS/jepa_export.log" 2>&1 \
   || { echo "JEPA EXPORT FAILED"; tail -20 "$LOGS/jepa_export.log"; exit 1; }
 echo "jepa store written"
 

@@ -19,8 +19,12 @@ export changed the vectors, and every comparison built on the store would be in 
 comparison's second interface gate, scoring the published round-11 decoders on these stored
 latents, is run by ``14_ceiling_analysis.py --latents``.
 
-Light enough for a laptop on the CPU (it reads the 2.2 GB expression matrix and encodes every
-cell in batches); on the pod it runs on the GPU. Nothing here touches Geneformer.
+Run it on the CPU, on a laptop or on the pod. On the CPU the result does not depend on how the
+cells are batched, and the check passes with a gap of exactly 0. On an A40 GPU the same encoder,
+fed the same cells in batches of 1,024 and then of 256, gave latents up to 0.0016 apart, because
+the GPU's matrix kernels change their summation order with the batch shape; a store made there
+would fail the check for that reason alone. The CPU export reads the 2.2 GB expression matrix and
+encodes every cell in about five minutes. Nothing here touches Geneformer.
 
 Usage (from the repo root):
     python examples/perturbation_response/foundation-encoder/04_export_jepa_latents.py \\
