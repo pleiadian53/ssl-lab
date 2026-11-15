@@ -99,9 +99,11 @@ PY
 echo "smoke OK"
 
 # ---- 1. Geneformer, every cell ---------------------------------------------------------------- #
+# Four tokenizer workers, not eight: tokenizing every cell with eight ran a 46 GB pod out of memory.
+rm -rf "$OUT/geneformer_full"
 # shellcheck disable=SC2086
 python $FE/02_embed_geneformer.py --gf-root "$GF" --data-dir "$DATA" --out-dir "$OUT/geneformer_full" --n-cells 0 \
-  --models $MODELS --batch-size "$BATCH" --gf-revision "$GF_REV" > "$LOGS/full.log" 2>&1 \
+  --models $MODELS --batch-size "$BATCH" --nproc "${NPROC:-4}" --gf-revision "$GF_REV" > "$LOGS/full.log" 2>&1 \
   || { echo "FULL EMBEDDING FAILED"; tail -40 "$LOGS/full.log"; exit 1; }
 echo "geneformer stores written"
 

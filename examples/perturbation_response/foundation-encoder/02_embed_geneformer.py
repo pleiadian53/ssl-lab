@@ -214,6 +214,11 @@ def tokenize(input_dir: Path, out_dir: Path, version: str, nproc: int, counts, e
         # check that the count above replicates the tokenizer: kept tokens = min(count, cap)
         "n_cells_count_mismatch": int(np.sum(kept != np.minimum(genes, cap))),
     }
+    # Free the tokenizer and the loaded dataset before the next model series is tokenized: on all
+    # 109,737 cells the two series together exceed a 46 GB pod's memory otherwise.
+    del ds, tk
+    import gc
+    gc.collect()
     return path, stats
 
 
