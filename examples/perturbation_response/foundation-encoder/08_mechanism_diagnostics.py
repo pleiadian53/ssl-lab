@@ -119,6 +119,7 @@ def main() -> None:
         sys.exit("the cut check compares against V2's longer input; pick a V2 model")
     out = Path(args.out_dir)
     out.mkdir(parents=True, exist_ok=True)
+    (out / "work").mkdir(exist_ok=True)  # Geneformer writes its CSV here and does not create it
     model_dir = Path(args.gf_root) / spec["dir"]
 
     ds = load_from_disk(args.tokens)
