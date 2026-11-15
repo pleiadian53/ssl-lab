@@ -24,7 +24,7 @@ The number 20 is a convention rather than a derivation. It is large enough for a
 
 ## 4. The scored genes through Geneformer's eyes
 
-Geneformer has tokens only for protein-coding and microRNA genes ([Chapter 1, §2](01-how-geneformer-reads-a-cell.md)). Checking each held-out pair's 20 scored genes against its vocabulary gives:
+Geneformer has tokens only for the genes in its vocabulary ([Chapter 1, §2](01-how-geneformer-reads-a-cell.md)), and its tokenizer matches genes by Ensembl ID after renaming retired IDs. Checking each held-out pair's 20 scored genes against the vocabulary gives the same answer for the V1 and the V2 models:
 
 | scored genes Geneformer can see | number of held-out pairs |
 |---|---|
@@ -49,7 +49,7 @@ A pair such as TBX2+TBX3 is scored on 20 genes, three of which, MALAT1, NEAT1 an
 
 The recurrence is the interesting part. MALAT1 and NEAT1 are very abundant RNAs that stay in the nucleus, and they are among the top movers for many unrelated perturbations. That suggests they track an axis shared across perturbations rather than a response specific to each pair, a general stress or nuclear-RNA signal being plausible candidates. We have not tested which.
 
-The blind spot also runs the other way. Our JEPA reads only the 5,000 most variable genes, while Geneformer reads roughly 14,360. Of the 5,000 modeled genes, 4,308 have Geneformer tokens; the other 692 are invisible to it. But Geneformer sees nearly 10,000 genes that our encoder never reads. Each encoder has information the other lacks.
+The blind spot also runs the other way. Our JEPA reads only the 5,000 most variable genes, while Geneformer reads roughly 14,360. Of the 5,000 modeled genes, 4,316 reach the V2 models and 4,352 the V1 models; the rest are invisible to them. But Geneformer sees nearly 10,000 genes that our encoder never reads. Each encoder has information the other lacks.
 
 ## 5. Separating a blind spot from a weaker representation
 
