@@ -33,6 +33,7 @@ import logging
 import sys
 from pathlib import Path
 
+import numpy as np
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
@@ -73,6 +74,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--epochs", type=int, default=60)
     p.add_argument("--batch-size", type=int, default=256)
     p.add_argument("--lr", type=float, default=1e-3)
+    p.add_argument("--grad-clip", type=float, default=None,
+                   help="clip the gradient's total norm to this value before each step (default: no clipping); "
+                        "the per-epoch loss and gradient norms are reported either way")
     p.add_argument("--flow-base", type=str, default="gaussian", choices=["gaussian", "control"],
                    help="gaussian = noise->outcome prior, condition fuses (z_b, z_p) [current default]; "
                         "control = transport a control latent -> outcome (source z0=z_b, condition = z_p only) "
@@ -164,16 +168,20 @@ def main() -> None:
         else:
             cond = ConditionEncoder(latent_dim=dim, n_perts=n_perts, pert_dim=args.pert_dim, cond_dim=args.cond_dim).to(device)
     logger.info("flow-base=%s  cond-type=%s", args.flow_base, args.cond_type)
-    opt = torch.optim.AdamW(list(flow.parameters()) + list(cond.parameters()), lr=args.lr)
+    params = list(flow.parameters()) + list(cond.parameters())
+    opt = torch.optim.AdamW(params, lr=args.lr)
+    clip = args.grad_clip if args.grad_clip is not None else float("inf")  # inf: measure the norm, change nothing
 
     loader = DataLoader(TensorDataset(Zn, pert_id), batch_size=args.batch_size, shuffle=True, drop_last=True)
     ctrl_pool = ctrl_pool.to(device)
     g = torch.Generator().manual_seed(args.seed)
 
     avg = float("nan")
+    history = {"cfm_loss": [], "grad_norm_median": [], "grad_norm_max": [], "clipped_fraction": []}
     for epoch in range(args.epochs):
         flow.train(); cond.train()
         running = 0.0
+        norms = []
         for z1, pid in loader:
             z1, pid = z1.to(device), pid.to(device)
             # baseline z_b: a control-cell latent sampled per example (population baseline)
@@ -186,10 +194,18 @@ def main() -> None:
                 loss = cfm_loss(flow, z1, c=cond(zb, pid), p_drop=args.p_drop)      # noise -> z1, c=(z_b,z_p)
             opt.zero_grad()
             loss.backward()
+            norms.append(float(torch.nn.utils.clip_grad_norm_(params, clip)))  # the norm before clipping
             opt.step()
             running += loss.item()
         avg = running / max(len(loader), 1)
-        logger.info("epoch %d/%d  cfm_loss=%.4f", epoch + 1, args.epochs, avg)
+        nrm = np.array(norms) if norms else np.array([float("nan")])
+        history["cfm_loss"].append(avg)
+        history["grad_norm_median"].append(float(np.median(nrm)))
+        history["grad_norm_max"].append(float(nrm.max()))
+        history["clipped_fraction"].append(float(np.mean(nrm > clip)))
+        logger.info("epoch %d/%d  cfm_loss=%.4f  grad_norm median %.3g max %.3g%s", epoch + 1, args.epochs, avg,
+                    history["grad_norm_median"][-1], history["grad_norm_max"][-1],
+                    f"  clipped {history['clipped_fraction'][-1]:.0%}" if args.grad_clip is not None else "")
 
     out = exp.checkpoints / "cond_flow.pt"
     torch.save({
@@ -202,13 +218,15 @@ def main() -> None:
         "mean": mean, "std": std,
         "ctrl_pool": ctrl_pool.cpu(),  # standardized control latents, for sampling z_b (source or baseline)
         "latent_source": identity,     # the latent space; a decoder paired with this flow must share it
+        "grad_clip": args.grad_clip,
     }, out)
     exp.write_report("stage_b_flow", {"final_cfm_loss": avg, "n_perts": n_perts, "cond_type": args.cond_type,
                                       "flow_base": args.flow_base,
                                       "coupling": args.coupling if args.flow_base == "control" else None,
                                       "compose": args.compose if args.cond_type == "geneset" else None,
                                       "train_cells": len(Zn), "n_controls": int(is_control.sum()),
-                                      "hidden": args.hidden, "dim": dim, "latent_source": identity})
+                                      "hidden": args.hidden, "dim": dim, "latent_source": identity,
+                                      "lr": args.lr, "grad_clip": args.grad_clip, "history": history})
     logger.info("saved conditional flow -> %s", out)
 
 

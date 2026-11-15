@@ -17,6 +17,9 @@
 #   1. full    train, read, grade
 #   2. compare 07_score_comparison.py -> $OUT/gf_compare.json
 #
+# FLOWS_ONLY="<arms>" replaces steps 0 and 1 with a rerun of only those arms' flows and their
+# readouts (06, 19, 10) at full settings; used for amendment 1 (the four 768-wide arms).
+#
 # LOCAL=1 runs the same steps on a laptop CPU (no CUDA check, md5 via `md5 -q`), for the code smoke.
 #
 # Usage (on the pod, from the repo root):
@@ -56,6 +59,8 @@ store_of() {
   esac
 }
 hidden_of() { case "$1" in v2_cls|v2_cell|v2cl_cls|v2cl_cell) echo 768 ;; *) echo 256 ;; esac; }
+# Amendment 1 (07's docstring): the 768-wide flows clip the gradient's total norm at 1.0; the others do not.
+clip_of() { case "$1" in v2_cls|v2_cell|v2cl_cls|v2cl_cell) echo 1.0 ;; *) echo "" ;; esac; }
 ARMS="${ARMS:-jepa v1_cell v2_cls v2_cell v2cl_cls v2cl_cell v2_cls_p v2_cell_p v2cl_cls_p v2cl_cell_p}"
 
 # ---- preflight ------------------------------------------------------------------------------ #
@@ -66,7 +71,7 @@ fi
 [ "$(md5of "$DATA/norman2019/de_genes.json")" = "$DE_MD5" ] || { echo "FATAL: de_genes md5"; fail=1; }
 [ -f "$DATA/norman2019/foundation/visible_hvg.json" ] || { echo "FATAL: missing foundation/visible_hvg.json (06_visible_genes.py)"; fail=1; }
 need=(norman_additive/reports/effect_size_additive.json norman_additive/reports/profiles_additive.npz)
-for s in 0 1 2; do
+for s in ${SEEDS:-0 1 2}; do   # SEEDS: local tests only
   need+=("norman_r11_dec_hvg_s$s/checkpoints/count_decoder.pt"
          "norman_r11_vae_hvg_s$s/reports/effect_size_cvae.json" "norman_r11_vae_hvg_s$s/reports/profiles_vae.npz")
 done
@@ -86,7 +91,7 @@ echo "preflight OK"
 
 # ---- gate (e): the JEPA store through the new path reproduces the published ceilings ----------- #
 G="$OUT/norman_gf_gate2"; mkdir -p "$G"
-for s in 0 1 2; do
+for s in ${SEEDS:-0 1 2}; do   # SEEDS: local tests only
   python $EP/14_ceiling_analysis.py --latents "$OUT/$(store_of jepa)" --decoder "$OUT/norman_r11_dec_hvg_s$s/checkpoints/count_decoder.pt" \
     --split combo --arms identity roundtrip --experiment "norman_gf_gate2_s$s" --output-root "$OUT" --data-dir "$DATA" \
     --device "$DEV" > "$G/gate2_s$s.log" 2>&1 || { echo "GATE (e) FAILED: ceiling s$s"; exit 1; }
@@ -128,11 +133,12 @@ ceiling() {   # $1 = arm, $2 = seed
     && echo "read $1 s$2" || echo "CEILING FAILED: $1 s$2"
 }
 pipeline() {   # $1 = arm, $2 = seed
-  local exp="norman_gf_flow_$1_s$2"
-  mkdir -p "$O/$exp/checkpoints"
+  local exp="norman_gf_flow_$1_s$2" clip
+  local clip_flag=(); clip=$(clip_of "$1"); [ -n "$clip" ] && clip_flag=(--grad-clip "$clip")
+  rm -rf "${O:?}/$exp"; mkdir -p "$O/$exp/checkpoints"
   python $EP/04_train_cond_flow.py --experiment "$exp" --latents "$O/$(store_of $1)" --output-root "$O" --data-dir "$DATA" \
     --split combo --cond-type geneset --flow-base control --coupling independent --epochs "$FLOW_EPOCHS" \
-    --hidden "$(hidden_of $1)" --seed "$2" --device "$DEV" "${limit_flag[@]}" > "$LOGS/flow_$1_s$2.log" 2>&1 \
+    --hidden "$(hidden_of $1)" ${clip_flag[@]+"${clip_flag[@]}"} --seed "$2" --device "$DEV" "${limit_flag[@]}" > "$LOGS/flow_$1_s$2.log" 2>&1 \
     || { echo "FLOW FAILED: $1 s$2"; return; }
   cp "$O/norman_gf_dec_$1_s$2/checkpoints/count_decoder.pt" "$O/$exp/checkpoints/count_decoder.pt"
   python $EP/06_eval_effect_size.py --experiment "$exp" --split combo --output-root "$O" --data-dir "$DATA" --device "$DEV" \
@@ -161,6 +167,25 @@ compare_round() {   # trains and reads every arm under the current O, SEEDS, EPO
   run_parallel "${jobs[@]}"
 }
 
+if [ -n "${FLOWS_ONLY:-}" ]; then
+# ---- FLOWS_ONLY="<arms>": rerun only these arms' flows and their readouts, at full settings ------ #
+# Decoders and ceilings stay as they are. The previous attempt's logs are kept in gf_logs/<attempt>.
+echo "==== flows only: $FLOWS_ONLY ===="
+O="$OUT" FLOW_EPOCHS="${FLOW_EPOCHS:-60}" PARALLEL="${PARALLEL:-3}"; LOGS="$O/gf_logs"
+limit_flag=(); [ -n "${LIMIT:-}" ] && limit_flag=(--limit "$LIMIT")   # LIMIT and FLOW_EPOCHS: local tests only
+KEEP="$LOGS/${FLOWS_ATTEMPT:-attempt1}"; mkdir -p "$KEEP"
+jobs=()
+for s in ${SEEDS:-0 1 2}; do   # SEEDS: local tests only
+  for a in $FLOWS_ONLY; do
+    [ -f "$O/norman_gf_dec_${a}_s$s/checkpoints/count_decoder.pt" ] || { echo "FATAL: no decoder for $a s$s"; exit 1; }
+    for f in "flow_${a}_s$s" "eff_norman_gf_flow_${a}_s$s" "int_norman_gf_flow_${a}_s$s" "pop_norman_gf_flow_${a}_s$s"; do
+      [ -f "$LOGS/$f.log" ] && mv "$LOGS/$f.log" "$KEEP/"
+    done
+    jobs+=("pipeline $a $s")
+  done
+done
+run_parallel "${jobs[@]}"
+else
 # ---- 0. smoke ------------------------------------------------------------------------------ #
 echo "==== 0. smoke ===="
 rm -rf "$SMOKE_ROOT"; mkdir -p "$SMOKE"
@@ -182,6 +207,7 @@ echo "smoke passed"
 echo "==== 1. comparison ===="
 O="$OUT" SEEDS="0 1 2" EPOCHS=30 FLOW_EPOCHS=60 LIMIT="" RIDGE_MAX="" PARALLEL="${PARALLEL:-3}"
 compare_round
+fi
 
 # ---- 2. compare ---------------------------------------------------------------------------- #
 echo "==== 2. scoring ===="

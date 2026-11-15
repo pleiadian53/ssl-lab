@@ -118,6 +118,38 @@ Gates (any failure stops the scoring)
 (f) The ``jepa`` arm's own ceiling is reported against 0.865; a gap above 0.01 is flagged in the
     report (a sanity check, not a stop).
 
+Amendment 1 (2026-11-15): gradient clipping for the 768-wide flows
+------------------------------------------------------------------
+**What happened.** In the first full run, all twelve 768-wide flows (``v2_cls``, ``v2_cell``,
+``v2cl_cls``, ``v2cl_cell``, three seeds each, hidden width 768, learning rate 1e-3, no gradient
+clipping) became unstable during training: the epoch-mean flow-matching loss, about 1.5 after the
+first epoch, spiked to between 10^5 and 4 x 10^9 before falling back, and three of these flows then
+generated non-finite cells, so their population reports could not be computed. All eighteen
+256-wide flows, including the four projected V2 arms, trained smoothly. A flow that diverged is a
+failed fit, not a measurement, so the full-width pipeline numbers of that run are not reported.
+
+**What changes.** The twelve 768-wide flows are retrained with the gradient's total norm clipped at
+1.0 before each optimizer step (``04_train_cond_flow.py --grad-clip 1.0``); learning rate, hidden
+width, epochs, seeds and everything else stay as above. In a short test run on our encoder's store,
+a healthy 256-wide flow's gradient norm was about 0.1 to 0.2, so the threshold should leave ordinary
+steps alone and cap only spikes. The 256-wide
+flows are kept as trained, without clipping. Their decoders and ceilings, and every 768-wide arm's
+decoder and ceiling, are kept unchanged: none of them involves a flow.
+
+**What it cannot affect.** The primary endpoint and secondaries 1, 2, 3, 8 and 9 read only decoders
+and ceilings, which the first run completed and gates (a), (b), (d) and (e) passed. Their values
+were computed from that run, with this script's functions, before this amendment was written; the
+amendment concerns the flows only.
+
+**What counts as still unstable.** Each flow now reports its per-epoch loss and gradient norms. A
+768-wide flow whose epoch-mean loss ever exceeds twice its first epoch's is reported as diverged,
+and its arm's pipeline results are then reported as not trainable under this recipe rather than as
+a measurement; the full-width pipeline comparison would then rest on the projected arms.
+
+Gate (c) gains one condition: every 768-wide flow records ``grad_clip`` 1.0 and every 256-wide flow
+records none. Secondary 10, descriptive: per flow, the final loss, the largest epoch-mean loss over
+the first, the largest gradient norm and the share of clipped steps.
+
 Usage (on the pod or locally after the fetch, from the repo root):
     python examples/perturbation_response/foundation-encoder/07_score_comparison.py \\
         --output-root output --out output/gf_compare.json
@@ -157,6 +189,7 @@ SEEDS = (0, 1, 2)
 N_CELLS = 109_737
 GATE2_REF = {0: 0.86695, 1: 0.86338, 2: 0.86502}
 JEPA_CEILING_REF = 0.865
+GRAD_CLIP = 1.0  # amendment 1: the 768-wide flows clip the gradient's total norm here
 POP = ("coverage", "spread_r", "wasserstein", "energy")
 KEYS = ("delta_r", "rel_err")
 CONVS = ("measured", "own")
@@ -279,7 +312,17 @@ def main() -> None:
             _fail(f"{exp.name}: Δr does not reproduce {report} (max |diff| {worst:.2g})")
         return out
 
-    population = {}
+    def training_record(exp: Path, s: int) -> dict:
+        h = js(exp / "reports/stage_b_flow.json").get("history")
+        if not h:  # flows trained before amendment 1 did not record their history
+            return {"seed": s, "history": None}
+        loss = np.array(h["cfm_loss"], float)
+        ratio = float(np.max(loss) / loss[0])
+        return {"seed": s, "final_loss": float(loss[-1]), "max_over_first": ratio, "diverged": ratio > 2.0,
+                "grad_norm_max": float(np.max(h["grad_norm_max"])),
+                "clipped_fraction": float(np.mean(h["clipped_fraction"]))}
+
+    population, flow_training = {}, {}
     for arm, (_, width, hidden, _) in ARMS.items():
         scored[f"pipeline_{arm}"] = []
         pops = []
@@ -293,6 +336,10 @@ def main() -> None:
                 _fail(f"{arm} s{s}: flow and decoder read different latent spaces")
             if (fl.get("latent_source") or {}).get("content_md5") != stores[arm].manifest["content_md5"]:
                 _fail(f"{arm} s{s}: flow did not read the arm's store")
+            want_clip = GRAD_CLIP if hidden == 768 else None
+            if fl.get("grad_clip") != want_clip:
+                _fail(f"{arm} s{s}: flow trained with grad_clip {fl.get('grad_clip')}, amendment 1 says {want_clip}")
+            flow_training.setdefault(arm, []).append(training_record(exp, s))
             scored[f"pipeline_{arm}"].append(learned(exp, "flow", "effect_size.json"))
             pop = js(exp / "reports/calibration_flow.json")
             if pop.get("normalize") != "data":
@@ -390,6 +437,8 @@ def main() -> None:
         rows = rank_rows[np.isin(rank_rows, st.row_idx)]
         eff_rank[a] = collapse_report(torch.from_numpy(st.lookup(rows)))
 
+    diverged = [f"{a} s{r['seed']}" for a, recs in flow_training.items() for r in recs if r.get("diverged")]
+
     # ---- report ------------------------------------------------------------------------------- #
     def short(x):
         return {k: (round(v, 4) if isinstance(v, float) else v) for k, v in x.items()} if isinstance(x, dict) else x
@@ -416,6 +465,7 @@ def main() -> None:
         print(f"  visible genes only, {k}: Δr {short(v['measured']['delta_r'])}")
     for k, v in projection_cost.items():
         print(f"  projection cost {k}: Δr {short(v['delta_r'])}")
+    print(f"  diverged flows (amendment 1): {', '.join(diverged) if diverged else 'none'}")
 
     result = {
         "protocol": "foundation-encoder/07_score_comparison.py docstring", "seeds": list(seeds), "smoke": args.smoke,
@@ -438,6 +488,8 @@ def main() -> None:
             "pipeline_vs_references": vs_ref, "headroom": headroom,
             "population": pop_table, "population_vs_jepa": pop_vs_jepa,
             "ranking_hypothesis": ranking, "effective_rank": eff_rank,
+            "flow_training": flow_training,
+            "diverged_flows": diverged,
         },
     }
     out = Path(args.out)
