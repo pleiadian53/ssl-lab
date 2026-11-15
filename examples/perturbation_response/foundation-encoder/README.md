@@ -24,13 +24,13 @@ Three practical consequences follow for this benchmark:
 | `02_embed_geneformer.py` | builds Geneformer's input, tokenizes, embeds with each model, re-orders by cell, reports cost and embedding shape | pod, needs CUDA | **done** for the 2,000-cell sample |
 | `run_geneformer_feasibility_pod.sh` | installs Geneformer at a pinned commit, runs a small smoke test, then embeds a 2,000-cell sample with every model | pod | **done** |
 | `03_reference_ranks.py` | the same effective-rank measure on the same 2,000 cells for our own JEPA encoder, an untrained copy of it, and its input | locally, CPU, about 20 seconds | **done** |
-| `04_export_jepa_latents.py` | writes our JEPA encoder's vectors for every cell as an embedding store, so both encoders reach the decoder and the flow by the same code path, and checks the stored vectors against on-the-fly encoding | locally or on the pod; about 5 minutes on a laptop CPU | ready |
-| `05_project_store.py` | projects a 768-dimensional store onto its 256 leading principal components, fit on training cells only | where the stores are | ready |
+| `04_export_jepa_latents.py` | writes our JEPA encoder's vectors for every cell as an embedding store, so both encoders reach the decoder and the flow by the same code path, and checks the stored vectors against on-the-fly encoding | locally or on the pod, on the CPU; about 5 minutes on a laptop, 13 on the pod | **done** |
+| `05_project_store.py` | projects a 768-dimensional store onto its 256 leading principal components, fit on training cells only | where the stores are | **done** |
 | `06_visible_genes.py` | lists which panel genes, and which of each held-out pair's scored genes, the V1 and V2 vocabularies cover | locally, gene tables only | **done** |
-| `07_score_comparison.py` | the pre-registered protocol (in its docstring) and the scoring: gates, the primary family, every secondary | on the pod after job 2, or locally after the fetch | ready |
-| `08_mechanism_diagnostics.py` | how far V2 embeddings move when gene lists are cut at 2,048, and the learned position tables along the slots | pod (inside job 1) | ready |
-| `run_gf_embed_pod.sh` | pod job 1: every embedding store, the projections, the coverage gate, the mechanism checks | pod | ready |
-| `run_gf_compare_pod.sh` | pod job 2: the interface gate, an on-pod smoke run, then the comparison and its scoring | pod | ready |
+| `07_score_comparison.py` | the pre-registered protocol (in its docstring) and the scoring: gates, the primary family, every secondary | on the pod after job 2 | primary scored; full pipeline pending amendment 1 |
+| `08_mechanism_diagnostics.py` | how far V2 embeddings move when gene lists are cut at 2,048, and the learned position tables along the slots | pod (inside job 1) | **done** |
+| `run_gf_embed_pod.sh` | pod job 1: every embedding store, the projections, the coverage gate, the mechanism checks | pod | **done** |
+| `run_gf_compare_pod.sh` | pod job 2: the interface gate, an on-pod smoke run, then the comparison and its scoring; `FLOWS_ONLY` reruns named arms' flows | pod | ran; 768-wide flows rerun under amendment 1 |
 
 **Embedding stores.** The decoder trainer (`co-adaptation/02_coadapt_decoder.py --mode dec`), the flow trainer (`04_train_cond_flow.py`) and the ceiling analysis (`14_ceiling_analysis.py`) each take `--latents <store>` in place of the encoder. A store is a directory with one vector per cell (`embeddings.npy`), the processed-cache row of each vector (`row_idx.npy`) and a manifest saying which model, mode and layer produced it and which version of the cache it belongs to; the package is [`ssllab.embeddings`](../../../src/ssllab/embeddings/). Every decoder and flow trained this way records which latent space it read, and the pipeline refuses to pair a flow and a decoder from different spaces, even when their widths agree. Reading our own encoder's exported store through this path reproduces the published round-11 readout ceiling: identical profiles to the on-the-fly encoder, and 0.86695 for seed 0.
 
@@ -68,7 +68,7 @@ Every Geneformer embedding spreads over hundreds of directions, so none is colla
 
 ## The comparison
 
-The protocol is pre-registered in the docstring of `07_score_comparison.py`, committed before any arm was trained. In short:
+The results are [round 14 of the results ledger](../docs/results/round-14-foundation-encoder.md): at the readout ceiling, all four V2 embeddings read held-out cells better than our frozen JEPA encoder, up to $0.908$ against $0.863$, and V1 ties; the full pipeline is being rerun under the protocol's amendment 1. The protocol is pre-registered in the docstring of `07_score_comparison.py`, committed before any arm was trained. In short:
 
 - **Arms.** Our frozen JEPA encoder, exported to a store so that it reaches the decoder and the flow by exactly the same code as every other arm. Geneformer V1-10M (gene mean), V2-104M and V2-104M_CLcancer (summary token and gene mean). The four V2 embeddings again, projected onto their 256 leading principal components, fit on training cells only. Every arm gets the round-11 corrected count decoder and round 1's transport flow, three seeds each. A 768-wide flow gets a 768-wide hidden layer: with the usual 256, the flow could only move cells inside one fixed 256-dimensional subspace of the embedding.
 - **Primary endpoint.** The readout ceiling's Δr, real held-out cells encoded and decoded, for each full-width Geneformer arm minus the JEPA arm: one family of five contrasts with simultaneous intervals, and the same pass rule as rounds 11 to 13 (at least +0.02, with the simultaneous interval wholly above 0).

@@ -27,6 +27,7 @@
 | — | Every published model under round 11's corrected conventions | Descriptive: every decoder-based model rises, the order holds, coverage sits near nominal | [the re-baseline](rebaseline-after-round-11.md) |
 | 12 | Does training the encoder and the decoder together raise the stack's readout ceiling? | Yes for joint training, $+0.071$ $[+0.010, +0.133]$, to $0.936$; not with the JEPA objective maintained; the full pipeline reaches $0.900$ | [co-adaptation Phase 1](round-12-coadaptation.md) |
 | 13 | Does the JEPA pretraining contribute to round 12's gain? | Not established: random starts score $0.948$ and $0.961$ against the pretrained start's $0.936$, simultaneous intervals including zero; their pipelines reach $0.909$ and $0.921$ | [joint training from a random start](round-13-random-start.md) |
+| 14 | Does a frozen encoder pretrained on millions of cells, Geneformer, read held-out cells better than our JEPA encoder? | Yes for V2, all four model and mode arms: readout ceiling up to $0.908$ against $0.863$, $+0.045$ $[+0.009, +0.081]$; V1 ties; full pipeline pending | [Geneformer as the encoder](round-14-foundation-encoder.md) |
 
 Rounds are numbered in the order they were run. Round 7b is a companion ablation run between rounds 7 and 8, sharing round 8's metrics but with its own question and protocol. The re-baseline is not a round: it tests nothing and re-reads the published models under the conventions round 11 corrected.
 
@@ -106,6 +107,11 @@ Since round 11, the count decoder's likelihood counts the library size over the 
 | 11 | **conditional NB-VAE, encoder reads the condition** (the strongest learned baseline) | 3 | **0.939** | **0.455** | **0.819** | 0.776 | **0.262** | **0.355** |
 | 7 | **additive model** (the reference on $\Delta r$ and $e_p$; a mean, no population) | — | **0.961** | **0.289** | | | | |
 | — | *readout ceiling, frozen encoder (real held-out cells → encoder → decoder)* | 3 | *0.865* | *0.491* | | | | |
+| 14 | *readout ceiling, frozen Geneformer V1-10M, mean over genes* | 3 | *0.862* | *0.487* | | | | |
+| 14 | *readout ceiling, frozen Geneformer V2-104M, `<cls>` token* | 3 | *0.895* | *0.416* | | | | |
+| 14 | *readout ceiling, frozen Geneformer V2-104M, mean over genes* | 3 | *0.908* | *0.405* | | | | |
+| 14 | *readout ceiling, frozen Geneformer V2-104M_CLcancer, `<cls>` token* | 3 | *0.890* | *0.418* | | | | |
+| 14 | *readout ceiling, frozen Geneformer V2-104M_CLcancer, mean over genes* | 3 | *0.901* | *0.416* | | | | |
 | 12 | *readout ceiling, encoder and decoder co-adapted* | 3 | *0.936* | *0.340* | | | | |
 | 13 | *readout ceiling, co-adapted from a random start, encoder learning rate $10^{-4}$* | 3 | *0.948* | *0.325* | | | | |
 | 13 | *readout ceiling, co-adapted from a random start, encoder learning rate $10^{-3}$* | 3 | *0.961* | *0.296* | | | | |
@@ -114,7 +120,7 @@ Since round 11, the count decoder's likelihood counts the library size over the 
 | 13 | *linear readout of the encoder co-adapted from a random start, learning rate $10^{-4}$* | 3 | *0.946* | *0.318* | | | | |
 | 13 | *linear readout of the encoder co-adapted from a random start, learning rate $10^{-3}$* | 3 | *0.951* | *0.305* | | | | |
 
-The two round-12 pipelines and the transport flow on the frozen encoder are the three arms of round 12 and compare directly. The round-13 rows compare directly with the co-adapted round-12 rows, which round 13 re-read as its pretrained arm. The other rows are read against them through the two references, the conditioned NB-VAE and the additive model. The italic rows are diagnostics handed real held-out cells, not models.
+The two round-12 pipelines and the transport flow on the frozen encoder are the three arms of round 12 and compare directly. The round-13 rows compare directly with the co-adapted round-12 rows, which round 13 re-read as its pretrained arm. The round-14 rows compare directly with the frozen encoder's readout ceiling, which round 14 re-ran through the same code path as its control and found at $0.863$. The other rows are read against them through the two references, the conditioned NB-VAE and the additive model. The italic rows are diagnostics handed real held-out cells, not models.
 
 ### Published, before round 11's correction
 
@@ -166,6 +172,8 @@ Rounds differ in what they change. Unless a round's page says otherwise, everyth
 ## Open, and what comes next
 
 *Since rounds 11 to 13.* Under the corrected conventions, the flows on the frozen encoder sit about $0.10$ below the conditioned NB-VAE and $0.12$ below additivity. Co-adapting the encoder and the decoder narrows those distances to $0.039$ and $0.061$, and to $0.017$ and $0.039$ when the encoder starts from random weights; the JEPA pretraining is not established to contribute. The paragraph and items below were written before that, with the published numbers, and are kept with notes where a later round answered them.
+
+*Since round 14.* Geneformer V2, a frozen encoder pretrained on about 104 million cells from many tissues and experiments, reads held-out cells better than our frozen JEPA encoder: a readout ceiling of up to $0.908$ against $0.863$, with the size-aware error down from $0.49$ to about $0.41$, while the smaller V1 model ties. Whether the full pipeline on those embeddings follows is being scored, and the protocol's trigger has fired, which makes joint training of Geneformer with the decoder, against a random-start twin, a candidate for a separate round. Which property of Geneformer carries the gain, its pretraining, its reading of the whole transcriptome or its size, is not separated yet.
 
 Three structural levers have now been built and measured, and none closed even the original gap of $0.12$; against the round-6 bar the gap is about $0.21$, and against the round-7 additive reference about $0.31$. The ceiling explains why two of them never could: the transition they targeted had at most $0.03$ of headroom. That is worth stating plainly rather than softening, because it changes what the remaining questions are, and it retires some of them.
 
