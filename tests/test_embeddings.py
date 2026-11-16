@@ -230,3 +230,29 @@ def test_combo_train_rows_cover_the_fit_set(tmp_path):
     """The comparison fits projections on combo-train rows; the toy cache has them."""
     cache = load_cache(_toy_cache(tmp_path, n_hvg=40, n_tokens=8) / "norman2019")
     assert (cache.split_combo == SPLIT_TRAIN).sum() > 0
+
+
+# --------------------------------------------------------------------------- #
+# The flow trainer records its optimizer settings and its training history.
+# --------------------------------------------------------------------------- #
+@pytest.mark.parametrize("extra, lr, clip", [([], 1e-3, None), (["--lr", "3e-4", "--grad-clip", "1.0"], 3e-4, 1.0)])
+def test_flow_trainer_records_lr_clip_and_history(tmp_path, extra, lr, clip):
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    root = _toy_cache(tmp_path)
+    cache = load_cache(root / "norman2019")
+    rows = np.arange(len(cache.pert_id))
+    z = np.random.default_rng(0).normal(size=(len(rows), 6)).astype(np.float32)
+    store = write_store(tmp_path / "store", z, rows, source="test", dataset_fingerprint=cache_fingerprint(cache))
+    script = Path(__file__).resolve().parents[1] / "examples/perturbation_response/04_train_cond_flow.py"
+    subprocess.run([sys.executable, str(script), "--experiment", "flow", "--latents", str(store.path),
+                    "--output-root", str(tmp_path / "out"), "--data-dir", str(root), "--split", "combo",
+                    "--cond-type", "geneset", "--flow-base", "control", "--epochs", "2", "--batch-size", "16",
+                    "--hidden", "16", "--device", "cpu", *extra], check=True, capture_output=True)
+    ck = torch.load(tmp_path / "out/flow/checkpoints/cond_flow.pt", map_location="cpu", weights_only=False)
+    assert ck["lr"] == pytest.approx(lr) and ck["grad_clip"] == clip
+    rep = json.loads((tmp_path / "out/flow/reports/stage_b_flow.json").read_text())
+    assert rep["lr"] == pytest.approx(lr) and rep["grad_clip"] == clip
+    assert len(rep["history"]["cfm_loss"]) == 2 and all(np.isfinite(rep["history"]["grad_norm_max"]))

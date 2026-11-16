@@ -219,6 +219,7 @@ def main() -> None:
         "ctrl_pool": ctrl_pool.cpu(),  # standardized control latents, for sampling z_b (source or baseline)
         "latent_source": identity,     # the latent space; a decoder paired with this flow must share it
         "grad_clip": args.grad_clip,
+        "lr": args.lr,
     }, out)
     exp.write_report("stage_b_flow", {"final_cfm_loss": avg, "n_perts": n_perts, "cond_type": args.cond_type,
                                       "flow_base": args.flow_base,

@@ -150,6 +150,42 @@ Gate (c) gains one condition: every 768-wide flow records ``grad_clip`` 1.0 and 
 records none. Secondary 10, descriptive: per flow, the final loss, the largest epoch-mean loss over
 the first, the largest gradient norm and the share of clipped steps.
 
+**Outcome.** Clipping did not stabilize them: all twelve exceeded the criterion (largest epoch loss
+4.6 x 10^3 to 8.3 x 10^7 times the first; gradient norm before clipping up to 10^8 to 4 x 10^12), so
+under this amendment the four full-width pipelines were reported as not trainable.
+
+Amendment 2 (2026-11-16): a lower learning rate for the 768-wide flows
+---------------------------------------------------------------------
+**Diagnosis.** Two checks were run after amendment 1's outcome, before this amendment was written.
+``09_coordinate_stats.py`` found that the flow's per-coordinate standardization makes no coordinate
+of any V2 store extreme (the largest standardized value is about 10 in every store, as in the
+projected stores that train smoothly), so the input's scale is not the cause.
+``run_flow_stability_probe_pod.sh`` then trained five flows on seed 0 for 60 epochs, reading only
+their loss histories:
+
+=================  =========================  ======  =======  =================================
+probe              store                      hidden  lr       outcome
+=================  =========================  ======  =======  =================================
+lr3e-4             V2-104M gene mean (768)    768     3e-4     stable, final loss 0.868
+lr1e-4             V2-104M gene mean (768)    768     1e-4     stable, final loss 0.881
+hid256             V2-104M gene mean (768)    256     1e-3     stable, final loss 0.958
+jepa_hid768        our JEPA encoder (256)     768     1e-3     stable
+p256_hid768        V2 projected to 256        768     1e-3     diverged from epoch 13
+=================  =========================  ======  =======  =================================
+
+A 768-wide hidden layer at learning rate 1e-3 diverges on Geneformer's embeddings, whatever their
+width, and does not on our encoder's; at 3e-4 it trains stably.
+
+**What changes.** The twelve 768-wide flows are retrained at learning rate 3e-4
+(``04_train_cond_flow.py --lr 3e-4``) without gradient clipping; hidden width, epochs, seeds and
+everything else stay as above. The 256-wide flows are kept as trained, at 1e-3. Amendment 1's
+divergence rule still applies. Like amendment 1, this one cannot affect the primary endpoint or any
+ceiling-based secondary.
+
+Gate (c) now checks each flow's recorded learning rate and clipping: 3e-4 and none for the 768-wide
+flows, 1e-3 and none for the 256-wide ones. Flows trained before the learning rate was recorded in
+the checkpoint are read at the trainer's default of the time, 1e-3.
+
 Usage (on the pod or locally after the fetch, from the repo root):
     python examples/perturbation_response/foundation-encoder/07_score_comparison.py \\
         --output-root output --out output/gf_compare.json
@@ -189,7 +225,9 @@ SEEDS = (0, 1, 2)
 N_CELLS = 109_737
 GATE2_REF = {0: 0.86695, 1: 0.86338, 2: 0.86502}
 JEPA_CEILING_REF = 0.865
-GRAD_CLIP = 1.0  # amendment 1: the 768-wide flows clip the gradient's total norm here
+# amendment 2: (learning rate, gradient clip) each flow must record, by its hidden width
+FLOW_RECIPE = {768: (3e-4, None), 256: (1e-3, None)}
+LR_DEFAULT_BEFORE_RECORDING = 1e-3  # 04's default when flows did not yet store their learning rate
 POP = ("coverage", "spread_r", "wasserstein", "energy")
 KEYS = ("delta_r", "rel_err")
 CONVS = ("measured", "own")
@@ -335,9 +373,11 @@ def main() -> None:
                 _fail(f"{arm} s{s}: flow and decoder read different latent spaces")
             if (fl.get("latent_source") or {}).get("content_md5") != stores[arm].manifest["content_md5"]:
                 _fail(f"{arm} s{s}: flow did not read the arm's store")
-            want_clip = GRAD_CLIP if hidden == 768 else None
-            if fl.get("grad_clip") != want_clip:
-                _fail(f"{arm} s{s}: flow trained with grad_clip {fl.get('grad_clip')}, amendment 1 says {want_clip}")
+            want_lr, want_clip = FLOW_RECIPE[hidden]
+            got_lr = fl.get("lr", LR_DEFAULT_BEFORE_RECORDING)
+            if fl.get("grad_clip") != want_clip or abs(got_lr - want_lr) > 1e-12:
+                _fail(f"{arm} s{s}: flow trained with lr {got_lr} and grad_clip {fl.get('grad_clip')}, "
+                      f"amendment 2 says {want_lr} and {want_clip}")
             flow_training.setdefault(arm, []).append(training_record(exp, s))
             exps.append(exp)
         # Amendment 1: an arm with a diverged flow has no pipeline measurement; it is reported as not trainable.
@@ -482,7 +522,7 @@ def main() -> None:
         print(f"  visible genes only, {k}: Δr {short(v['measured']['delta_r'])}")
     for k, v in projection_cost.items():
         print(f"  projection cost {k}: Δr {short(v['delta_r'])}")
-    print(f"  diverged flows (amendment 1): {', '.join(diverged) if diverged else 'none'}")
+    print(f"  diverged flows (amendments 1 and 2): {', '.join(diverged) if diverged else 'none'}")
 
     result = {
         "protocol": "foundation-encoder/07_score_comparison.py docstring", "seeds": list(seeds), "smoke": args.smoke,
