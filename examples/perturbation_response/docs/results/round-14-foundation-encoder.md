@@ -2,7 +2,7 @@
 
 *Part of [the results ledger](index.md), which holds the standing verdict, the scoreboard and the settings every round shares. Previous: [round 13](round-13-random-start.md).*
 
-> **Status.** The primary endpoint and every secondary that reads only decoders and readout ceilings are final and reported below. The full-pipeline secondaries are being rerun under amendment 1 of the protocol, described in the full-pipeline section, and will be added to this page when they have been scored.
+> **Status.** Every result on this page is final. The 768-wide flows did not train stably even after amendment 1 to the protocol, so the full-width V2 arms have no full-pipeline measurement; why they fail, and whether a different recipe trains them, is open.
 
 **What changed.** Every encoder in this ledger so far was trained on the Norman cells themselves. This round replaces the encoder with [Geneformer](https://huggingface.co/ctheodoris/Geneformer), a transformer pretrained on about 30 million (V1) or 104 million (V2) single-cell transcriptomes from many tissues and experiments, and keeps it frozen. Each Geneformer model turns every Norman cell into one vector, and the round-11 corrected count decoder and the round-1 transport flow are trained on those vectors exactly as they are on our JEPA encoder's. The [foundation-encoder series](../foundation-encoder/index.md) explains how Geneformer reads a cell, what its vectors can carry, and which scored genes it has no token for.
 
@@ -104,7 +104,45 @@ The seeds agree. The three `jepa` seeds score $0.857$ to $0.867$, and the three 
 
   Together these make the deep end of the list a candidate for part of the difference between V1, which never reads it, and V2. They do not separate it from the other differences between the models: V2 has twice the layers, three times the width and more than three times the pretraining cells.
 
-- **The full pipeline: pending, under amendment 1.** In the first full run, all twelve 768-wide flows, the four full-width V2 arms at three seeds, became unstable during training. Their epoch-mean flow-matching loss, about 1.5 after the first epoch, spiked to between $10^5$ and $4 \times 10^9$ before falling back, and three of them then generated non-finite cells. All eighteen 256-wide flows, including the four projected V2 arms, trained smoothly, ending at a loss of $0.83$ to $1.55$. A flow that diverged is a failed fit, not a measurement, so those twelve pipelines are not reported. Amendment 1 to the protocol, written into the scoring script's docstring before the rerun, retrains the twelve 768-wide flows with the gradient's total norm clipped at 1.0 before each optimizer step and changes nothing else. In a short test run on our encoder's store, a healthy flow's gradient norm was about 0.1 to 0.2, so the threshold should cap only spikes. Every flow now reports its per-epoch loss and gradient norms; a 768-wide flow whose loss ever exceeds twice its first epoch's will be reported as diverged, and its arm's pipeline as not trainable under this recipe. The amendment cannot touch the primary endpoint or any secondary above, which read only decoders and readout ceilings. The pipeline secondaries, the comparison with the conditioned cVAE and additivity, the headroom and the population quality and calibration of every arm will be scored together once the rerun is in.
+- **The full pipeline.** Each arm's transport flow generates latent cells for each held-out pair, and the same seed's decoder turns them into counts. Six arms have a pipeline measurement: `jepa`, `v1_cell` and the four projected V2 arms. The four full-width V2 arms have none, for the reason given in the next item.
+
+  | pipeline | $\Delta r$ | $e_p$ | $\Delta r$, own control | $e_p$, own control | minus `jepa`, $\Delta r$ | minus `jepa`, $e_p$ |
+  |---|---|---|---|---|---|---|
+  | `jepa` | 0.830 | 0.578 | 0.850 | 0.600 | | |
+  | `v1_cell` | 0.793 | 0.609 | 0.744 | 0.710 | $-0.038$ $[-0.082, +0.001]$ | $+0.030$ $[-0.016, +0.074]$ |
+  | `v2_cls_p` | 0.853 | 0.559 | 0.869 | 0.580 | $+0.023$ $[+0.001, +0.046]$ | $-0.020$ $[-0.064, +0.023]$ |
+  | `v2_cell_p` | 0.866 | 0.539 | 0.882 | 0.560 | $+0.036$ $[+0.015, +0.059]$ | $-0.039$ $[-0.074, -0.005]$ |
+  | `v2cl_cls_p` | 0.856 | 0.536 | 0.879 | 0.544 | $+0.026$ $[+0.006, +0.048]$ | $-0.043$ $[-0.081, -0.012]$ |
+  | `v2cl_cell_p` | 0.858 | 0.549 | 0.879 | 0.576 | $+0.027$ $[+0.010, +0.049]$ | $-0.029$ $[-0.057, -0.002]$ |
+  | conditioned cVAE, round 11 | 0.939 | 0.455 | | | | |
+  | additive reference | 0.961 | 0.289 | | | | |
+
+  The V2 advantage carries into the generated cells, at a smaller size. The four projected V2 pipelines score $0.853$ to $0.866$ against the `jepa` pipeline's $0.830$, gains of $+0.023$ to $+0.036$ with every interval above zero, and their size-aware error is lower by $0.020$ to $0.043$, with three of the four intervals below zero. Under the own-control convention the gains are $+0.020$ to $+0.032$. The `jepa` pipeline itself, $0.830$, sits where the transport flow on the frozen encoder sat in the [re-baseline](rebaseline-after-round-11.md), $0.837$. V1's pipeline falls below ours, $-0.038$ $[-0.082, +0.001]$, and clearly so under the own-control convention, $-0.105$ $[-0.210, -0.023]$, although its readout ceiling ties.
+
+  Every pipeline remains well below the two references. The best, `v2_cell_p`, is $0.073$ $[0.027, 0.134]$ below the conditioned cVAE in $\Delta r$ with a size-aware error $0.084$ $[0.049, 0.121]$ higher, and $0.095$ $[0.046, 0.159]$ below additivity with an error $0.250$ $[0.167, 0.337]$ higher.
+
+- **Transition headroom.** Readout ceiling minus full pipeline is $0.033$ $[0.014, 0.054]$ for `jepa`, $0.043$ to $0.052$ for the projected V2 arms and $0.070$ $[0.035, 0.121]$ for `v1_cell`. The flow loses more of the Geneformer arms' readout than of ours, so part of the V2 advantage at the ceiling does not reach the generated cells. For the projected arms the gain over `jepa` is $0.039$ to $0.046$ at the ceiling and $0.023$ to $0.036$ in the pipeline, so between a fifth and a half of it, about a third on average, is lost in the flow.
+
+- **Population quality and calibration of the full pipelines.** Definitions as in the protocol: coverage is the fraction of true (cell, gene) entries inside each gene's central 80% predicted interval, pooled over each pair's top 20 genes, with the nominal $0.80$ as the target; spread is the correlation of per-gene standard deviations across those genes; $W_1$ is the per-gene Wasserstein distance, averaged, so it compares marginals only; energy distance is joint over the 20 genes.
+
+  | pipeline | coverage (gap to 0.80) | spread | $W_1$ | energy |
+  |---|---|---|---|---|
+  | `jepa` | $0.774$ ($-0.026$) | $0.673$ | $0.402$ | $0.895$ |
+  | `v1_cell` | $0.761$ ($-0.039$) | $0.594$ | $0.452$ | $1.148$ |
+  | `v2_cls_p` | $0.751$ ($-0.049$) | $0.647$ | $0.394$ | $0.819$ |
+  | `v2_cell_p` | $0.761$ ($-0.039$) | $0.680$ | $0.370$ | $0.750$ |
+  | `v2cl_cls_p` | $0.772$ ($-0.028$) | $0.673$ | $0.363$ | $0.711$ |
+  | `v2cl_cell_p` | $0.765$ ($-0.035$) | $0.675$ | $0.380$ | $0.784$ |
+
+  The projected V2 populations are closer to the real cells than ours in their joint structure: energy distance lower by $0.076$ to $0.185$, with the intervals of `v2_cell_p`, $-0.145$ $[-0.309, -0.002]$, and `v2cl_cls_p`, $-0.185$ $[-0.421, -0.026]$, below zero. $W_1$ is lower by $0.008$ to $0.039$, clearly so only for `v2cl_cls_p`. Spread is unchanged, and coverage is the same or slightly lower, by $0.001$ to $0.022$. V1's populations are worse than ours on spread, $W_1$ and energy. The conditioned cVAE, at the same defaults, has spread $0.819$, $W_1$ $0.262$ and energy $0.355$ ([the re-baseline](rebaseline-after-round-11.md)), still well ahead of every pipeline here.
+
+- **The 768-wide flows, and amendment 1.** In the first full run, all twelve 768-wide flows, the four full-width V2 arms at three seeds, became unstable during training. Their epoch-mean flow-matching loss, about 1.5 after the first epoch, spiked to between $10^5$ and $4 \times 10^9$ before falling back, and three of them then generated non-finite cells. All eighteen 256-wide flows, including the four projected V2 arms, trained smoothly, ending at a loss of $0.83$ to $1.55$. Amendment 1 to the protocol, written into the scoring script's docstring before the rerun, retrained the twelve 768-wide flows with the gradient's total norm clipped at 1.0 before each optimizer step and changed nothing else. It also fixed in advance what would count as still unstable: an epoch-mean loss that ever exceeds twice the first epoch's.
+
+  Clipping did not stabilize them. Every one of the twelve exceeded that criterion: the largest epoch-mean loss reached between $4.6 \times 10^3$ and $8.3 \times 10^7$ times the first epoch's. Before clipping, the gradient's norm reached $10^8$ to $4 \times 10^{12}$ in each run, and the cap was active on $7\%$ to $32\%$ of all steps. Under the amendment, the four full-width V2 pipelines are therefore reported as not trainable under this recipe, and the protocol's planned contrast between full-width and projected pipelines cannot be made. Clipping bounds the gradient that reaches the optimizer, but AdamW scales each parameter's step by a running estimate of that parameter's gradient size, so the size of a step depends mostly on the learning rate and is limited far less by clipping than plain gradient descent would be. Why the 768-wide flows blow up at all has not been diagnosed. Two candidates are a learning rate too high for the wider network and coordinates of the embedding with very small variance that become extreme once each coordinate is standardized; neither has been tested.
+
+- **The ranking hypothesis, at the pipeline.** For the projected V2 pipelines, the gains over `jepa` in $\Delta r$, $+0.023$ to $+0.036$, and in size-aware error, $0.020$ to $0.043$, are of the same size, as at the ceiling. Neither shows the size of a change as the weak point.
+
+- **The effective rank of each store**, on 2,000 training cells drawn with seed 0: `jepa` $211$ of 256 possible, `v1_cell` $152$ of 256, the full-width V2 stores $407$ to $454$ of 768, and the projected V2 stores $154$ to $196$ of 256. The projections are the least evenly spread of all and read held-out cells best, another reminder that this measure is not a ranking of quality.
 
 ## What it means
 
@@ -112,11 +150,14 @@ At the readout ceiling, with the encoder frozen and this decoder, Geneformer's V
 
 This is the first round in which a frozen encoder other than our own JEPA has been placed in the pipeline, and the first in which a frozen representation reads held-out cells clearly better than `norman_stage_a`. The rounds that raised the readout ceiling further, 12 and 13, did it by training the encoder and the decoder together, to $0.936$ from the pretrained start and $0.948$ to $0.961$ from random starts. Those numbers come from other rounds and are not compared here, but they put the result in proportion: a frozen V2 embedding at $0.908$ gains about half of what joint training added to our frozen encoder's $0.865$, without touching the encoder at all. Whether joint training adds to a Geneformer start what it adds to ours is the question the fired trigger raises for a separate round.
 
+The advantage reaches the generated cells, smaller. Read through the transport flow at 256 dimensions, the V2 embeddings give pipelines that score $0.853$ to $0.866$ against our $0.830$, with populations whose joint structure is closer to the real cells. About a third of the readout advantage is lost on the way, because the flow trails each V2 arm's readout ceiling by more than it trails ours. Every pipeline here remains below the conditioned cVAE, by $0.073$ or more, and below additivity. The flows could not use the full 768-dimensional V2 embeddings at all with this recipe.
+
 ## What it does not mean
 
 - It does not show that Geneformer's pretraining is what helps. The Geneformer arms differ from ours in more than pretraining: they read each cell's whole transcriptome, about 19,000 measured genes of which about 3,100 per cell are expressed and have tokens, where our encoder reads the 5,000-gene panel; they encode ranks rather than values; and they are far larger. This round compares encoders as built, not the factors inside them. That V1, which also reads the whole transcriptome but only its top 2,048 genes, ties with our encoder narrows the candidates without settling them.
 - It does not contradict the published benchmarks directly. Those compared foundation-model embeddings with simple baselines on other tasks. Here the comparison is with another learned encoder, through a decoder trained on the benchmark's own cells, and the endpoint is a readout of real held-out cells.
-- The readout ceiling is a diagnostic handed real held-out cells, not a model. The full pipeline is the model, and its numbers are still to come.
+- The readout ceiling is a diagnostic handed real held-out cells, not a model. The full pipeline is the model, and it carries about two thirds of the V2 advantage, measured on the projected embeddings only.
+- It does not show that a flow cannot use a 768-wide embedding. It shows that this flow recipe, with or without gradient clipping, does not train stably on one.
 - No learned model passes additivity. The readout ceiling of the best arm, $0.908$, is itself below the additive reference's $0.961$.
 - It applies to these Geneformer models, at their default layer and modes, read by this decoder recipe at 30 epochs. Another layer, another model size or a different decoder could change it.
 
@@ -124,7 +165,7 @@ This is the first round in which a frozen encoder other than our own JEPA has be
 
 - The `jepa` arm is our encoder read through the new store path within this round, not round 11's runs re-read; the interface gate shows the path reproduces round 11 exactly, and the within-round arm scores $0.863$ against round 11's $0.865$.
 - Each arm's decoder was trained once per seed. The intervals describe the twenty pairs, with seeds averaged per pair first. Pairs share genes, so the twenty are not independent.
-- The 768-wide flows needed a protocol amendment after their first run failed. The amendment was written before the rerun and changes only the flows' optimizer, but it is a deviation from the protocol as first committed, and the full-pipeline results will carry that note.
+- The 768-wide flows needed a protocol amendment after their first run failed, and still failed under it. The amendment was written before the rerun and changed only the flows' optimizer; it is a deviation from the protocol as first committed. The 256-wide flows, whose pipelines are reported, were trained once without clipping, as the original protocol specified.
 - The mechanism checks are descriptive and on a 2,000-cell sample of the 109,737.
 
 ## Scripts and reports
