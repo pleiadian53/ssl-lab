@@ -125,15 +125,13 @@ print("gate (e):", got, "passed" if ok else "FAILED"); sys.exit(0 if ok else 1)
 PY
 echo "gate (e) passed"
 
-run_parallel() {   # runs the given commands, PARALLEL at a time (in batches where `wait -n` is missing)
-  local running=0 has_wait_n=0
-  if [ "${BASH_VERSINFO[0]}" -gt 4 ] || { [ "${BASH_VERSINFO[0]}" -eq 4 ] && [ "${BASH_VERSINFO[1]}" -ge 3 ]; }; then has_wait_n=1; fi
+run_parallel() {   # runs the given commands, at most PARALLEL at a time
+  # Counts the jobs still running instead of trusting `wait -n`, which can return at once for a job
+  # that finished earlier; round 15's first attempt ran four memory-heavy ceilings together that way,
+  # and the pod's container was killed. `jobs -rp` and `sleep` also work in bash 3.2.
   for job in "$@"; do
+    while [ "$(jobs -rp | wc -l)" -ge "$PARALLEL" ]; do sleep 2; done
     eval "$job" &
-    running=$((running + 1))
-    if [ "$running" -ge "$PARALLEL" ]; then
-      if [ "$has_wait_n" -eq 1 ]; then wait -n; running=$((running - 1)); else wait; running=0; fi
-    fi
   done
   wait
 }
@@ -182,7 +180,9 @@ compare_round() {   # trains and reads every arm of RUN_ARMS under the current O
       in_list "$a" "$PIPELINE_ARMS" && jobs+=("pipeline $a $s")
     done
   done
-  run_parallel "${jobs[@]}"
+  # Each full ceiling fits its ridge readout in float64 on every training cell, about 10 GB of host
+  # memory, so the readouts run READ_PARALLEL at a time (default 2) within the pod's 46.6 GB container.
+  PARALLEL="${READ_PARALLEL:-2}" run_parallel "${jobs[@]}"
 }
 
 if [ -n "${FLOWS_ONLY:-}" ]; then
