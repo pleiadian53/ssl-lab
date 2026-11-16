@@ -18,7 +18,7 @@
 #   2. compare 07_score_comparison.py -> $OUT/gf_compare.json
 #
 # FLOWS_ONLY="<arms>" replaces steps 0 and 1 with a rerun of only those arms' flows and their
-# readouts (06, 19, 10) at full settings; used for amendment 1 (the four 768-wide arms).
+# readouts (06, 19, 10) at full settings; used for amendments 1 and 2 (the four 768-wide arms).
 #
 # LOCAL=1 runs the same steps on a laptop CPU (no CUDA check, md5 via `md5 -q`), for the code smoke.
 #
@@ -55,13 +55,30 @@ store_of() {
     v2_cell_p) echo geneformer_full/stores_p256/V2-104M_cell ;;
     v2cl_cls_p) echo geneformer_full/stores_p256/V2-104M_CLcancer_cls ;;
     v2cl_cell_p) echo geneformer_full/stores_p256/V2-104M_CLcancer_cell ;;
+    v2rand_cell|v2panel_cell|v2cut_cell|v2big_cell) echo "geneformer_r15/stores/$1" ;;           # round 15
+    v2rand_cell_p|v2panel_cell_p|v2cut_cell_p|v2big_cell_p) echo "geneformer_r15/stores_p256/${1%_p}" ;;
     *) echo "unknown arm $1" >&2; return 1 ;;
   esac
 }
-hidden_of() { case "$1" in v2_cls|v2_cell|v2cl_cls|v2cl_cell) echo 768 ;; *) echo 256 ;; esac; }
-# Amendment 1 (07's docstring): the 768-wide flows clip the gradient's total norm at 1.0; the others do not.
-clip_of() { case "$1" in v2_cls|v2_cell|v2cl_cls|v2cl_cell) echo 1.0 ;; *) echo "" ;; esac; }
-ARMS="${ARMS:-jepa v1_cell v2_cls v2_cell v2cl_cls v2cl_cell v2_cls_p v2_cell_p v2cl_cls_p v2cl_cell_p}"
+hidden_of() { case "$1" in v2_cls|v2_cell|v2cl_cls|v2cl_cell|v2rand_cell|v2panel_cell|v2cut_cell) echo 768 ;;
+                           v2big_cell) echo 1152 ;; *) echo 256 ;; esac; }
+# Amendment 2 (07's docstring): the 768-wide flows train at learning rate 3e-4; the others at 04's default.
+lr_of() { case "$1" in v2_cls|v2_cell|v2cl_cls|v2cl_cell) echo 3e-4 ;; *) echo "" ;; esac; }
+# ROUND picks the arms and the scorer. Round 15 (11_score_round15.py) trains the new arms only and re-reads
+# round 14's v2_cell, jepa and v2_cell_p; its smoke pass trains those too, so the scorer can run on it.
+ROUND="${ROUND:-14}"
+if [ "$ROUND" = "15" ]; then
+  ARMS="${ARMS:-v2rand_cell v2panel_cell v2cut_cell v2big_cell v2rand_cell_p v2panel_cell_p v2cut_cell_p v2big_cell_p}"
+  SMOKE_ARMS="${SMOKE_ARMS:-jepa v2_cell v2_cell_p $ARMS}"
+  PIPELINE_ARMS="${PIPELINE_ARMS:-jepa v2_cell_p v2rand_cell_p v2panel_cell_p v2cut_cell_p v2big_cell_p}"
+  SCORER="$FE/11_score_round15.py"; SCORE_JSON=gf15_compare.json; SCORE_LOG=compare15.log
+else
+  ARMS="${ARMS:-jepa v1_cell v2_cls v2_cell v2cl_cls v2cl_cell v2_cls_p v2_cell_p v2cl_cls_p v2cl_cell_p}"
+  SMOKE_ARMS="${SMOKE_ARMS:-$ARMS}"
+  PIPELINE_ARMS="${PIPELINE_ARMS:-$ARMS}"
+  SCORER="$FE/07_score_comparison.py"; SCORE_JSON=gf_compare.json; SCORE_LOG=compare.log
+fi
+in_list() { case " $2 " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 
 # ---- preflight ------------------------------------------------------------------------------ #
 fail=0
@@ -76,9 +93,9 @@ for s in ${SEEDS:-0 1 2}; do   # SEEDS: local tests only
          "norman_r11_vae_hvg_s$s/reports/effect_size_cvae.json" "norman_r11_vae_hvg_s$s/reports/profiles_vae.npz")
 done
 for f in "${need[@]}"; do [ -f "$OUT/$f" ] || { echo "FATAL: missing $OUT/$f"; fail=1; }; done
-for a in $ARMS; do [ -f "$OUT/$(store_of $a)/manifest.json" ] || { echo "FATAL: missing store $OUT/$(store_of $a)"; fail=1; }; done
+for a in $SMOKE_ARMS; do [ -f "$OUT/$(store_of $a)/manifest.json" ] || { echo "FATAL: missing store $OUT/$(store_of $a)"; fail=1; }; done
 [ "$fail" -eq 1 ] && { echo "PREFLIGHT FAILED; nothing was run."; exit 1; }
-stores=(); for a in $ARMS; do stores+=("$OUT/$(store_of $a)"); done
+stores=(); for a in $SMOKE_ARMS; do stores+=("$OUT/$(store_of $a)"); done
 python - "$DATA/norman2019" "${stores[@]}" <<'PY' || { echo "PREFLIGHT FAILED: a store does not load or match its manifest"; exit 1; }
 import sys
 from ssllab.data.perturbseq import cache_fingerprint_from_dir
@@ -133,12 +150,12 @@ ceiling() {   # $1 = arm, $2 = seed
     && echo "read $1 s$2" || echo "CEILING FAILED: $1 s$2"
 }
 pipeline() {   # $1 = arm, $2 = seed
-  local exp="norman_gf_flow_$1_s$2" clip
-  local clip_flag=(); clip=$(clip_of "$1"); [ -n "$clip" ] && clip_flag=(--grad-clip "$clip")
+  local exp="norman_gf_flow_$1_s$2" lr
+  local lr_flag=(); lr=$(lr_of "$1"); [ -n "$lr" ] && lr_flag=(--lr "$lr")
   rm -rf "${O:?}/$exp"; mkdir -p "$O/$exp/checkpoints"
   python $EP/04_train_cond_flow.py --experiment "$exp" --latents "$O/$(store_of $1)" --output-root "$O" --data-dir "$DATA" \
     --split combo --cond-type geneset --flow-base control --coupling independent --epochs "$FLOW_EPOCHS" \
-    --hidden "$(hidden_of $1)" ${clip_flag[@]+"${clip_flag[@]}"} --seed "$2" --device "$DEV" "${limit_flag[@]}" > "$LOGS/flow_$1_s$2.log" 2>&1 \
+    --hidden "$(hidden_of $1)" ${lr_flag[@]+"${lr_flag[@]}"} --seed "$2" --device "$DEV" "${limit_flag[@]}" > "$LOGS/flow_$1_s$2.log" 2>&1 \
     || { echo "FLOW FAILED: $1 s$2"; return; }
   cp "$O/norman_gf_dec_$1_s$2/checkpoints/count_decoder.pt" "$O/$exp/checkpoints/count_decoder.pt"
   python $EP/06_eval_effect_size.py --experiment "$exp" --split combo --output-root "$O" --data-dir "$DATA" --device "$DEV" \
@@ -150,18 +167,19 @@ pipeline() {   # $1 = arm, $2 = seed
   echo "pipeline $1 s$2"
 }
 
-compare_round() {   # trains and reads every arm under the current O, SEEDS, EPOCHS, ...
+compare_round() {   # trains and reads every arm of RUN_ARMS under the current O, SEEDS, EPOCHS, ...
   LOGS="$O/gf_logs"; mkdir -p "$LOGS"
   limit_flag=(); [ -n "$LIMIT" ] && limit_flag=(--limit "$LIMIT")
   ridge_flag=(); [ -n "$RIDGE_MAX" ] && ridge_flag=(--ridge-max-cells "$RIDGE_MAX")
   local jobs=()
-  for s in $SEEDS; do for a in $ARMS; do jobs+=("train $a $s"); done; done
+  for s in $SEEDS; do for a in $RUN_ARMS; do jobs+=("train $a $s"); done; done
   run_parallel "${jobs[@]}"
   jobs=()
   for s in $SEEDS; do
-    for a in $ARMS; do
+    for a in $RUN_ARMS; do
       [ -f "$O/norman_gf_dec_${a}_s$s/checkpoints/count_decoder.pt" ] || { echo "skip $a s$s (no decoder)"; continue; }
-      jobs+=("ceiling $a $s" "pipeline $a $s")
+      jobs+=("ceiling $a $s")
+      in_list "$a" "$PIPELINE_ARMS" && jobs+=("pipeline $a $s")
     done
   done
   run_parallel "${jobs[@]}"
@@ -191,11 +209,12 @@ echo "==== 0. smoke ===="
 rm -rf "$SMOKE_ROOT"; mkdir -p "$SMOKE"
 ln -s "$OUT/embeddings" "$SMOKE/embeddings"; ln -s "$OUT/geneformer_full" "$SMOKE/geneformer_full"
 ln -s "$OUT/norman_gf_gate2" "$SMOKE/norman_gf_gate2"
+[ -d "$OUT/geneformer_r15" ] && ln -s "$OUT/geneformer_r15" "$SMOKE/geneformer_r15"
 for d in norman_additive/reports norman_r11_vae_hvg_s0/reports; do mkdir -p "$SMOKE/$d"; cp -r "$OUT/$d/." "$SMOKE/$d/"; done
-O="$SMOKE" SEEDS=0 EPOCHS=1 FLOW_EPOCHS=1 LIMIT=2000 RIDGE_MAX=3000 PARALLEL="${SMOKE_PARALLEL:-4}"
+O="$SMOKE" SEEDS=0 EPOCHS=1 FLOW_EPOCHS=1 LIMIT=2000 RIDGE_MAX=3000 PARALLEL="${SMOKE_PARALLEL:-4}" RUN_ARMS="$SMOKE_ARMS"
 compare_round > "$SMOKE_ROOT/compare_round.out" 2>&1
-python $FE/07_score_comparison.py --output-root "$SMOKE" --data-dir "$DATA" --seeds 0 --smoke --n-boot 500 \
-  --out "$SMOKE_ROOT/gf_compare_smoke.json" > "$SMOKE_ROOT/compare.out" 2>&1 || echo "SMOKE: 07 FAILED"
+python "$SCORER" --output-root "$SMOKE" --data-dir "$DATA" --seeds 0 --smoke --n-boot 500 \
+  --out "$SMOKE_ROOT/gf_compare_smoke.json" > "$SMOKE_ROOT/compare.out" 2>&1 || echo "SMOKE: scorer FAILED"
 bad=$(grep -lE "FAILED|Traceback" "$SMOKE_ROOT"/*.out "$SMOKE"/gf_logs/*.log 2>/dev/null)
 if [ -n "$bad" ] || [ ! -f "$SMOKE_ROOT/gf_compare_smoke.json" ]; then
   echo "SMOKE FAILED; nothing full was run. Problem files:"; echo "$bad"; exit 1
@@ -205,13 +224,14 @@ echo "smoke passed"
 
 # ---- 1. full ------------------------------------------------------------------------------- #
 echo "==== 1. comparison ===="
-O="$OUT" SEEDS="0 1 2" EPOCHS=30 FLOW_EPOCHS=60 LIMIT="" RIDGE_MAX="" PARALLEL="${PARALLEL:-3}"
+O="$OUT" SEEDS="0 1 2" EPOCHS=30 FLOW_EPOCHS=60 LIMIT="" RIDGE_MAX="" PARALLEL="${PARALLEL:-3}" RUN_ARMS="$ARMS"
 compare_round
 fi
 
 # ---- 2. compare ---------------------------------------------------------------------------- #
 echo "==== 2. scoring ===="
-python $FE/07_score_comparison.py --output-root "$OUT" --data-dir "$DATA" --out "$OUT/gf_compare.json" \
-  > "$OUT/gf_logs/compare.log" 2>&1 || echo "07 FAILED"
-cat "$OUT/gf_logs/compare.log" | head -60
-echo "done. fetch: $OUT/gf_compare.json $OUT/gf_logs and the JSON reports of norman_gf_*"
+mkdir -p "$OUT/gf_logs"
+python "$SCORER" --output-root "$OUT" --data-dir "$DATA" --out "$OUT/$SCORE_JSON" \
+  > "$OUT/gf_logs/$SCORE_LOG" 2>&1 || echo "SCORER FAILED"
+head -60 "$OUT/gf_logs/$SCORE_LOG"
+echo "done. fetch: $OUT/$SCORE_JSON $OUT/gf_logs and the JSON reports of norman_gf_*"
