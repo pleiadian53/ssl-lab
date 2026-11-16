@@ -322,10 +322,9 @@ def main() -> None:
                 "grad_norm_max": float(np.max(h["grad_norm_max"])),
                 "clipped_fraction": float(np.mean(h["clipped_fraction"]))}
 
-    population, flow_training = {}, {}
+    population, flow_training, not_trainable = {}, {}, []
     for arm, (_, width, hidden, _) in ARMS.items():
-        scored[f"pipeline_{arm}"] = []
-        pops = []
+        exps = []
         for s in seeds:
             exp = root / flow_exp(arm, s)
             fl = torch.load(exp / "checkpoints/cond_flow.pt", map_location="cpu", weights_only=False)
@@ -340,10 +339,18 @@ def main() -> None:
             if fl.get("grad_clip") != want_clip:
                 _fail(f"{arm} s{s}: flow trained with grad_clip {fl.get('grad_clip')}, amendment 1 says {want_clip}")
             flow_training.setdefault(arm, []).append(training_record(exp, s))
+            exps.append(exp)
+        # Amendment 1: an arm with a diverged flow has no pipeline measurement; it is reported as not trainable.
+        if any(r.get("diverged") for r in flow_training[arm]):
+            not_trainable.append(arm)
+            continue
+        scored[f"pipeline_{arm}"] = []
+        pops = []
+        for exp in exps:
             scored[f"pipeline_{arm}"].append(learned(exp, "flow", "effect_size.json"))
             pop = js(exp / "reports/calibration_flow.json")
             if pop.get("normalize") != "data":
-                _fail(f"{arm} s{s}: population report not normalized like the data")
+                _fail(f"{exp.name}: population report not normalized like the data")
             pops.append(pop)
         population[arm] = {k: np.mean([[r["per_pert"][q][k] for q in pairs] for r in pops], axis=0) for k in POP}
     scored["cvae_hvg"] = [learned(root / f"norman_r11_vae_hvg_s{s}", "vae", "effect_size_cvae.json") for s in seeds]
@@ -396,9 +403,14 @@ def main() -> None:
     # ---- secondaries -------------------------------------------------------------------------- #
     table = {a: {conv: {k: pi(per_pair(a, conv, k)) for k in KEYS} for conv in CONVS} for a in scored}
     gf_arms = [a for a in ARMS if a != "jepa"]
+    piped = [a for a in ARMS if a not in not_trainable]          # arms with a pipeline measurement
+    if "jepa" not in piped:
+        _fail("the jepa arm's flow diverged; no pipeline contrast is possible")
+    gf_piped = [a for a in gf_arms if a in piped]
+    rung_arms = {"roundtrip": gf_arms, "pipeline": gf_piped, "linear": gf_arms}
     vs_jepa = {f"{rung}: {a} − jepa": {conv: {k: pi(per_pair(f"{rung}_{a}", conv, k), per_pair(f"{rung}_jepa", conv, k),
                                                      combine=diff) for k in KEYS} for conv in CONVS}
-               for rung in ("roundtrip", "pipeline", "linear") for a in gf_arms}
+               for rung in ("roundtrip", "pipeline", "linear") for a in rung_arms[rung]}
 
     # Visible genes only: both arms rescored on the genes the Geneformer arm's vocabulary covers.
     visible_tables = {}
@@ -420,16 +432,16 @@ def main() -> None:
                                             combine=diff) for k in KEYS} for p_, f_ in PROJECTED.items()}
     projection_variance = {p_: stores[p_].manifest.get("explained_variance_share") for p_ in PROJECTED}
     vs_ref = {f"pipeline_{a}": {ref: {k: pi(per_pair(f"pipeline_{a}", "measured", k), per_pair(ref, "measured", k), combine=diff)
-                                      for k in KEYS} for ref in ("cvae_hvg", "additive")} for a in ARMS}
+                                      for k in KEYS} for ref in ("cvae_hvg", "additive")} for a in piped}
     headroom = {a: pi(per_pair(f"roundtrip_{a}", "measured", "delta_r"), per_pair(f"pipeline_{a}", "measured", "delta_r"),
-                      combine=diff) for a in ARMS}
-    pop_table = {a: {k: pi(population[a][k]) for k in POP} for a in ARMS}
-    pop_vs_jepa = {a: {k: pi(population[a][k], population["jepa"][k], combine=diff) for k in POP} for a in gf_arms}
+                      combine=diff) for a in piped}
+    pop_table = {a: {k: pi(population[a][k]) for k in POP} for a in piped}
+    pop_vs_jepa = {a: {k: pi(population[a][k], population["jepa"][k], combine=diff) for k in POP} for a in gf_piped}
     # Ranking hypothesis: Δr gain and e_p gain side by side (e_p is lower-better, so jepa − arm).
     ranking = {f"{rung}: {a}": {"delta_r_gain": vs_jepa[f"{rung}: {a} − jepa"]["measured"]["delta_r"],
                                 "rel_err_gain": pi(per_pair(f"{rung}_jepa", "measured", "rel_err"),
                                                    per_pair(f"{rung}_{a}", "measured", "rel_err"), combine=diff)}
-               for rung in ("roundtrip", "pipeline") for a in gf_arms}
+               for rung in ("roundtrip", "pipeline") for a in rung_arms[rung]}
     rng = np.random.default_rng(0)
     rank_rows = np.sort(rng.choice(np.flatnonzero(cache.split_combo == SPLIT_TRAIN), 2000, replace=False))
     eff_rank = {}
@@ -457,10 +469,15 @@ def main() -> None:
     print(f"  sanity: jepa ceiling {jepa_mean:.4f} vs {JEPA_CEILING_REF}{'  FLAG' if sanity['flag'] else ''}")
     print(bar + "\nSECONDARY (percentile intervals)\n" + bar)
     for a in ARMS:
-        r, pl = table[f"roundtrip_{a}"]["measured"], table[f"pipeline_{a}"]["measured"]
-        print(f"  {a:12s} ceiling Δr {r['delta_r']['mean']:.3f} e_p {r['rel_err']['mean']:.3f} | "
-              f"pipeline Δr {pl['delta_r']['mean']:.3f} e_p {pl['rel_err']['mean']:.3f} | "
-              f"coverage {pop_table[a]['coverage']['mean']:.3f}")
+        r = table[f"roundtrip_{a}"]["measured"]
+        line = f"  {a:12s} ceiling Δr {r['delta_r']['mean']:.3f} e_p {r['rel_err']['mean']:.3f} | "
+        if a in piped:
+            pl = table[f"pipeline_{a}"]["measured"]
+            line += (f"pipeline Δr {pl['delta_r']['mean']:.3f} e_p {pl['rel_err']['mean']:.3f} | "
+                     f"coverage {pop_table[a]['coverage']['mean']:.3f}")
+        else:
+            line += "pipeline not trainable under this recipe (amendment 1)"
+        print(line)
     for k, v in visible_vs_jepa.items():
         print(f"  visible genes only, {k}: Δr {short(v['measured']['delta_r'])}")
     for k, v in projection_cost.items():
@@ -490,6 +507,7 @@ def main() -> None:
             "ranking_hypothesis": ranking, "effective_rank": eff_rank,
             "flow_training": flow_training,
             "diverged_flows": diverged,
+            "pipelines_not_trainable": not_trainable,
         },
     }
     out = Path(args.out)
