@@ -20,6 +20,14 @@ The move comes from a short 1931 paper by Bernard Koopman on classical mechanics
 
 John von Neumann used the idea within a year to prove the ergodic theorem of statistical mechanics, described at the end of this section. After that it lived mostly in pure mathematics until the mid-2000s, when Igor Mezić and his collaborators revived it for modeling nonlinear systems from data ([Mezić, 2005](https://doi.org/10.1007/s11071-005-2824-x)). That revival led to deep Koopman methods, which train a neural-network encoder to find coordinates in which the dynamics are linear; §9 returns to them.
 
+Two observations explain why anyone would want this, and they are worth having before the formalism.
+
+**Measurements are what you actually have.** Nobody observes the full state of a cell, or of a turbulent fluid. What arrives is a list of numbers read off the state: gene counts, the temperature at a sensor, a position. Quantum mechanics had already made those readings, called *observables*, the primary objects of the theory, and Koopman asked whether classical mechanics could be told the same way. For modeling from data the appeal is direct, because a theory of how measurements evolve is a theory of what is in your dataset.
+
+**Linear systems are the ones we can solve.** For a linear system the toolkit is complete. Eigenvalues say what grows, what decays and what oscillates; solutions add; predicting any number of steps ahead is a matrix power. Nonlinear systems have no comparable toolkit. The usual workaround, linearizing with the Jacobian around a fixed point, holds only near that point. Koopman offers linearity that holds everywhere, and charges for it in a different currency: dimension.
+
+If you have fit a regression with polynomial features, you have seen this trade already. A curve that no straight line fits in $x$ is fit by a weighted sum of the features $x$, $x^2$ and $x^3$: nonlinear in the input, linear in the features. Koopman does the same for dynamics. The functions of the state play the role of the features, and §4 shows a case where three of them suffice.
+
 The idea still reads like sleight of hand. Take any dynamical system on a state $s$,
 
 $$s_{t+1} = F(s_t),$$
@@ -45,6 +53,16 @@ Nothing was assumed about $F$. The linearity comes from the fact that $\mathcal{
 The distinction that trips everyone, worth stating flatly:
 
 > **$\mathcal{K}$ is linear in the observable, not in the state.** The nonlinearity of $F$ has not been approximated away, ignored, or linearized about a fixed point. It has been **moved**, out of the operator and into the arguments the operator acts on.
+
+> **A worked example.** Take a state that is a single number, the update $F(s) = s^2$, and two observables, $g(s) = s + 1$ and $h(s) = 2s$.
+>
+> Applying $\mathcal{K}$ means replacing $s$ by $F(s)$ inside the observable. So $(\mathcal{K}g)(s) = g(s^2) = s^2 + 1$, and $(\mathcal{K}h)(s) = h(s^2) = 2s^2$.
+>
+> Now add first and apply $\mathcal{K}$ second. The sum is $(g + h)(s) = (s + 1) + 2s = 3s + 1$, so $\big(\mathcal{K}(g + h)\big)(s) = 3s^2 + 1$. That is exactly $(\mathcal{K}g)(s) + (\mathcal{K}h)(s) = (s^2 + 1) + 2s^2$.
+>
+> Check it at $s = 3$. The next state is $F(3) = 9$, where the combined observable reads $3 \cdot 9 + 1 = 28$. The two pieces give $(\mathcal{K}g)(3) + (\mathcal{K}h)(3) = 10 + 18 = 28$.
+>
+> The map on states is not linear: $F(1 + 2) = 9$, while $F(1) + F(2) = 5$. The map on observables is. The squaring has not gone anywhere; it sits inside $\mathcal{K}g$ as the $s^2$, and $\mathcal{K}$ carries it along.
 
 Nothing is free, and here is the bill. The space of all observables is a *function space*, and it is infinite-dimensional. Koopman trades a nonlinear finite-dimensional problem for a linear infinite-dimensional one. Whether that is a good trade depends entirely on the next step.
 
