@@ -16,9 +16,9 @@ The answer is not "it is a reasonable approximation." The answer is that **the o
 
 ## 2. Koopman's move: track functions, not states
 
-The move comes from a short 1931 paper by Bernard Koopman on Hamiltonian mechanics ([Koopman, 1931](https://doi.org/10.1073/pnas.17.5.315)). Quantum mechanics had just been rewritten in terms of linear operators acting on a space of functions, and Koopman showed that classical mechanics admits the same description: however nonlinear the motion of the state, its action on *functions of the state* is still linear, exactly and not as an approximation.
+The move comes from a short 1931 paper by Bernard Koopman on classical mechanics ([Koopman, 1931](https://doi.org/10.1073/pnas.17.5.315)). Quantum mechanics had just been rewritten in terms of linear operators acting on functions. Koopman showed that classical mechanics admits the same description: however nonlinear the motion of the state, its action on *functions of the state* is still linear, exactly and not as an approximation.
 
-John von Neumann used the construction almost at once to prove the mean ergodic theorem ([von Neumann, 1932](https://doi.org/10.1073/pnas.18.1.70)). The question it settled had been open since Boltzmann founded statistical mechanics, and a billiard ball makes it concrete. Picture one ball rolling without friction on a table shaped like a stadium, a rectangle with rounded ends. Nothing slows the ball, so its energy never changes: its speed is fixed forever, and only its position and its direction of travel vary. Follow it for hours and record the fraction of time it spends on the left half of the table. That fraction is a *time average*, taken along a single trajectory. Now ask a different question, with no watching involved: among all the states the ball could be in at that speed, meaning every position on the table paired with every direction, what fraction has the ball on the left half? The answer is one half, the left half's share of the table, and it is a *state average*, taken over everything the conserved energy allows. The ergodic question is whether the two agree: does the time average settle to a stable number, and is that number the state average? Statistical mechanics depends on the answer being yes, because it replaces long observations of one system, which are impossible to carry out for a gas of $10^{23}$ molecules, with averages over states, which can be computed. Koopman's operator made the question tractable. A Hamiltonian flow preserves volume in the space of states, so the linear operator it induces on functions preserves their length, and the spectral theory of length-preserving linear operators shows that time averages do converge, and that they equal the average over states whenever the system is ergodic, meaning that almost no trajectory can be trapped in a smaller region of the states its energy allows. The stadium table is ergodic, a fact proved by Leonid Bunimovich in the 1970s, though even there special launches exist: a ball fired straight across between the two flat sides bounces back and forth along the same line forever and never samples the rest of the table. Such launches are so rare that a ball started at random makes one with probability zero. For the next seventy years the construction lived mostly in this kind of pure mathematics. In the mid-2000s Igor Mezić and his collaborators revived it as a practical tool for modeling nonlinear systems from data ([Mezić, 2005](https://doi.org/10.1007/s11071-005-2824-x)), the line of work that leads to the deep Koopman methods of §9.
+John von Neumann used the idea within a year to prove the ergodic theorem of statistical mechanics, which the box at the end of this section describes. After that it lived mostly in pure mathematics until the mid-2000s, when Igor Mezić and his collaborators revived it for modeling nonlinear systems from data ([Mezić, 2005](https://doi.org/10.1007/s11071-005-2824-x)). That revival leads to the deep Koopman methods of §9.
 
 The idea still reads like sleight of hand. Take any dynamical system on a state $s$,
 
@@ -47,6 +47,21 @@ The distinction that trips everyone, worth stating flatly:
 > **$\mathcal{K}$ is linear in the observable, not in the state.** The nonlinearity of $F$ has not been approximated away, ignored, or linearized about a fixed point. It has been **moved**, out of the operator and into the arguments the operator acts on.
 
 Nothing is free, and here is the bill. The space of all observables is a *function space*, and it is infinite-dimensional. Koopman trades a nonlinear finite-dimensional problem for a linear infinite-dimensional one. Whether that is a good trade depends entirely on the next step.
+
+> **Box: what von Neumann used it for.** ([von Neumann, 1932](https://doi.org/10.1073/pnas.18.1.70))
+>
+> Statistical mechanics rests on one question, and a billiard ball makes it concrete. A ball rolls without friction on a table shaped like a stadium. Its energy never changes, so its speed is fixed, and only its position and direction vary.
+>
+> ![Three panels on a stadium-shaped billiard table with the left half shaded. Panel 1: a typical launch criss-crosses the whole table. Panel 2: the running share of time this ball spends on the left half wobbles early, then settles onto one half, the dashed state-average line, while a trapped launch stays at one. Panel 3: the trapped launch bounces straight up and down between the two flat sides, inside the left half, forever.](assets/stadium-billiard.svg)
+>
+> There are two ways to ask how much time the ball spends on the left half:
+>
+> - **The time average.** Watch one ball for a long time and record the share of time it spends there. Panel 2 plots it.
+> - **The state average.** Take every state the ball could have at that speed, each position paired with each direction, and count the share that put the ball on the left half. The answer is one half.
+>
+> The *ergodic question* is whether the two agree. Physics needs them to, because watching a gas of $10^{23}$ molecules forever is impossible, while averaging over its possible states can be computed.
+>
+> Koopman's operator settled it. A Hamiltonian flow preserves volume in the space of states, so the operator it induces on functions preserves their length, and the spectral theory of such operators shows that the time average always settles. It equals the state average when the system is **ergodic**, meaning almost no launch gets trapped in part of the table. Leonid Bunimovich proved in the 1970s that the stadium is ergodic. Trapped launches still exist, like the one in panel 3, but a ball launched at random lands on one with probability zero.
 
 ## 3. The bargain: a finite invariant subspace
 
