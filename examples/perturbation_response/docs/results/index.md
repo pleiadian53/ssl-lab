@@ -28,6 +28,7 @@
 | 12 | Does training the encoder and the decoder together raise the stack's readout ceiling? | Yes for joint training, $+0.071$ $[+0.010, +0.133]$, to $0.936$; not with the JEPA objective maintained; the full pipeline reaches $0.900$ | [co-adaptation Phase 1](round-12-coadaptation.md) |
 | 13 | Does the JEPA pretraining contribute to round 12's gain? | Not established: random starts score $0.948$ and $0.961$ against the pretrained start's $0.936$, simultaneous intervals including zero; their pipelines reach $0.909$ and $0.921$ | [joint training from a random start](round-13-random-start.md) |
 | 14 | Does a frozen encoder pretrained on millions of cells, Geneformer, read held-out cells better than our JEPA encoder? | Yes for V2, all four model and mode arms: readout ceiling up to $0.908$ against $0.863$, $+0.045$ $[+0.009, +0.081]$; V1 ties. The flow on V2 projected to 256 reaches $0.866$ against $0.830$; on the full 768 dimensions, at a lower learning rate, it gains less in $\Delta r$ but gives the best populations of any flow, coverage $0.79$ to $0.80$ | [Geneformer as the encoder](round-14-foundation-encoder.md) |
+| 15 | Which property of Geneformer V2 carries its gain: pretraining, reading the whole transcriptome, list length or model size? | No single property is shown to carry it under the family's max-$t$ rule. Breadth, list length and size each move the readout ceiling by at most about $0.05$; random weights score $0.708$ against $0.908$, lower on all 20 pairs, but the simultaneous interval reaches below zero | [what carries the gain](round-15-what-carries-the-gain.md) |
 
 Rounds are numbered in the order they were run. Round 7b is a companion ablation run between rounds 7 and 8, sharing round 8's metrics but with its own question and protocol. The re-baseline is not a round: it tests nothing and re-reads the published models under the conventions round 11 corrected.
 
@@ -112,6 +113,10 @@ Since round 11, the count decoder's likelihood counts the library size over the 
 | 14 | transport flow, frozen Geneformer V2-104M mean over genes, full 768, learning rate $3 \times 10^{-4}$ | 3 | 0.848 | 0.525 | 0.673 | 0.792 | 0.339 | 0.689 |
 | 14 | transport flow, frozen Geneformer V2-104M_CLcancer `<cls>` token, full 768, learning rate $3 \times 10^{-4}$ | 3 | 0.832 | 0.529 | 0.694 | 0.797 | 0.335 | 0.658 |
 | 14 | transport flow, frozen Geneformer V2-104M_CLcancer mean over genes, full 768, learning rate $3 \times 10^{-4}$ | 3 | 0.839 | 0.546 | 0.671 | 0.790 | 0.348 | 0.723 |
+| 15 | transport flow, Geneformer V2-104M architecture with random weights, projected to 256 | 3 | 0.734 | 0.737 | 0.530 | 0.701 | 0.584 | 1.593 |
+| 15 | transport flow, frozen Geneformer V2-104M on the 5,000-gene panel, projected to 256 | 3 | 0.869 | 0.536 | 0.671 | 0.767 | 0.361 | 0.712 |
+| 15 | transport flow, frozen Geneformer V2-104M with lists cut at 2,048 genes, projected to 256 | 3 | 0.852 | 0.579 | 0.654 | 0.751 | 0.410 | 0.896 |
+| 15 | transport flow, frozen Geneformer V2-316M, projected to 256 | 3 | 0.870 | 0.508 | 0.656 | 0.782 | 0.333 | 0.609 |
 | re-baseline | conditional NB-VAE, encoder blind to the condition | 3 | 0.880 | 0.609 | 0.733 | 0.731 | 0.463 | 1.028 |
 | 11 | **conditional NB-VAE, encoder reads the condition** (the strongest learned baseline) | 3 | **0.939** | **0.455** | **0.819** | 0.776 | **0.262** | **0.355** |
 | 7 | **additive model** (the reference on $\Delta r$ and $e_p$; a mean, no population) | — | **0.961** | **0.289** | | | | |
@@ -121,6 +126,10 @@ Since round 11, the count decoder's likelihood counts the library size over the 
 | 14 | *readout ceiling, frozen Geneformer V2-104M, mean over genes* | 3 | *0.908* | *0.405* | | | | |
 | 14 | *readout ceiling, frozen Geneformer V2-104M_CLcancer, `<cls>` token* | 3 | *0.890* | *0.418* | | | | |
 | 14 | *readout ceiling, frozen Geneformer V2-104M_CLcancer, mean over genes* | 3 | *0.901* | *0.416* | | | | |
+| 15 | *readout ceiling, Geneformer V2-104M architecture with random weights* | 3 | *0.708* | *0.695* | | | | |
+| 15 | *readout ceiling, frozen Geneformer V2-104M on the 5,000-gene panel* | 3 | *0.921* | *0.376* | | | | |
+| 15 | *readout ceiling, frozen Geneformer V2-104M with lists cut at 2,048 genes* | 3 | *0.907* | *0.405* | | | | |
+| 15 | *readout ceiling, frozen Geneformer V2-316M* | 3 | *0.919* | *0.374* | | | | |
 | 12 | *readout ceiling, encoder and decoder co-adapted* | 3 | *0.936* | *0.340* | | | | |
 | 13 | *readout ceiling, co-adapted from a random start, encoder learning rate $10^{-4}$* | 3 | *0.948* | *0.325* | | | | |
 | 13 | *readout ceiling, co-adapted from a random start, encoder learning rate $10^{-3}$* | 3 | *0.961* | *0.296* | | | | |
@@ -129,7 +138,7 @@ Since round 11, the count decoder's likelihood counts the library size over the 
 | 13 | *linear readout of the encoder co-adapted from a random start, learning rate $10^{-4}$* | 3 | *0.946* | *0.318* | | | | |
 | 13 | *linear readout of the encoder co-adapted from a random start, learning rate $10^{-3}$* | 3 | *0.951* | *0.305* | | | | |
 
-The two round-12 pipelines and the transport flow on the frozen encoder are the three arms of round 12 and compare directly. The round-13 rows compare directly with the co-adapted round-12 rows, which round 13 re-read as its pretrained arm. The round-14 rows compare directly with round 14's own control, our frozen encoder read through the same code path: readout ceiling $0.863$, transport-flow pipeline $0.830$ with $e_p$ $0.578$, spread $0.673$, coverage $0.774$, $W_1$ $0.402$ and energy $0.895$. The other rows are read against them through the two references, the conditioned NB-VAE and the additive model. The italic rows are diagnostics handed real held-out cells, not models.
+The two round-12 pipelines and the transport flow on the frozen encoder are the three arms of round 12 and compare directly. The round-13 rows compare directly with the co-adapted round-12 rows, which round 13 re-read as its pretrained arm. The round-14 and round-15 rows compare directly with each other and with round 14's own control, which round 15 re-read, our frozen encoder read through the same code path: readout ceiling $0.863$, transport-flow pipeline $0.830$ with $e_p$ $0.578$, spread $0.673$, coverage $0.774$, $W_1$ $0.402$ and energy $0.895$. The other rows are read against them through the two references, the conditioned NB-VAE and the additive model. The italic rows are diagnostics handed real held-out cells, not models.
 
 ### Published, before round 11's correction
 
@@ -183,6 +192,8 @@ Rounds differ in what they change. Unless a round's page says otherwise, everyth
 *Since rounds 11 to 13.* Under the corrected conventions, the flows on the frozen encoder sit about $0.10$ below the conditioned NB-VAE and $0.12$ below additivity. Co-adapting the encoder and the decoder narrows those distances to $0.039$ and $0.061$, and to $0.017$ and $0.039$ when the encoder starts from random weights; the JEPA pretraining is not established to contribute. The paragraph and items below were written before that, with the published numbers, and are kept with notes where a later round answered them.
 
 *Since round 14.* Geneformer V2, a frozen encoder pretrained on about 104 million cells from many tissues and experiments, reads held-out cells better than our frozen JEPA encoder: a readout ceiling of up to $0.908$ against $0.863$, with the size-aware error down from $0.49$ to about $0.41$, while the smaller V1 model ties. The advantage reaches the generated cells at a smaller size: the transport flow on V2 projected to 256 dimensions scores up to $0.866$ against $0.830$ on our encoder, with lower energy distance, and on the full 768 dimensions, at a lower learning rate, the flow gains less in $\Delta r$ but generates the closest populations of any flow, coverage $0.79$ to $0.80$ and energy distance $0.66$ to $0.72$ against $0.90$ on our encoder. The protocol's trigger has fired, which makes joint training of Geneformer with the decoder, against a random-start twin, a candidate for a separate round. Which property of Geneformer carries the gain, its pretraining, its reading of the whole transcriptome or its size, is not separated yet.
+
+*Since round 15.* Changing one property of V2 at a time separates them only in part. Reading the whole transcriptome, reading lists longer than 2,048 genes and the model's size each move the readout ceiling by at most about $0.05$: V2 on only the 5,000-gene panel reads held-out cells as well as full V2 or slightly better, with about a third as many genes per cell. Pretraining is not established under the family's max-$t$ rule, whose critical value one hard pair inflated, but random weights score $0.708$ against $0.908$ and read every one of the 20 pairs worse. The larger V2-316M gives the closest generated populations of any flow on a 256-dimensional store. For joint training, this points at the pretrained start, with the random-weight twin as its control.
 
 Three structural levers have now been built and measured, and none closed even the original gap of $0.12$; against the round-6 bar the gap is about $0.21$, and against the round-7 additive reference about $0.31$. The ceiling explains why two of them never could: the transition they targeted had at most $0.03$ of headroom. That is worth stating plainly rather than softening, because it changes what the remaining questions are, and it retires some of them.
 

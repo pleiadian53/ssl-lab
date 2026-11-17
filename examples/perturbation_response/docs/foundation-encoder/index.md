@@ -15,7 +15,7 @@ The code for this work lives in [`foundation-encoder/`](../../foundation-encoder
 
 ## Where this sits
 
-The method series, [conditional flow + JEPA](../conditional-flow-jepa/index.md), describes the pipeline whose first stage this series replaces. The [results ledger](../results/index.md) holds every round on the shared benchmark, and the comparison of Geneformer against our own encoder is [round 14](../results/round-14-foundation-encoder.md), run under a protocol fixed before any arm was trained. Published benchmarks give a sober prior: Kedzierska et al. (Genome Biology, 2025) and Ahlmann-Eltze et al. (Nature Methods, 2025) found that foundation-model embeddings did not beat simple baselines on zero-shot and perturbation tasks. A tie is therefore a plausible outcome, and either answer is informative.
+The method series, [conditional flow + JEPA](../conditional-flow-jepa/index.md), describes the pipeline whose first stage this series replaces. The [results ledger](../results/index.md) holds every round on the shared benchmark, and the comparison of Geneformer against our own encoder is [round 14](../results/round-14-foundation-encoder.md), run under a protocol fixed before any arm was trained. [Round 15](../results/round-15-what-carries-the-gain.md) changes one property of V2 at a time, its pretraining, the breadth of its input, the length of its gene lists and its size, to see which one carries the gain. Published benchmarks give a sober prior: Kedzierska et al. (Genome Biology, 2025) and Ahlmann-Eltze et al. (Nature Methods, 2025) found that foundation-model embeddings did not beat simple baselines on zero-shot and perturbation tasks. A tie is therefore a plausible outcome, and either answer is informative.
 
 ---
 

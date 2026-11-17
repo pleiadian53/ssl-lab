@@ -1,6 +1,6 @@
 # Round 14 — does an encoder pretrained on millions of cells read held-out cells better? Geneformer embeddings, frozen
 
-*Part of [the results ledger](index.md), which holds the standing verdict, the scoreboard and the settings every round shares. Previous: [round 13](round-13-random-start.md).*
+*Part of [the results ledger](index.md), which holds the standing verdict, the scoreboard and the settings every round shares. Previous: [round 13](round-13-random-start.md) · Next: [round 15](round-15-what-carries-the-gain.md).*
 
 > **Status.** Every result on this page is final. The 768-wide flows needed two amendments to the protocol before they trained stably; both are described in the full-pipeline section.
 
@@ -191,4 +191,4 @@ The advantage reaches the generated cells, smaller. Read through the transport f
 
 ---
 
-*Up: [the results ledger](index.md). Previous: [round 13](round-13-random-start.md).*
+*Up: [the results ledger](index.md). Previous: [round 13](round-13-random-start.md) · Next: [round 15](round-15-what-carries-the-gain.md).*
