@@ -22,7 +22,7 @@ The answer is not "it is a reasonable approximation." The answer is that **the o
 
 The move comes from a short 1931 paper by Bernard Koopman on classical mechanics ([Koopman, 1931](https://doi.org/10.1073/pnas.17.5.315)). Quantum mechanics had just been rewritten in terms of linear operators acting on functions. Koopman showed that classical mechanics admits the same description: however nonlinear the motion of the state, its action on *functions of the state* is still linear, exactly and not as an approximation.
 
-John von Neumann used the idea within a year to prove the ergodic theorem of statistical mechanics, which the box at the end of this section describes. After that it lived mostly in pure mathematics until the mid-2000s, when Igor Mezić and his collaborators revived it for modeling nonlinear systems from data ([Mezić, 2005](https://doi.org/10.1007/s11071-005-2824-x)). That revival leads to the deep Koopman methods of §6.
+John von Neumann used the idea within a year to prove the ergodic theorem of statistical mechanics, described at the end of this section. After that it lived mostly in pure mathematics until the mid-2000s, when Igor Mezić and his collaborators revived it for modeling nonlinear systems from data ([Mezić, 2005](https://doi.org/10.1007/s11071-005-2824-x)). That revival leads to the deep Koopman methods of §6.
 
 The idea still sounds like a trick. Take any nonlinear dynamical system on a state $s$:
 
@@ -46,7 +46,7 @@ The crucial distinction, and the one that trips everybody: **$\mathcal{K}$ is li
 
 Nothing is free, and here is the bill. The space of all observables is a **function space**, and it is infinite-dimensional. So Koopman trades a nonlinear finite-dimensional problem for a linear infinite-dimensional one. That is a real trade, not a free lunch, and whether it is a good one depends entirely on the next step.
 
-> **Box: what von Neumann used it for.** ([von Neumann, 1932](https://doi.org/10.1073/pnas.18.1.70))
+> **What von Neumann used it for.** ([von Neumann, 1932](https://doi.org/10.1073/pnas.18.1.70))
 >
 > Statistical mechanics rests on one question, and a billiard ball makes it concrete. A ball rolls without friction on a table shaped like a stadium. Its energy never changes, so its speed is fixed, and only its position and direction vary.
 >

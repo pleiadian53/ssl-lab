@@ -18,7 +18,7 @@ The answer is not "it is a reasonable approximation." The answer is that **the o
 
 The move comes from a short 1931 paper by Bernard Koopman on classical mechanics ([Koopman, 1931](https://doi.org/10.1073/pnas.17.5.315)). Quantum mechanics had just been rewritten in terms of linear operators acting on functions. Koopman showed that classical mechanics admits the same description: however nonlinear the motion of the state, its action on *functions of the state* is still linear, exactly and not as an approximation.
 
-John von Neumann used the idea within a year to prove the ergodic theorem of statistical mechanics, which the box at the end of this section describes. After that it lived mostly in pure mathematics until the mid-2000s, when Igor Mezić and his collaborators revived it for modeling nonlinear systems from data ([Mezić, 2005](https://doi.org/10.1007/s11071-005-2824-x)). That revival leads to the deep Koopman methods of §9.
+John von Neumann used the idea within a year to prove the ergodic theorem of statistical mechanics, described at the end of this section. After that it lived mostly in pure mathematics until the mid-2000s, when Igor Mezić and his collaborators revived it for modeling nonlinear systems from data ([Mezić, 2005](https://doi.org/10.1007/s11071-005-2824-x)). That revival leads to the deep Koopman methods of §9.
 
 The idea still reads like sleight of hand. Take any dynamical system on a state $s$,
 
@@ -48,7 +48,7 @@ The distinction that trips everyone, worth stating flatly:
 
 Nothing is free, and here is the bill. The space of all observables is a *function space*, and it is infinite-dimensional. Koopman trades a nonlinear finite-dimensional problem for a linear infinite-dimensional one. Whether that is a good trade depends entirely on the next step.
 
-> **Box: what von Neumann used it for.** ([von Neumann, 1932](https://doi.org/10.1073/pnas.18.1.70))
+> **What von Neumann used it for.** ([von Neumann, 1932](https://doi.org/10.1073/pnas.18.1.70))
 >
 > Statistical mechanics rests on one question, and a billiard ball makes it concrete. A ball rolls without friction on a table shaped like a stadium. Its energy never changes, so its speed is fixed, and only its position and direction vary.
 >
