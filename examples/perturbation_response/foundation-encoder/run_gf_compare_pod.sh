@@ -169,17 +169,26 @@ compare_round() {   # trains and reads every arm of RUN_ARMS under the current O
   LOGS="$O/gf_logs"; mkdir -p "$LOGS"
   limit_flag=(); [ -n "$LIMIT" ] && limit_flag=(--limit "$LIMIT")
   ridge_flag=(); [ -n "$RIDGE_MAX" ] && ridge_flag=(--ridge-max-cells "$RIDGE_MAX")
-  local jobs=()
-  for s in $SEEDS; do for a in $RUN_ARMS; do jobs+=("train $a $s"); done; done
-  run_parallel "${jobs[@]}"
+  # SKIP_DONE=1 resumes an interrupted run: a step whose final output is already on the volume is not
+  # rerun (decoder checkpoint; ceiling.json; a pipeline's calibration_flow.json, its last report).
+  local skip="${SKIP_DONE:-0}" jobs=()
+  for s in $SEEDS; do for a in $RUN_ARMS; do
+    [ "$skip" = 1 ] && [ -f "$O/norman_gf_dec_${a}_s$s/checkpoints/count_decoder.pt" ] && { echo "done: train $a s$s"; continue; }
+    jobs+=("train $a $s")
+  done; done
+  [ ${#jobs[@]} -gt 0 ] && run_parallel "${jobs[@]}"
   jobs=()
   for s in $SEEDS; do
     for a in $RUN_ARMS; do
       [ -f "$O/norman_gf_dec_${a}_s$s/checkpoints/count_decoder.pt" ] || { echo "skip $a s$s (no decoder)"; continue; }
-      jobs+=("ceiling $a $s")
-      in_list "$a" "$PIPELINE_ARMS" && jobs+=("pipeline $a $s")
+      if [ "$skip" = 1 ] && [ -f "$O/norman_gf_ceiling_${a}_s$s/reports/ceiling.json" ]; then echo "done: ceiling $a s$s"
+      else jobs+=("ceiling $a $s"); fi
+      in_list "$a" "$PIPELINE_ARMS" || continue
+      if [ "$skip" = 1 ] && [ -f "$O/norman_gf_flow_${a}_s$s/reports/calibration_flow.json" ]; then echo "done: pipeline $a s$s"
+      else jobs+=("pipeline $a $s"); fi
     done
   done
+  [ ${#jobs[@]} -gt 0 ] || return 0
   # Each full ceiling fits its ridge readout in float64 on every training cell, about 10 GB of host
   # memory, so the readouts run READ_PARALLEL at a time (default 2) within the pod's 46.6 GB container.
   PARALLEL="${READ_PARALLEL:-2}" run_parallel "${jobs[@]}"
