@@ -1,0 +1,4 @@
+{
+  "name": "ssl-lab",
+  "install": "bash .cursor/install.sh"
+}
